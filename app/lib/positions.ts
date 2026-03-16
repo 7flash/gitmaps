@@ -141,6 +141,7 @@ export async function savePosition(
   y?: number,
   width?: number,
   height?: number,
+  immediate = false,
 ) {
   // Follower: No saves allowed
   if (isFollower()) {
@@ -163,13 +164,23 @@ export async function savePosition(
       };
       ctx.positions.set(posKey, newPos);
 
-      // Debounced persist
+      // Debounced persist (or immediate if requested)
       if (_saveTimer) clearTimeout(_saveTimer);
-      _saveTimer = setTimeout(() => flushPositions(ctx), SAVE_DEBOUNCE_MS);
+      if (immediate) {
+        flushPositions(ctx);
+      } else {
+        _saveTimer = setTimeout(() => flushPositions(ctx), SAVE_DEBOUNCE_MS);
+      }
     } catch (e) {
       measure("positions:saveError", () => e);
     }
   });
+}
+
+// ─── Force immediate save (no debounce) ──────────────────
+export function flushPositionsImmediate(ctx: CanvasContext) {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  flushPositions(ctx);
 }
 
 // ─── Position key helper ─────────────────────────────────

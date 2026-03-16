@@ -3,7 +3,7 @@
 ## 🟢 Completed Fixes (Recent)
 - [x] ~~**Interactive Onboarding Tutorial**~~ — ✅ DONE. Created `app/lib/tutorial.ts` which injects a step-by-step spatial DOM overlay for first-time visitors (tracked via `localStorage`). Teaches panning, zooming, layers control, and repo-loading.
 
-- [ ] **Canvas WebGL Acceleration Research** — Investigate migrating the core `packages/galaxydraw` 2D Canvas renderer to a WebGL/Pixi.js backend to support repositories exceeding 10,000 files without thermal throttling.
+- [x] ~~**Canvas WebGL Acceleration Research**~~ — ✅ DONE. Implemented `app/lib/webgl-text.ts` with Pixi.js GPU text rendering. 3-mode toggle (DOM → Canvas → WebGL) tested & working. Solves the actual bottleneck (text DOM nodes) without over-engineering full card WebGL.
 - [x] ~~**Context-Aware AI Chat Agent**~~ — ✅ DONE. Integrated `<edit_file>` XML tag processing inside the `jsx-ai` `streamLLM` loop. The floating chat widget now intercepts payload streams dynamically and implements a `pendingRefactors` cache to project "Apply Edit" buttons dynamically, saving spatial selections via the backend `/api/repo/file-save` protocol without reloading the canvas.
 
 ## 🔴 Priority: Fix

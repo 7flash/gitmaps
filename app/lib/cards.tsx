@@ -307,21 +307,21 @@ export function setupCardInteraction(
       }
       updateSelectionHighlights(ctx);
       updateArrangeToolbar(ctx);
-    } else if (action === "move") {
-      document.body.style.cursor = "";
-      card.style.cursor = "";
-      moveStartPositions.forEach((info) => {
-        info.card.style.cursor = "";
-      });
-      moveStartPositions.forEach((info) => {
-        const x = parseInt(info.card.style.left) || 0;
-        const y = parseInt(info.card.style.top) || 0;
-        savePosition(ctx, commitHash, info.path, x, y);
-      });
-      moveStartPositions = [];
-      // Force minimap rebuild so dot positions reflect the drag result
-      forceMinimapRebuild(ctx);
-    }
+      } else if (action === "move") {
+        document.body.style.cursor = "";
+        card.style.cursor = "";
+        moveStartPositions.forEach((info) => {
+          info.card.style.cursor = "";
+        });
+        moveStartPositions.forEach((info) => {
+          const x = parseInt(info.card.style.left) || 0;
+          const y = parseInt(info.card.style.top) || 0;
+          savePosition(ctx, commitHash, info.path, x, y, undefined, undefined, true);
+        });
+        moveStartPositions = [];
+        // Force minimap rebuild so dot positions reflect the drag result
+        forceMinimapRebuild(ctx);
+      }
 
     action = null;
   }
@@ -1001,8 +1001,8 @@ export function createAllFileCard(
   // All files are now same fixed size - no expand persistence
 
   let contentHTML = "";
-  let useCanvasText = false;
   let canvasOptions: any = null;
+  const useAdvancedRenderer = ctx.textRendererMode === 'canvas' || ctx.textRendererMode === 'webgl';
 
   const IMAGE_EXTS = new Set([
     "png",
@@ -1026,8 +1026,7 @@ export function createAllFileCard(
   } else if (file.isBinary) {
     contentHTML = `<div class="file-content-preview"><pre><code><span class="error-notice">Binary file</span></code></pre></div>`;
   } else if (file.content) {
-    if (ctx.useCanvasText) {
-      useCanvasText = true;
+    if (useAdvancedRenderer) {
       canvasOptions = {
         content: file.content,
         addedLines,
@@ -1199,13 +1198,33 @@ export function createAllFileCard(
     });
   }
 
-  if (useCanvasText && canvasOptions) {
+  if (canvasOptions) {
     const previewEl = card.querySelector(".canvas-container") as HTMLElement;
     if (previewEl) {
-      import("./canvas-text").then(({ CanvasTextRenderer }) => {
-        const renderer = new CanvasTextRenderer(previewEl, canvasOptions);
-        (card as any)._canvasTextRenderer = renderer;
-      });
+      const mode = ctx.textRendererMode || 'dom';
+      
+      if (mode === 'webgl') {
+        // Use WebGL renderer (Pixi.js)
+        import("./webgl-text").then(({ WebGLTextRenderer }) => {
+          try {
+            const renderer = new WebGLTextRenderer(previewEl, canvasOptions);
+            (card as any)._webglTextRenderer = renderer;
+          } catch (e) {
+            console.error('[cards] WebGL text renderer failed, falling back to canvas:', e);
+            import("./canvas-text").then(({ CanvasTextRenderer }) => {
+              const renderer = new CanvasTextRenderer(previewEl, canvasOptions);
+              (card as any)._canvasTextRenderer = renderer;
+            });
+          }
+        });
+      } else if (mode === 'canvas') {
+        // Use Canvas 2D renderer
+        import("./canvas-text").then(({ CanvasTextRenderer }) => {
+          const renderer = new CanvasTextRenderer(previewEl, canvasOptions);
+          (card as any)._canvasTextRenderer = renderer;
+        });
+      }
+      // else: DOM mode (default) - no special renderer needed
     }
   }
 
@@ -1269,12 +1288,12 @@ export function createAllFileCard(
   }
 
   // ── Diff marker strip (scrollbar annotations for changed lines) ──
-  // Skip when canvas-text mode is active — CanvasTextRenderer builds its own gutter
+  // Skip when advanced renderer mode is active — renders its own gutter
   if (
     (addedLines.size > 0 || deletedBeforeLine.size > 0) &&
     !isAllAdded &&
     file.content &&
-    !useCanvasText
+    !useAdvancedRenderer
   ) {
     const totalLines = file.content.split("\n").length;
     _buildDiffMarkerStrip(

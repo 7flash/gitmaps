@@ -432,15 +432,40 @@ export function setupEventListeners(ctx: CanvasContext) {
         setupChangedFilesPanel();
         setupConnectionsPanel(ctx);
 
-        // Text rendering mode toggle (Canvas vs DOM)
+        // Text rendering mode toggle (DOM → Canvas → WebGL)
         const textToggle = document.getElementById('toggleCanvasText');
         if (textToggle) {
-            ctx.useCanvasText = localStorage.getItem('gitcanvas:useCanvasText') !== 'false';
-            textToggle.classList.toggle('active', ctx.useCanvasText);
+            const modeLabels: Record<string, string> = {
+                'dom': 'DOM',
+                'canvas': 'Canvas',
+                'webgl': 'WebGL'
+            };
+            
+            const updateTextToggleUI = () => {
+                textToggle.title = `Text rendering: ${modeLabels[ctx.textRendererMode]} (click to switch)`;
+                // Show mode indicator
+                const icon = textToggle.querySelector('svg');
+                if (icon) {
+                    if (ctx.textRendererMode === 'webgl') {
+                        icon.innerHTML = '<path d="M4 4h16v16H4z"/><circle cx="12" cy="12" r="3" fill="currentColor"/>';
+                    } else if (ctx.textRendererMode === 'canvas') {
+                        icon.innerHTML = '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/>';
+                    } else {
+                        icon.innerHTML = '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>';
+                    }
+                }
+            };
+            
+            updateTextToggleUI();
+            
             textToggle.addEventListener('click', () => {
-                ctx.useCanvasText = !ctx.useCanvasText;
-                localStorage.setItem('gitcanvas:useCanvasText', String(ctx.useCanvasText));
-                textToggle.classList.toggle('active', ctx.useCanvasText);
+                // Cycle: DOM → Canvas → WebGL → DOM
+                const modes: Array<'dom' | 'canvas' | 'webgl'> = ['dom', 'canvas', 'webgl'];
+                const currentIndex = modes.indexOf(ctx.textRendererMode);
+                ctx.textRendererMode = modes[(currentIndex + 1) % modes.length];
+                localStorage.setItem('gitcanvas:textRendererMode', ctx.textRendererMode);
+                updateTextToggleUI();
+                showToast(`Text rendering: ${modeLabels[ctx.textRendererMode]}`, 'info');
 
                 // Re-render currently visible cards
                 rerenderCurrentView(ctx);
@@ -546,10 +571,16 @@ export function setupEventListeners(ctx: CanvasContext) {
             // Clear except first placeholder
             while (repoSelect.options.length > 1) repoSelect.remove(1);
             recentRepos.forEach(repo => {
+                // Handle both string paths and objects (legacy format)
+                const repoPath = typeof repo === 'string' ? repo : (repo.path || repo);
+                if (!repoPath) return;
+                
                 const opt = document.createElement('option');
                 opt.value = repoPath;
                 // Show short name (last folder part) + full path
-                const shortName = repo.replace(/\\/g, '/').split('/').filter(Boolean).pop() || repoPath;
+                const shortName = typeof repoPath === 'string' 
+                    ? repoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || repoPath 
+                    : 'Unknown';
                 opt.textContent = shortName;
                 opt.title = repoPath;
                 repoSelect.add(opt);

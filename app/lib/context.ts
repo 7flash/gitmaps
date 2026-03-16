@@ -41,7 +41,10 @@ export interface CanvasContext {
     loadingOverlay: HTMLElement | null;
 
     // ─── Text rendering mode ──────────────────
-    useCanvasText: boolean;
+    // 'dom' = DOM-based rendering (default, best compatibility)
+    // 'canvas' = Canvas 2D API (better performance for medium repos)
+    // 'webgl' = Pixi.js WebGL (best performance for 1000+ files)
+    textRendererMode: 'dom' | 'canvas' | 'webgl';
 
     // ─── All-files mode state ─────────────────
     allFilesActive: boolean;
@@ -82,7 +85,7 @@ export function createCanvasContext(actor: any): CanvasContext {
         scrollTimers: {},
         connectionDragState: null,
         loadingOverlay: null,
-        useCanvasText: true,
+        textRendererMode: (localStorage.getItem('gitcanvas:textRendererMode') as any) || 'dom',
 
         allFilesActive: true,
         changedFilePaths: new Set(),
