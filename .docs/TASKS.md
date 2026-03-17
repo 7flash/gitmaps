@@ -78,8 +78,9 @@
 - [x] ~~**Non-GitHub remote slug support**~~ — ✅ DONE. Canonical remote slug detection now parses HTTPS/SSH forge remotes generically and derives a router-safe `owner/repo` slug for GitLab, Codeberg, and compatible self-hosted forges.
 - [x] ~~**Landing reset: clear recent active repo affordances**~~ — ✅ DONE. Landing reset now clears repo-specific toggle/panel affordances including changed-files persistence, connections toggle state, hidden-file badge, connections panel, and arrange toolbar visibility.
 - [x] ~~**Deep forge namespace routing**~~ — ✅ DONE. Canonical forge slug extraction now preserves full namespace depth (up to 5 segments), and GitMaps ships matching deeper dynamic routes so nested forge group paths can round-trip cleanly.
-- [ ] **Canonical slug verification in UI** — Surface the detected remote slug in the UI or logs when loading a local repo so routing decisions are debuggable.
+- [x] ~~**Canonical slug verification in UI**~~ — ✅ DONE. Status bar now shows a visible `↗ slug` badge when a canonical remote slug is detected, and repo loads log the slug mapping in the console.
 - [ ] **Catch-all route support in Melina** — Add first-class catch-all dynamic segments to the router so GitMaps no longer needs a fixed maximum namespace depth.
+- [ ] **Canonical slug source details** — Include forge host / remote URL source in the debug surfacing so mis-detections are easier to trace.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

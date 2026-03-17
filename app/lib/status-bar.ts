@@ -46,7 +46,15 @@ function render() {
     const filesEl = bar.querySelector('#sbFiles') as HTMLElement;
     const zoomEl = bar.querySelector('#sbZoom') as HTMLElement;
 
-    if (repoEl) repoEl.textContent = _repoName ? `📂 ${_repoName}` : '';
+    if (repoEl) {
+        repoEl.textContent = _repoName ? `📂 ${_repoName}` : '';
+        repoEl.title = _repoName ? `Local repo: ${_repoName}` : 'Current repository';
+    }
+    if (slugEl) {
+        slugEl.textContent = _repoSlug ? `↗ ${_repoSlug}` : '';
+        slugEl.style.display = _repoSlug ? '' : 'none';
+        slugEl.title = _repoSlug ? `Canonical slug: ${_repoSlug}` : 'Canonical remote slug';
+    }
     if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash.substring(0, 7)}` : '';
     if (modeEl) {
         modeEl.textContent = `${_mode === 'Advanced' ? '🎯' : '✋'} ${_mode}`;
@@ -123,6 +131,10 @@ export function updateStatusBarMode(mode: string) {
     const el = bar?.querySelector('#sbMode') as HTMLElement;
     if (el) {
         el.textContent = `${mode === 'Advanced' ? '🎯' : '✋'} ${mode}`;
+        el.className = `sb-item sb-mode sb-mode--${mode.toLowerCase()}`;
+    }
+}
+'Advanced' ? '🎯' : '✋'} ${mode}`;
         el.className = `sb-item sb-mode sb-mode--${mode.toLowerCase()}`;
     }
 }
