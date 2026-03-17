@@ -64,7 +64,7 @@ export default function RootLayout({ children }: { children: any }) {
           rel="stylesheet"
         />
       </head>
-      <body data-build-commit={build.commit} data-build-date={build.date}>
+      <body>
         {/* Mobile gate — canvas needs a real screen */}
         <div
           id="mobileGate"
