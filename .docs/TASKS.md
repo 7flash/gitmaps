@@ -81,8 +81,9 @@
 - [x] ~~**Canonical slug verification in UI**~~ — ✅ DONE. Status bar now shows a visible `↗ slug` badge when a canonical remote slug is detected, and repo loads log the slug mapping in the console.
 - [x] ~~**Catch-all route support in Melina**~~ — ✅ DONE. Melina router now supports `[...slug]`, and GitMaps now uses a real catch-all route instead of fixed-depth namespace page files.
 - [x] ~~**Canonical slug source details**~~ — ✅ DONE. Status bar slug badge now includes source details in its tooltip, and console logs include forge host / remote URL context for slug detection.
-- [ ] **Route cleanup: single dynamic strategy** — Evaluate whether `[slug]` can be removed too so GitMaps uses only one canonical catch-all dynamic route path.
+- [x] ~~**Route cleanup: single dynamic strategy**~~ — ✅ DONE. Removed the legacy `[slug]` page so GitMaps now relies on a single catch-all dynamic route for repo slugs.
 - [ ] **Slug detection tests** — Add focused backend tests for HTTPS/SSH forge remote parsing and source metadata extraction so routing regressions are caught automatically.
+- [ ] **Catch-all route verification tests** — Add app-level routing tests proving GitMaps resolves single-segment and deep namespace slugs through `[...slug]` after the route cleanup.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.
