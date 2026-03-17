@@ -131,6 +131,7 @@ export default function RootLayout({ children }: { children: any }) {
         <script
           dangerouslySetInnerHTML={{
             __html: `
+                    window.__GITMAPS_BUILD__ = ${JSON.stringify(build)};
                     (function() {
                         if (window.innerWidth < 768) {
                             var g = document.getElementById('mobileGate');
