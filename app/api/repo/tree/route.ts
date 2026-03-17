@@ -1,6 +1,6 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
