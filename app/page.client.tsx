@@ -94,8 +94,25 @@ export default function mount(): () => void {
     const changedFilesPanel = document.getElementById("changedFilesPanel");
     if (changedFilesPanel) changedFilesPanel.style.display = "none";
 
+    const connectionsPanel = document.getElementById("connectionsPanel");
+    if (connectionsPanel) connectionsPanel.style.display = "none";
+
+    const arrangeToolbar = document.getElementById("arrangeToolbar");
+    if (arrangeToolbar) arrangeToolbar.style.display = "none";
+
+    const toggleConnections = document.getElementById("toggleConnections");
+    if (toggleConnections) toggleConnections.classList.remove("active");
+
+    const showHidden = document.getElementById("showHidden");
+    if (showHidden) showHidden.style.display = "none";
+
+    const hiddenCount = document.getElementById("hiddenCount");
+    if (hiddenCount) hiddenCount.textContent = "0";
+
     const commitProgressBar = document.getElementById("commitProgressBar");
     if (commitProgressBar) commitProgressBar.style.display = "none";
+
+    localStorage.setItem("gitcanvas:changedFilesPanelClosed", "true");
 
     hideLoadingProgress(ctx);
     updateCanvasTransform(ctx);

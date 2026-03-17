@@ -76,8 +76,9 @@
 - [x] ~~**Root route actor state reset**~~ — ✅ DONE. Added `RESET_APP_STATE` to the XState machine and dispatch it when returning to `/`, so internal repo/commit state now matches the cleared landing UI.
 - [x] ~~**Landing reset: clear multi-repo registry**~~ — ✅ DONE. Returning to `/` now clears loaded repo tabs/zone labels and resets hidden multi-repo workspace bookkeeping.
 - [x] ~~**Non-GitHub remote slug support**~~ — ✅ DONE. Canonical remote slug detection now parses HTTPS/SSH forge remotes generically and derives a router-safe `owner/repo` slug for GitLab, Codeberg, and compatible self-hosted forges.
-- [ ] **Landing reset: clear recent active repo affordances** — Reset any repo-specific toolbar toggles or cached UI modes that can still visually imply an active workspace after returning to `/`.
+- [x] ~~**Landing reset: clear recent active repo affordances**~~ — ✅ DONE. Landing reset now clears repo-specific toggle/panel affordances including changed-files persistence, connections toggle state, hidden-file badge, connections panel, and arrange toolbar visibility.
 - [ ] **Deep forge namespace routing** — Support forge remotes with nested groups/projects beyond two path segments instead of collapsing to the last `owner/repo` pair.
+- [ ] **Canonical slug verification in UI** — Surface the detected remote slug in the UI or logs when loading a local repo so routing decisions are debuggable.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.
