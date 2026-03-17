@@ -179,19 +179,19 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       // Then select commit (from URL hash or first commit)
       if (data.commits.length > 0) {
         const totalFiles = ctx.allFilesData?.length || 0;
+        updateLoadingMessage(
+          ctx,
+          totalFiles > 0
+            ? `Loading commit diff — ${totalFiles} files indexed`
+            : "Loading commit diff...",
+        );
         if (totalFiles > 0) {
-          updateLoadingMessage(
-            ctx,
-            `Loading commit diff — ${totalFiles} files indexed`,
-          );
           updateLoadingFileCount(
             ctx,
             totalFiles,
             totalFiles,
             `Comparing selected commit against ${totalFiles} indexed files`,
           );
-        } else {
-          updateLoadingProgress(ctx, "Loading commit diff...");
         }
         const hashFromUrl = window.location.hash?.replace("#", "");
         const commitToSelect =
