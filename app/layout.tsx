@@ -31,6 +31,8 @@ export default function RootLayout({ children }: { children: any }) {
         <link rel="icon" type="image/png" href="/api/pwa-icon" />
         <link rel="manifest" href="/api/manifest.json" />
         <meta name="theme-color" content="#7c3aed" />
+        <meta name="gitmaps-build-commit" content={build.commit} />
+        <meta name="gitmaps-build-date" content={build.date} />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
@@ -202,10 +204,7 @@ export default function RootLayout({ children }: { children: any }) {
                   >
                     <circle cx="12" cy="12" r="10" />
                     <path d="M12 6v6l4 2" />
-                  </svg>
-                  <p>Load a repository</p>
-                </div>
-              </div>
+         </div>
             </div>
 
             <div
@@ -760,6 +759,8 @@ export default function RootLayout({ children }: { children: any }) {
                     height="12"
                     fill="none"
                     stroke="currentColor"
+                    strok                  fill="none"
+                    stroke="currentColor"
                     strokeWidth="2.5"
                   >
                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -781,9 +782,7 @@ export default function RootLayout({ children }: { children: any }) {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 16px",
-                  borderBottom: "1px solid var(--border)",
+                  alignItemsr(--border)",
                 }}
               >
                 <span
@@ -934,14 +933,19 @@ export default function RootLayout({ children }: { children: any }) {
         </div>
 
         {/* File Preview Modal */}
+        <diviner"></div>
+          </main>
+        </div>
+
+        {/* File Preview Modal */}
         <div className="file-preview-modal" id="filePreviewModal">
           <div className="modal-backdrop"></div>
           <div className="modal-content">
             <div className="modal-header">
               <div className="modal-header-left">
                 <span className="file-path" id="previewFilePath"></span>
-                <span className="modal-line-count" id="previewLineCount"></span>
-                <span
+                <span classNameme="modal-file-status"
+                  id="previewFileStatus"   <span
                   className="modal-file-status"
                   id="previewFileStatus"
                 ></span>
@@ -1000,8 +1004,7 @@ export default function RootLayout({ children }: { children: any }) {
                       stroke="currentColor"
                       strokeWidth="2"
                     >
-                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+             <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
                     Edit
                   </button>
@@ -1020,8 +1023,10 @@ export default function RootLayout({ children }: { children: any }) {
                   </button>
                 </div>
                 <span
-                  className="modal-save-status"
-                  id="modalSaveStatus"
+                 Diff
+                  </button>
+                </div>
+SaveStatus"
                   style={{ display: "none" }}
                 ></span>
                 <button
@@ -1029,6 +1034,9 @@ export default function RootLayout({ children }: { children: any }) {
                   id="outlineToggle"
                   title="Toggle symbol outline (Ctrl+Shift+O)"
                 >
+                  <svg
+                    viewBox="0 0 24 24"
+                               >
                   <svg
                     viewBox="0 0 24 24"
                     width="14"
@@ -1045,12 +1053,7 @@ export default function RootLayout({ children }: { children: any }) {
                     <line x1="3" y1="18" x2="3.01" y2="18" />
                   </svg>
                 </button>
-                <button className="modal-close" id="closePreview">
-                  &times;
-                </button>
-              </div>
-            </div>
-            <div className="modal-body-wrapper">
+                <button className="modal-close" id="closePreview">          <div className="modal-body-wrapper">
               <pre className="modal-body" id="modalBodyPre">
                 <code id="previewContent"></code>
               </pre>
@@ -1084,17 +1087,19 @@ export default function RootLayout({ children }: { children: any }) {
               <div className="modal-edit-toolbar" id="modalEditToolbar">
                 <span className="edit-line-info" id="editLineInfo">
                   Line 1, Col 1
+             <span className="edit-line-info" id="editLineInfo">
+                  Line 1, Col 1
                 </span>
                 <div className="edit-toolbar-right">
                   <div
                     className="edit-commit-section"
-                    id="editCommitSection"
-                    style={{ display: "none" }}
-                  >
+            >
                     <input
                       type="text"
                       id="editCommitMsg"
                       className="edit-commit-input"
+                      placeholder="Commit message..."
+                      spellCheck={fainput"
                       placeholder="Commit message..."
                       spellCheck={false}
                       autoComplete="off"
@@ -1113,8 +1118,7 @@ export default function RootLayout({ children }: { children: any }) {
                         strokeWidth="2"
                       >
                         <circle cx="12" cy="12" r="4" />
-                        <line x1="1.05" y1="12" x2="7" y2="12" />
-                        <line x1="17.01" y1="12" x2="22.96" y2="12" />
+                        <line x1=2" />
                       </svg>
                       Commit
                     </button>
@@ -1295,6 +1299,28 @@ export default function RootLayout({ children }: { children: any }) {
                     if ('serviceWorker' in navigator) {
                         navigator.serviceWorker.register('/api/sw.js', { scope: '/' })
                             .catch(function(e) { console.warn('[SW] Registration failed:', e); });
+                    }
+                    fetch('/api/analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: location.pathname })
+                    }).catch(function(){});
+                `,
+          }}
+        />
+      </body>
+    </html>
+  );
+}
+function(){});
+                `,
+          }}
+        />
+      </body>
+    </html>
+  );
+}
+ .catch(function(e) { console.warn('[SW] Registration failed:', e); });
                     }
                     fetch('/api/analytics', {
                         method: 'POST',

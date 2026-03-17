@@ -12,6 +12,15 @@ export function getVersionDate(): string {
 }
 
 async function fetchVersion(): Promise<{ commit: string; commitDate: string }> {
+  const metaCommit = document.querySelector('meta[name="gitmaps-build-commit"]')?.getAttribute('content') || '';
+  const metaDate = document.querySelector('meta[name="gitmaps-build-date"]')?.getAttribute('content') || '';
+
+  if (metaCommit) {
+    cachedCommit = metaCommit;
+    cachedCommitDate = metaDate;
+    return { commit: cachedCommit, commitDate: cachedCommitDate };
+  }
+
   try {
     const response = await fetch('/api/build-info', { cache: 'no-store' });
     if (!response.ok) throw new Error(await response.text());
