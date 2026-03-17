@@ -6,6 +6,7 @@
  */
 
 import type { CanvasContext } from './context';
+import { showToast } from './utils';
 
 let bar: HTMLElement | null = null;
 let ctx: CanvasContext | null = null;
@@ -28,6 +29,26 @@ function summarizeSlugSource(source: string): string {
     if (host) return `via ${host}`;
     if (source.length <= 36) return source;
     return `${source.slice(0, 33)}...`;
+}
+
+async function copyCanonicalSlug(includeSource = false) {
+    if (!_repoSlug) return;
+
+    const text = includeSource && _repoSlugSource
+        ? `${_repoSlug}\n${_repoSlugSource}`
+        : _repoSlug;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(
+            includeSource && _repoSlugSource
+                ? 'Copied canonical slug + source'
+                : `Copied canonical slug: ${_repoSlug}`,
+            'success',
+        );
+    } catch {
+        showToast('Failed to copy canonical slug', 'error');
+    }
 }
 
 function createBar(): HTMLElement {
@@ -71,7 +92,9 @@ function render() {
             : '';
         slugEl.style.display = _repoSlug ? '' : 'none';
         slugEl.title = _repoSlug
-            ? (_repoSlugSource ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}` : `Canonical slug: ${_repoSlug}`)
+            ? (_repoSlugSource
+                ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}\nClick to copy slug · Shift+Click to copy slug + source`
+                : `Canonical slug: ${_repoSlug}\nClick to copy slug`)
             : 'Canonical remote slug';
     }
     if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash.substring(0, 7)}` : '';
@@ -99,6 +122,11 @@ export function initStatusBar(context: CanvasContext) {
     } else {
         document.body.appendChild(bar);
     }
+
+    const slugEl = bar.querySelector('#sbSlug') as HTMLElement | null;
+    slugEl?.addEventListener('click', (event) => {
+        void copyCanonicalSlug(Boolean((event as MouseEvent).shiftKey));
+    });
 
     const state = ctx.snap().context;
     _zoom = state.zoom || 1;

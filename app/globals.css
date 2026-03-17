@@ -8154,6 +8154,7 @@ a.repo-card-btn {
   max-width: min(46vw, 520px);
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .sb-mode--simple {
