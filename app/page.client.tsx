@@ -53,6 +53,27 @@ export default function mount(): () => void {
   const ctx = createCanvasContext(actor);
   let disposed = false;
 
+  function showLandingPlaceholder() {
+    clearCanvas(ctx);
+    ctx.fileCards.clear();
+    ctx.deferredCards.clear();
+    ctx.allFilesData = [];
+    ctx.commitFilesData = [];
+    ctx.changedFilePaths = new Set();
+    ctx.snap().context.repoPath = "";
+
+    const landing = document.getElementById("landingOverlay");
+    if (landing) landing.style.display = "flex";
+
+    const repoSelect = document.getElementById("repoSelect") as HTMLSelectElement;
+    if (repoSelect) repoSelect.value = "";
+
+    hideLoadingProgress(ctx);
+    updateCanvasTransform(ctx);
+    updateZoomUI(ctx);
+    updateFavoriteStar("");
+  }
+
   // ─── Init ────────────────────────────────────────────
   async function init() {
     return measure("app:init", async () => {

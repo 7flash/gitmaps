@@ -754,11 +754,6 @@ export function setupEventListeners(ctx: CanvasContext) {
         // AI chat toggle
         document.getElementById('toggleCanvasChat')?.addEventListener('click', () => toggleCanvasChat(ctx));
 
-        // Replayable onboarding
-        document.getElementById('helpOnboarding')?.addEventListener('click', () => {
-            import('./onboarding').then(m => m.startOnboarding(ctx));
-        });
-
         // Share Layout
         document.getElementById('shareLayout')?.addEventListener('click', () => {
             measure('share:layout', () => {
