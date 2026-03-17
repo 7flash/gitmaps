@@ -29,6 +29,7 @@ import { setupAuth, updateFavoriteStar } from "./lib/user";
 import { setupPerfOverlay } from "./lib/perf-overlay";
 import { initGalaxyDrawState, initCardManager } from "./lib/xydraw-bridge";
 import { initFilePreview, destroyFilePreview } from "./lib/file-preview";
+import { hideLoadingProgress } from "./lib/loading";
 import { initBranchCompare } from "./lib/branch-compare";
 import { initCommandPalette } from "./lib/command-palette";
 import { initShortcutsPanel } from "./lib/shortcuts-panel";
@@ -267,8 +268,9 @@ export default function mount(): () => void {
           updateFavoriteStar(resolvedPath);
         }
       } else {
-        // No URL slug — show the landing page (don't auto-load lastRepo)
-        // The user can pick a repo from the landing cards or sidebar
+        // No URL slug — always show the landing placeholder page.
+        // Never auto-load the previous repo on the root route.
+        showLandingPlaceholder();
       }
 
       // Listen for popstate (back/forward navigation with path-based routing)
@@ -277,6 +279,12 @@ export default function mount(): () => void {
         const slug = decodeURIComponent(
           window.location.pathname.replace(/^\//, ""),
         );
+
+        if (!slug) {
+          showLandingPlaceholder();
+          return;
+        }
+
         const resolvedPath =
           localStorage.getItem(`gitcanvas:slug:${slug}`) || slug;
         if (resolvedPath && resolvedPath !== ctx.snap().context.repoPath) {
