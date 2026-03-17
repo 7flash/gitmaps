@@ -5,7 +5,30 @@
  * All interactivity is in page.client.tsx.
  */
 
+import path from 'path';
+
+function getBuildInfo() {
+  const repoRoot = path.resolve(import.meta.dir, '..');
+  const commitProc = Bun.spawnSync(['git', 'rev-parse', '--short', 'HEAD'], {
+    cwd: repoRoot,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const dateProc = Bun.spawnSync(['git', 'log', '-1', '--format=%cs'], {
+    cwd: repoRoot,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+
+  return {
+    commit: commitProc.exitCode === 0 ? commitProc.stdout.toString().trim() : 'unknown',
+    date: dateProc.exitCode === 0 ? dateProc.stdout.toString().trim() : '',
+  };
+}
+
 export default function RootLayout({ children }: { children: any }) {
+  const build = getBuildInfo();
+
   return (
     <html lang="en">
       <head>
@@ -1053,7 +1076,8 @@ SaveStatus"
                     <line x1="3" y1="18" x2="3.01" y2="18" />
                   </svg>
                 </button>
-                <button className="modal-close" id="closePreview">          <div className="modal-body-wrapper">
+                <button className="modal-close" id="closePreview">
+          <div className="modal-body-wrapper">
               <pre className="modal-body" id="modalBodyPre">
                 <code id="previewContent"></code>
               </pre>
