@@ -13,7 +13,7 @@ export function getVersionDate(): string {
 
 async function fetchVersion(): Promise<{ commit: string; commitDate: string }> {
   try {
-    const response = await fetch('/api/version', { cache: 'no-store' });
+    const response = await fetch('/api/build-info', { cache: 'no-store' });
     if (!response.ok) throw new Error(await response.text());
     const data = await response.json();
     cachedCommit = data.commit || 'unknown';
