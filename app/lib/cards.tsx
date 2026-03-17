@@ -8,7 +8,7 @@ import { render } from "melina/client";
 import type { CanvasContext } from "./context";
 import { escapeHtml, getFileIcon, getFileIconClass, showToast } from "./utils";
 import { hideSelectedFiles } from "./hidden-files";
-import { isFollower } from "./role";
+import { isFollower, detectRole } from "./role";
 import {
   savePosition,
   getPositionKey,
@@ -807,7 +807,7 @@ export function createFileCard(
         // Shift/Ctrl: toggle selection
         ctx.actor.send({ type: "SELECT_CARD", path: filePath, shift: true });
         try {
-          const { getCardManager } = require("./galaxydraw-bridge");
+          const { getCardManager } = require("./xydraw-bridge");
           const cm = getCardManager();
           if (cm) {
             if (alreadySelected) cm.deselect(filePath);
@@ -818,7 +818,7 @@ export function createFileCard(
         // Not selected yet → replace selection with this card
         ctx.actor.send({ type: "SELECT_CARD", path: filePath, shift: false });
         try {
-          const { getCardManager } = require("./galaxydraw-bridge");
+          const { getCardManager } = require("./xydraw-bridge");
           const cm = getCardManager();
           if (cm) cm.select(filePath, false);
         } catch {}
@@ -848,7 +848,7 @@ export function createFileCard(
       ) {
         ctx.actor.send({ type: "SELECT_CARD", path: filePath, shift: false });
         try {
-          const { getCardManager } = require("./galaxydraw-bridge");
+          const { getCardManager } = require("./xydraw-bridge");
           const cm = getCardManager();
           if (cm) cm.select(filePath, false);
         } catch {}
@@ -1139,7 +1139,7 @@ export function createAllFileCard(
       const multi = e.shiftKey || e.ctrlKey;
 
       try {
-        const { getCardManager } = require("./galaxydraw-bridge");
+        const { getCardManager } = require("./xydraw-bridge");
         const cm = getCardManager();
         if (cm) {
           const alreadySelected = cm.selected.has(filePath);

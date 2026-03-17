@@ -11,7 +11,7 @@
  */
 import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
-import { getGalaxyDrawState } from './galaxydraw-bridge';
+import { getGalaxyDrawState } from './xydraw-bridge';
 
 // ─── Config ──────────────────────────────────────────────
 const CARD_BG = '#1a1a2e';

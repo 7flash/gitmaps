@@ -32,7 +32,7 @@ export class LayoutManager {
     constructor(
         private cards: CardManager,
         private bus: EventBus,
-        private storagePrefix = 'galaxydraw',
+        private storagePrefix = 'xydraw',
     ) {
         // Auto-save on card move/resize
         this.bus.on('card:move', () => this.debounceSave());
@@ -69,7 +69,7 @@ export class LayoutManager {
             try {
                 await this.provider.save(key, layouts);
             } catch (err) {
-                console.warn('[galaxydraw] Layout save to provider failed:', err);
+                console.warn('[xydraw] Layout save to provider failed:', err);
             }
         }
 

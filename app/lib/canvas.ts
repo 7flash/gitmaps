@@ -6,7 +6,7 @@ import { measure } from 'measure-fn';
 import { updateStatusBarZoom } from './status-bar';
 import type { CanvasContext } from './context';
 import { scheduleViewportCulling, uncullAllCards, markTransformActive, clearAllPills } from './viewport-culling';
-import { getGalaxyDrawState } from './galaxydraw-bridge';
+import { getGalaxyDrawState } from './xydraw-bridge';
 
 // ─── Minimap cached state (avoids full rebuild on every pan/zoom) ──
 let _mmCache: {

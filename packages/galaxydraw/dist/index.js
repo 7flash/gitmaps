@@ -142,7 +142,7 @@ class CardManager {
   create(type, data) {
     const plugin = this.plugins.get(type);
     if (!plugin) {
-      console.warn(`[galaxydraw] No plugin registered for card type "${type}"`);
+      console.warn(`[xydraw] No plugin registered for card type "${type}"`);
       return null;
     }
     const full = {
@@ -466,7 +466,7 @@ class EventBus {
       try {
         handler(data);
       } catch (err) {
-        console.error(`[galaxydraw] Event handler error for "${event}":`, err);
+        console.error(`[xydraw] Event handler error for "${event}":`, err);
       }
     }
   }
@@ -716,7 +716,7 @@ class LayoutManager {
   saveTimer = null;
   debounceMs = 300;
   provider = null;
-  constructor(cards, bus, storagePrefix = "galaxydraw") {
+  constructor(cards, bus, storagePrefix = "xydraw") {
     this.cards = cards;
     this.bus = bus;
     this.storagePrefix = storagePrefix;
@@ -746,7 +746,7 @@ class LayoutManager {
       try {
         await this.provider.save(key, layouts);
       } catch (err) {
-        console.warn("[galaxydraw] Layout save to provider failed:", err);
+        console.warn("[xydraw] Layout save to provider failed:", err);
       }
     }
     this.bus.emit("layout:save", { layouts });

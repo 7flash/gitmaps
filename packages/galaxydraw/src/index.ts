@@ -1,5 +1,5 @@
 /**
- * galaxydraw — Infinite canvas framework
+ * xydraw — Infinite canvas framework
  *
  * Core engine for spatial applications. Provides:
  * - Infinite pan/zoom canvas with GPU-accelerated transforms

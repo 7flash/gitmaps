@@ -9,7 +9,9 @@ const BINARY_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', '
 export async function POST(req: Request) {
     return measure('api:repo:tree', async () => {
         try {
-            const { path: repoPath } = await req.json();
+            const body = await req.json();
+            const repoPath = body.path;
+            const stream = body.stream === true;
 
             if (!repoPath) {
                 return new Response('Repository path is required', { status: 400 });
@@ -33,7 +35,6 @@ export async function POST(req: Request) {
                     content.split('\n').forEach(line => {
                         line = line.trim();
                         if (line && !line.startsWith('#')) {
-                            // Normalize: remove trailing slashes for dir matching
                             const clean = line.replace(/\/+$/, '');
                             if (clean) gitignorePatterns.push(clean);
                         }
@@ -43,37 +44,35 @@ export async function POST(req: Request) {
 
             const filePaths = result.trim().split('\n').filter(fp => {
                 if (!fp) return false;
-                // Filter out known heavy directories
                 if (ignoreDirs.some(d => fp.startsWith(d + '/') || fp.startsWith(d + '\\'))) return false;
-                // Filter out files matching gitignore patterns (extra safety)
                 for (const pattern of gitignorePatterns) {
                     if (fp.startsWith(pattern + '/') || fp.startsWith(pattern + '\\')) return false;
                     if (fp === pattern) return false;
-                    // Simple glob: *.ext
                     if (pattern.startsWith('*.')) {
-                        const ext = pattern.substring(1); // .ext
+                        const ext = pattern.substring(1);
                         if (fp.endsWith(ext)) return false;
                     }
                 }
                 return true;
             });
 
-            const files = filePaths.map(filePath => {
+            function readFile(filePath: string) {
                 const parts = filePath.split('/');
                 const name = parts[parts.length - 1];
                 const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
 
                 let content = null;
                 let lines = 0;
+                let size = 0;
                 let isBinary = BINARY_EXTS.has(ext);
 
                 if (!isBinary) {
                     try {
                         const fullPath = path.join(repoPath, filePath);
                         const raw = readFileSync(fullPath, 'utf-8');
+                        size = raw.length;
                         const allLines = raw.split('\n');
                         lines = allLines.length;
-                        // Send full content for small/medium files, truncate very large ones
                         if (allLines.length > 10000) {
                             content = allLines.slice(0, 10000).join('\n');
                         } else {
@@ -84,17 +83,50 @@ export async function POST(req: Request) {
                     }
                 }
 
-                return {
-                    path: filePath,
-                    name,
-                    ext,
-                    type: 'file',
-                    content,
-                    lines,
-                    isBinary
-                };
-            });
+                return { path: filePath, name, ext, type: 'file', content, lines, size, isBinary };
+            }
 
+            // ── Streaming mode: NDJSON with total header ──
+            if (stream) {
+                const total = filePaths.length;
+                const BATCH_SIZE = 20;
+                const encoder = new TextEncoder();
+
+                const readable = new ReadableStream({
+                    start(controller) {
+                        // First line: total count
+                        controller.enqueue(encoder.encode(JSON.stringify({ total }) + '\n'));
+
+                        let i = 0;
+                        function nextBatch() {
+                            const end = Math.min(i + BATCH_SIZE, total);
+                            const batch: any[] = [];
+                            for (; i < end; i++) {
+                                batch.push(readFile(filePaths[i]));
+                            }
+                            controller.enqueue(encoder.encode(JSON.stringify({ files: batch, loaded: i }) + '\n'));
+
+                            if (i < total) {
+                                // Yield to event loop between batches
+                                setTimeout(nextBatch, 0);
+                            } else {
+                                controller.close();
+                            }
+                        }
+                        nextBatch();
+                    }
+                });
+
+                return new Response(readable, {
+                    headers: {
+                        'Content-Type': 'application/x-ndjson',
+                        'Cache-Control': 'no-cache',
+                    }
+                });
+            }
+
+            // ── Legacy non-streaming mode ──
+            const files = filePaths.map(readFile);
             return Response.json({ files, total: files.length });
         } catch (error: any) {
             console.error('api:repo:tree:error', error);

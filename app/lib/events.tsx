@@ -25,7 +25,7 @@ import type { CanvasContext } from './context';
 import { showToast, escapeHtml } from './utils';
 import { createLayer, getActiveLayer, addSectionToLayer } from './layers';
 import { updateCanvasTransform, updateZoomUI, updateMinimap, fitAllFiles, setupMinimapClick } from './canvas';
-import { zoomTowardScreen, panByDelta, screenToWorld, getCardManager } from './galaxydraw-bridge';
+import { zoomTowardScreen, panByDelta, screenToWorld, getCardManager } from './xydraw-bridge';
 import { hideSelectedFiles, showHiddenFilesModal as showHiddenModal } from './hidden-files';
 import { updatePillSelectionHighlights } from './viewport-culling';
 import { clearSelectionHighlights, updateSelectionHighlights, updateArrangeToolbar, arrangeRow, arrangeColumn, arrangeGrid, toggleCardExpand, fitScreenSize, changeCardsFontSize } from './cards';
@@ -211,7 +211,7 @@ export function setupCanvasInteraction(ctx: CanvasContext) {
         // ── Global mousemove (pan + rect select) ──
         window.addEventListener('mousemove', (e) => {
             if (ctx.isDragging) {
-                // Delta-based pan via galaxydraw engine
+                // Delta-based pan via xydraw engine
                 const dx = e.clientX - lastDragX;
                 const dy = e.clientY - lastDragY;
                 lastDragX = e.clientX;

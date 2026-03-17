@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "bun run server.ts",
     "start": "bun run server.ts",
-    "test": "bun test app/lib/galaxydraw.test.ts packages/galaxydraw/perf.test.ts",
+    "test": "bun test app/lib/xydraw.test.ts packages/galaxydraw/perf.test.ts",
     "prepublishOnly": "echo 'Publishing gitmaps to npm'"
   },
   "keywords": [
@@ -38,7 +38,7 @@
     "cli.ts",
     "server.ts",
     "app/",
-    "packages/galaxydraw/",
+    "packages/xydraw/",
     "README.md",
     "banner.png"
   ],
@@ -58,7 +58,7 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.16",
     "@lezer/highlight": "^1.2.3",
-    "galaxydraw": "0.2.0",
+    "xydraw": "0.2.0",
     "jsx-ai": "0.1.2",
     "measure-fn": "3.10.1",
     "melina": "^2.5.0",
@@ -68,7 +68,8 @@
     "xstate": "^5.26.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.10"
+    "@types/bun": "^1.3.10",
+    "puppeteer": "^24.39.1"
   },
   "overrides": {
     "measure-fn": "3.10.1"

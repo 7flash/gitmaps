@@ -27,14 +27,14 @@ import { loadRepository } from "./lib/repo";
 import { initLayers, renderLayersUI } from "./lib/layers";
 import { setupAuth, updateFavoriteStar } from "./lib/user";
 import { setupPerfOverlay } from "./lib/perf-overlay";
-import { initGalaxyDrawState, initCardManager } from "./lib/galaxydraw-bridge";
+import { initGalaxyDrawState, initCardManager } from "./lib/xydraw-bridge";
 import { initFilePreview, destroyFilePreview } from "./lib/file-preview";
 import { initBranchCompare } from "./lib/branch-compare";
 import { initCommandPalette } from "./lib/command-palette";
 import { initShortcutsPanel } from "./lib/shortcuts-panel";
 import { initStatusBar } from "./lib/status-bar";
 import { initLayoutSnapshots } from "./lib/layout-snapshots";
-import { initTutorial } from "./lib/tutorial";
+// Tutorial removed — users learn by exploring
 import { renderSyncControls } from "./lib/sync-controls";
 import { renderVersionBadge } from "./lib/version";
 import { renderRoleBadge } from "./lib/role";
@@ -74,10 +74,10 @@ export default function mount(): () => void {
         ctx.canvas.appendChild(ctx.svgOverlay);
       }
 
-      // Init galaxydraw state engine (binds to existing DOM)
+      // Init xydraw state engine (binds to existing DOM)
       initGalaxyDrawState(ctx);
 
-      // Init galaxydraw card manager (Phase 4 — registers file + diff plugins)
+      // Init xydraw card manager (Phase 4 — registers file + diff plugins)
       initCardManager(ctx);
 
       actor.start();
@@ -114,8 +114,7 @@ export default function mount(): () => void {
       // Store context globally for sync controls
       (window as any).__GITCANVAS_CTX__ = ctx;
 
-      // Run interactive onboarding tutorial
-      initTutorial(ctx);
+      // Onboarding tutorial removed — users learn by doing
 
       // ── Shared Layout Decoder ──────────────────────────────────────────
       const applySharedLayout = async (ctx: CanvasContext) => {
@@ -268,36 +267,8 @@ export default function mount(): () => void {
           updateFavoriteStar(resolvedPath);
         }
       } else {
-        const saved = localStorage.getItem("gitcanvas:lastRepo");
-        if (saved) {
-          const sel2 = document.getElementById(
-            "repoSelect",
-          ) as HTMLSelectElement;
-          if (sel2) sel2.value = saved;
-
-          // Set URL path to friendly slug instead of full path
-          const savedSlug =
-            saved.replace(/\\/g, "/").split("/").filter(Boolean).pop() || saved;
-          history.replaceState(null, "", "/" + encodeURIComponent(savedSlug));
-          // Store slug→path mapping
-          localStorage.setItem(`gitcanvas:slug:${savedSlug}`, saved);
-
-          ctx.actor.send({ type: "LOAD_REPO", path: saved });
-          ctx.snap().context.repoPath = saved;
-          await loadSavedPositions(ctx);
-          if (disposed) return;
-          await applySharedLayout(ctx);
-          initLayers(ctx);
-          renderLayersUI(ctx);
-          restoreViewport(ctx);
-          updateCanvasTransform(ctx);
-          updateZoomUI(ctx);
-
-          // Actually load the repo data
-          if (!disposed) {
-            loadRepository(ctx, saved);
-          }
-        }
+        // No URL slug — show the landing page (don't auto-load lastRepo)
+        // The user can pick a repo from the landing cards or sidebar
       }
 
       // Listen for popstate (back/forward navigation with path-based routing)
@@ -336,4 +307,4 @@ export default function mount(): () => void {
   (window as any).__gitcanvas_cleanup__ = cleanup;
   return cleanup;
 }
-// Force cache bust Sun Mar 15 15:45:16 MPST 2026
+// Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload

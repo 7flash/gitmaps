@@ -23,7 +23,7 @@
  */
 import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
-import { materializeViewport } from './galaxydraw-bridge';
+import { materializeViewport } from './xydraw-bridge';
 
 // ── Culling state ──────────────────────────────────────────
 let _cullRafPending = false;

@@ -62,7 +62,7 @@ export class EventBus {
             try {
                 handler(data);
             } catch (err) {
-                console.error(`[galaxydraw] Event handler error for "${event}":`, err);
+                console.error(`[xydraw] Event handler error for "${event}":`, err);
             }
         }
     }

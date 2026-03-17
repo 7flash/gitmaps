@@ -17,7 +17,7 @@
  * - Hides on mouseout, zoom change above threshold, or scroll
  */
 
-import { getGalaxyDrawState } from "./galaxydraw-bridge";
+import { getGalaxyDrawState } from "./xydraw-bridge";
 import type { CanvasContext } from "./context";
 
 // ─── Config ──────────────────────────────────────────────

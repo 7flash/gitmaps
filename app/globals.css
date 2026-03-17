@@ -3280,7 +3280,7 @@ body {
   align-items: center;
   gap: 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: 360px;
   margin-top: 8px;
 }
 
@@ -3336,8 +3336,9 @@ body {
   font-family: var(--font-mono);
   color: var(--accent-primary);
   font-weight: 600;
-  min-width: 40px;
+  min-width: 70px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .file-image-preview {

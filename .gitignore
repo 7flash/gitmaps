@@ -13,3 +13,7 @@ git-canvas/repos/
 canvas_users.db*.exe
 *.bun-build
 *.db
+debug-cards.png
+test-screenshot-final.png
+test-debug-cards.cjs
+test-puppeteer.cjs

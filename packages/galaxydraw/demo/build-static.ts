@@ -1,7 +1,7 @@
 /**
  * Build a standalone static index.html demo for GitHub Pages
  */
-const css = await Bun.file(import.meta.dir + '/../src/galaxydraw.css').text();
+const css = await Bun.file(import.meta.dir + '/../src/xydraw.css').text();
 
 // Bundle the client code
 const buildResult = await Bun.build({
@@ -17,8 +17,8 @@ const html = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>galaxydraw — Interactive Demo</title>
-    <meta name="description" content="Interactive demo of galaxydraw, a zero-dependency infinite canvas framework for spatial applications.">
+    <title>xydraw — Interactive Demo</title>
+    <meta name="description" content="Interactive demo of xydraw, a zero-dependency infinite canvas framework for spatial applications.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>

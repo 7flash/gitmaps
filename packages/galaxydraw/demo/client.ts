@@ -1,5 +1,5 @@
 /**
- * galaxydraw demo — client entry point
+ * xydraw demo — client entry point
  */
 import { GalaxyDraw } from '../src/core/engine';
 import type { CardPlugin } from '../src/core/cards';
@@ -72,7 +72,7 @@ gd.registerPlugin(NoteCardPlugin);
 const items = [
     {
         type: 'text', id: 'welcome', x: 100, y: 100, width: 380, height: 220, meta: {
-            title: 'galaxydraw',
+            title: 'xydraw',
             content: '<div style="font-size:20px; font-weight:600; color:#fff; margin-bottom:8px;">Infinite Canvas Framework</div><div>The engine behind <strong>GitMaps</strong> and <strong>WARMAPS</strong>.</div><br/><div style="font-size:11px; color:rgba(255,255,255,0.35);">Pan: drag empty space | Zoom: scroll | Drag cards by headers</div>'
         }
     },

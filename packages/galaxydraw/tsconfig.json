@@ -17,7 +17,7 @@
         "declarationMap": true,
         "sourceMap": true,
         "jsx": "react-jsx",
-        "jsxImportSource": "galaxydraw"
+        "jsxImportSource": "xydraw"
     },
     "include": [
         "src"

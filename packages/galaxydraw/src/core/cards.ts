@@ -105,7 +105,7 @@ export class CardManager {
     create(type: string, data: Partial<CardData> & { id: string }): HTMLElement | null {
         const plugin = this.plugins.get(type);
         if (!plugin) {
-            console.warn(`[galaxydraw] No plugin registered for card type "${type}"`);
+            console.warn(`[xydraw] No plugin registered for card type "${type}"`);
             return null;
         }
 

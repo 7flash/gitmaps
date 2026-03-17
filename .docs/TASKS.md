@@ -65,7 +65,8 @@
 - [x] ~~**Dependency graph view**~~ — ✅ DONE. File dependency visualization is fully implemented (force-directed layout, SVG edges with directionality, toggle shortcut). Optimized backend `/api/repo/imports` to use `Bun.file` for `HEAD`/working tree to avoid spawning 300 `git` processes concurrently, massively improving performance.
 - [ ] **Production SaaS deploy** — Set up production deployment (Vercel/Fly.io/VPS). Currently only runs locally on port 3335.
 - [x] ~~**Card groups: directory collapse**~~ — ✅ DONE. Refactored `card-groups.ts` to integrate smoothly with the new virtualized `CardManager` (`galaxydraw-bridge`). Fixed persistence to use the repo path instead of the empty URL hash. Materialized deferred cards correctly respect their collapsed state.
-- [ ] **Rename galaxydraw → xydraw** — Publish the canvas engine as `xydraw` on npm. Rename all references.
+- [x] ~~**Rename galaxydraw → xydraw**~~ — ✅ DONE. Renamed app bridge/tests/CSS/package references to `xydraw`, updated local test paths, and cleaned debug artifacts from git tracking.
+- [ ] **Repo load progress: total + remaining counts** — Show total files discovered and remaining files/cards during repository load so large repos feel alive while rendering.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

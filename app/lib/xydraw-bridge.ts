@@ -1,8 +1,8 @@
 // @ts-nocheck
 /**
- * GalaxyDraw Bridge — Adapter between GitMaps and the galaxydraw engine.
+ * XyDraw Bridge — Adapter between GitMaps and the xydraw engine.
  *
- * Wires galaxydraw's CanvasState + CardManager into the existing
+ * Wires xydraw's CanvasState + CardManager into the existing
  * server-rendered DOM and XState persistence layer.
  *
  * Architecture:
@@ -19,7 +19,7 @@ import { createFileCardPlugin, createDiffCardPlugin } from './file-card-plugin';
 import type { CanvasContext } from './context';
 
 /** 
- * Shared galaxydraw state instance.
+ * Shared xydraw state instance.
  * Replaces manual `ctx.canvas.style.transform = ...` calls.
  */
 let _gdState: CanvasState | null = null;
@@ -27,10 +27,10 @@ let _cardManager: CardManager | null = null;
 let _eventBus: EventBus | null = null;
 
 /**
- * Initialize the galaxydraw state engine and bind to existing DOM.
+ * Initialize the xydraw state engine and bind to existing DOM.
  * Call this after ctx.canvas and ctx.canvasViewport are set.
  */
-export function initGalaxyDrawState(ctx: CanvasContext): CanvasState {
+export function initXyDrawState(ctx: CanvasContext): CanvasState {
     _gdState = new CanvasState();
 
     if (ctx.canvasViewport && ctx.canvas) {
@@ -50,12 +50,15 @@ export function initGalaxyDrawState(ctx: CanvasContext): CanvasState {
 /**
  * Get the shared CanvasState instance.
  */
-export function getGalaxyDrawState(): CanvasState | null {
+export function getXyDrawState(): CanvasState | null {
     return _gdState;
 }
 
+export const initGalaxyDrawState = initXyDrawState;
+export const getGalaxyDrawState = getXyDrawState;
+
 /**
- * Zoom toward a screen point using galaxydraw's engine,
+ * Zoom toward a screen point using xydraw's engine,
  * then sync the computed state back to XState for persistence.
  *
  * @returns The new zoom/offset values (for callers that need them)
@@ -69,7 +72,7 @@ export function zoomTowardScreen(
     const gd = _gdState;
 
     if (gd) {
-        // Delegate to galaxydraw engine
+        // Delegate to xydraw engine
         gd.zoomToward(screenX, screenY, factor);
         // Sync back to XState for persistence
         ctx.actor.send({ type: 'SET_ZOOM', zoom: gd.zoom });
@@ -92,7 +95,7 @@ export function zoomTowardScreen(
 }
 
 /**
- * Pan by pixel delta via galaxydraw's engine.
+ * Pan by pixel delta via xydraw's engine.
  * Syncs back to XState for persistence.
  */
 export function panByDelta(
@@ -170,7 +173,7 @@ export function panToWorld(
 
 /**
  * Initialize the CardManager with file card plugins.
- * Call after initGalaxyDrawState() when ctx.canvas is available.
+ * Call after initXyDrawState() when ctx.canvas is available.
  * 
  * The CardManager handles:
  * - Card creation via plugins (FileCardPlugin, DiffCardPlugin)
@@ -182,7 +185,7 @@ import { scheduleRenderConnections } from './connections';
 
 export function initCardManager(ctx: CanvasContext): CardManager | null {
     if (!_gdState || !ctx.canvas) {
-        console.warn('[galaxydraw-bridge] Cannot init CardManager: state or canvas not ready');
+        console.warn('[xydraw-bridge] Cannot init CardManager: state or canvas not ready');
         return null;
     }
 
@@ -213,7 +216,7 @@ export function initCardManager(ctx: CanvasContext): CardManager | null {
         scheduleRenderConnections(ctx);
     });
 
-    console.log('[galaxydraw-bridge] CardManager initialized with file + diff plugins');
+    console.log('[xydraw-bridge] CardManager initialized with file + diff plugins');
     return _cardManager;
 }
 
@@ -236,7 +239,7 @@ export function getEventBus(): EventBus | null {
 import { FILE_CARD_TYPE, DIFF_CARD_TYPE } from './file-card-plugin';
 import { getActiveLayer } from './layers';
 import { updateHiddenUI } from './hidden-files';
-import type { ViewportRect } from '../../packages/galaxydraw/src/core/state';
+import type { ViewportRect } from '../../packages/xydraw/src/core/state';
 
 /**
  * Render all files on canvas using CardManager instead of direct DOM.
@@ -254,7 +257,7 @@ import type { ViewportRect } from '../../packages/galaxydraw/src/core/state';
 export function renderAllFilesViaCardManager(ctx: CanvasContext, files: any[]) {
     if (!_cardManager || !_gdState) {
         // Fallback to legacy if CardManager not initialized
-        console.warn('[galaxydraw-bridge] CardManager not ready, falling back to legacy render');
+        console.warn('[xydraw-bridge] CardManager not ready, falling back to legacy render');
         return false; // Signal caller to use legacy path
     }
 

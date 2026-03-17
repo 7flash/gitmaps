@@ -1,14 +1,13 @@
 /**
- * galaxydraw core unit tests — CanvasState & EventBus
+ * xydraw core unit tests — CanvasState & EventBus
  *
  * Pure logic tests (no DOM). Validates coordinate conversion,
  * zoom clamping, snapshot/subscribe, and pub/sub.
  *
- * Run: bun test app/lib/galaxydraw.test.ts
+ * Run: bun test app/lib/xydraw.test.ts
  */
 import { describe, expect, test } from 'bun:test'
-import { CanvasState } from 'galaxydraw'
-import { EventBus } from 'galaxydraw'
+import { CanvasState, EventBus } from '../../packages/galaxydraw/src/index'
 
 // ─── CanvasState ────────────────────────────────────────
 

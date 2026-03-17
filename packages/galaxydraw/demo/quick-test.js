@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 console.log('📊 WebGL Benchmark Quick Test\n');
-console.log('Open: packages/galaxydraw/demo/cards-benchmark.html\n');
+console.log('Open: packages/xydraw/demo/cards-benchmark.html\n');
 console.log('Steps:');
 console.log('1. Watch DOM FPS counter (top-left) for 5 seconds');
 console.log('2. Click "🔄 Switch Renderer" button');

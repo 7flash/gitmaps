@@ -17,10 +17,11 @@ import {
 import { performViewportCulling } from "./viewport-culling";
 import { getPositionKey, loadSavedPositions } from "./positions";
 import { updateHiddenUI } from "./hidden-files";
-import {
 import { processFileForVirtualCards } from "./virtual-files";
+import {
   showLoadingProgress,
   updateLoadingProgress,
+  updateLoadingFileCount,
   hideLoadingProgress,
 } from "./loading";
 import {
@@ -34,7 +35,7 @@ import { renderConnections, buildConnectionMarkers } from "./connections";
 import {
   renderAllFilesViaCardManager,
   materializeViewport,
-} from "./galaxydraw-bridge";
+} from "./xydraw-bridge";
 import {
   registerRepo,
   renderRepoTabs,
@@ -155,13 +156,12 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       await loadSavedPositions(ctx);
 
       const viewState = ctx.snap().value?.view;
-      // Always load all files first
-      updateLoadingProgress(ctx, "Loading all files...", 65);
+      // Always load all files first — loadAllFiles now shows real file count progress
       await loadAllFiles(ctx);
 
       // Then select commit (from URL hash or first commit)
       if (data.commits.length > 0) {
-        updateLoadingProgress(ctx, "Loading commit diff...", 85);
+        updateLoadingProgress(ctx, "Loading commit diff...");
         const hashFromUrl = window.location.hash?.replace("#", "");
         const commitToSelect =
           hashFromUrl && data.commits.find((c) => c.hash === hashFromUrl)
@@ -170,7 +170,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
         await selectCommit(ctx, commitToSelect);
       }
 
-      updateLoadingProgress(ctx, "Finalizing...", 100);
+      updateLoadingProgress(ctx, "Done!", 100);
       hideLoadingProgress(ctx);
       _loadingRepo = null; // Allow future reloads
 
@@ -184,10 +184,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       registerRepo(ctx, repoPath, data.commits, ctx.allFilesData || []);
       renderRepoTabs(ctx);
 
-      // Trigger onboarding for first-time users
-      if (!localStorage.getItem("gitcanvas:onboarded")) {
-        import("./onboarding").then((m) => m.startOnboarding(ctx));
-      }
+      // Onboarding removed — users learn by exploring the canvas directly
     } catch (err) {
       hideLoadingProgress(ctx);
       _loadingRepo = null; // Allow retry
@@ -205,21 +202,74 @@ export async function loadAllFiles(ctx: CanvasContext) {
 
   return measure("allfiles:load", async () => {
     try {
+      // Use streaming endpoint for real progress
       const response = await fetch("/api/repo/tree", {
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(60000),
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: state.repoPath }),
+        body: JSON.stringify({ path: state.repoPath, stream: true }),
       });
 
       if (!response.ok) throw new Error(await response.text());
 
-      const data = await response.json();
-      ctx.actor.send({ type: "ALL_FILES_LOADED", files: data.files });
-      ctx.allFilesData = data.files;
-      renderAllFilesOnCanvas(ctx, data.files);
+      const allFiles: any[] = [];
+      let total = 0;
+
+      // Parse NDJSON stream
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep incomplete last line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const chunk = JSON.parse(line);
+
+            if (chunk.total !== undefined && !chunk.files) {
+              // First message: total file count
+              total = chunk.total;
+              showLoadingProgress(ctx, "Loading files...");
+              updateLoadingFileCount(ctx, 0, total, state.repoPath);
+              continue;
+            }
+
+            if (chunk.files) {
+              allFiles.push(...chunk.files);
+              updateLoadingFileCount(
+                ctx,
+                chunk.loaded || allFiles.length,
+                total,
+                `${allFiles.length} / ${total} files`,
+              );
+            }
+          } catch (e) {
+            console.warn("[tree-stream] Failed to parse line:", line, e);
+          }
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        try {
+          const chunk = JSON.parse(buffer);
+          if (chunk.files) allFiles.push(...chunk.files);
+        } catch (e) { /* ignore */ }
+      }
+
+      ctx.actor.send({ type: "ALL_FILES_LOADED", files: allFiles });
+      ctx.allFilesData = allFiles;
+      updateLoadingFileCount(ctx, total, total, "Rendering cards...");
+      renderAllFilesOnCanvas(ctx, allFiles);
       const fileCountEl = document.getElementById("fileCount");
-      if (fileCountEl) fileCountEl.textContent = data.total;
+      if (fileCountEl) fileCountEl.textContent = allFiles.length;
       // Auto-fit view after loading files
       setTimeout(() => {
         const { fitAllFiles } = require("./canvas");

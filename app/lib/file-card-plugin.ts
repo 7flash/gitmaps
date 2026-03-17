@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * FileCardPlugin — bridges galaxydraw's CardPlugin interface with
+ * FileCardPlugin — bridges xydraw's CardPlugin interface with
  * the existing file card rendering in cards.tsx.
  *
  * Phase 4 of the GalaxyDraw migration:

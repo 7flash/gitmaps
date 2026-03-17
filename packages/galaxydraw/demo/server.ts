@@ -1,5 +1,5 @@
 /**
- * galaxydraw demo server
+ * xydraw demo server
  * Run: bun run demo/server.ts
  */
 
@@ -14,7 +14,7 @@ const clientCode = await Bun.build({
 const clientJS = await clientCode.outputs[0].text();
 
 // Read CSS
-const cssFile = Bun.file(import.meta.dir + '/../src/galaxydraw.css');
+const cssFile = Bun.file(import.meta.dir + '/../src/xydraw.css');
 const css = await cssFile.text();
 
 const html = `<!DOCTYPE html>
@@ -22,7 +22,7 @@ const html = `<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>galaxydraw - Demo</title>
+    <title>xydraw - Demo</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -93,4 +93,4 @@ const server = Bun.serve({
     },
 });
 
-console.log(`[galaxydraw] demo running at http://localhost:${server.port}`);
+console.log(`[xydraw] demo running at http://localhost:${server.port}`);
