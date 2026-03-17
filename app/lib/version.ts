@@ -1,61 +1,84 @@
-/**
- * Version display - shows commit hash for debugging deployments
- */
+import { showToast } from './utils';
 
-const COMMIT_HASH = "463df72"; // Updated on each deploy
-const COMMIT_DATE = "2026-03-15";
+let cachedCommit = 'unknown';
+let cachedCommitDate = '';
 
 export function getVersion(): string {
-  return COMMIT_HASH;
+  return cachedCommit;
 }
 
 export function getVersionDate(): string {
-  return COMMIT_DATE;
+  return cachedCommitDate;
 }
 
-export function renderVersionBadge(): void {
+async function fetchVersion(): Promise<{ commit: string; commitDate: string }> {
+  try {
+    const response = await fetch('/api/version', { cache: 'no-store' });
+    if (!response.ok) throw new Error(await response.text());
+    const data = await response.json();
+    cachedCommit = data.commit || 'unknown';
+    cachedCommitDate = data.commitDate || '';
+    return { commit: cachedCommit, commitDate: cachedCommitDate };
+  } catch {
+    return { commit: cachedCommit, commitDate: cachedCommitDate };
+  }
+}
+
+export async function renderVersionBadge(): Promise<void> {
   const existing = document.getElementById('versionBadge');
   if (existing) existing.remove();
 
-  const badge = document.createElement('div');
+  const badge = document.createElement('button');
   badge.id = 'versionBadge';
+  badge.type = 'button';
   badge.style.cssText = `
     position: fixed;
-    bottom: 12px;
+    top: 12px;
     right: 12px;
     padding: 6px 12px;
-    background: rgba(30, 41, 59, 0.9);
-    border: 1px solid rgba(124, 58, 237, 0.3);
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(124, 58, 237, 0.32);
     border-radius: 8px;
     font-size: 10px;
-    color: rgba(167, 139, 250, 0.8);
+    color: rgba(167, 139, 250, 0.9);
     font-family: 'JetBrains Mono', monospace;
-    z-index: 9999;
+    z-index: 10002;
     backdrop-filter: blur(8px);
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   `;
   badge.innerHTML = `
-    <span style="opacity:0.6">GitMaps</span>
+    <span style="opacity:0.64">GitMaps</span>
     <span style="margin:0 6px">·</span>
-    <span style="color:#a78bfa">${COMMIT_HASH}</span>
+    <span id="versionBadgeCommit" style="color:#c4b5fd">loading...</span>
   `;
-  badge.title = `GitMaps ${COMMIT_HASH}\nDeployed: ${COMMIT_DATE}\nClick to copy commit hash`;
-  
-  badge.addEventListener('click', () => {
-    navigator.clipboard.writeText(COMMIT_HASH);
-    const { showToast } = require('./utils');
-    showToast(`Copied commit ${COMMIT_HASH}`, 'success', 2000);
+  badge.title = 'Loading build version...';
+
+  badge.addEventListener('click', async () => {
+    if (!cachedCommit || cachedCommit === 'unknown') {
+      showToast('Build commit not available yet', 'error');
+      return;
+    }
+    await navigator.clipboard.writeText(cachedCommit);
+    showToast(`Copied commit ${cachedCommit}`, 'success');
   });
-  
+
   badge.addEventListener('mouseenter', () => {
-    badge.style.background = 'rgba(30, 41, 59, 0.95)';
-    badge.style.borderColor = 'rgba(124, 58, 237, 0.6)';
+    badge.style.background = 'rgba(15, 23, 42, 0.96)';
+    badge.style.borderColor = 'rgba(124, 58, 237, 0.62)';
   });
   badge.addEventListener('mouseleave', () => {
-    badge.style.background = 'rgba(30, 41, 59, 0.9)';
-    badge.style.borderColor = 'rgba(124, 58, 237, 0.3)';
+    badge.style.background = 'rgba(15, 23, 42, 0.88)';
+    badge.style.borderColor = 'rgba(124, 58, 237, 0.32)';
   });
-  
+
   document.body.appendChild(badge);
+
+  const { commit, commitDate } = await fetchVersion();
+  const commitEl = document.getElementById('versionBadgeCommit');
+  if (commitEl) commitEl.textContent = commit;
+  badge.title = commitDate
+    ? `GitMaps ${commit}\nBuilt from commit on ${commitDate}\nClick to copy commit hash`
+    : `GitMaps ${commit}\nClick to copy commit hash`;
 }

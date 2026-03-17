@@ -178,7 +178,7 @@ export default function mount(): () => void {
 
       // Render sync controls (leader-only)
       renderSyncControls();
-      renderVersionBadge();
+      await renderVersionBadge();
 
       // Render recent commits
       renderRecentCommitsUI();
