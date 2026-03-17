@@ -5,6 +5,9 @@ import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
 const BINARY_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'ogg', 'avi', 'mov', 'zip', 'tar', 'gz', 'rar', '7z', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'exe', 'dll', 'so', 'dylib', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'lock']);
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp']);
+const PDF_EXTS = new Set(['pdf']);
+const MAX_READ_SIZE = 2 * 1024 * 1024;
 
 export async function POST(req: Request) {
     return measure('api:repo:tree', async () => {
@@ -39,9 +42,13 @@ export async function POST(req: Request) {
                             } else if (stats.isFile()) {
                                 results.push(relativePath);
                             }
-                        } catch (_) {}
+                        } catch (e: any) {
+                            console.warn(`[tree:scanDir] stat error: ${fullPath}: ${e.message}`);
+                        }
                     }
-                } catch (_) {}
+                } catch (e: any) {
+                    console.warn(`[tree:scanDir] readdir error: ${dir}: ${e.message}`);
+                }
                 return results;
             }
 
@@ -66,6 +73,7 @@ export async function POST(req: Request) {
                 // This catches repos where most content (PDFs, images) is gitignored
                 if (trackedPaths.length < 50) {
                     const allPaths = scanDir(repoPath, '');
+                    console.log(`[tree] ${trackedPaths.length} tracked, ${allPaths.length} on disk`);
                     if (allPaths.length > trackedPaths.length * 5) {
                         // Lots of untracked content — include everything
                         const trackedSet = new Set(trackedPaths);
