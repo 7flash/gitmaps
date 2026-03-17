@@ -10,6 +10,7 @@ import { showToast } from './utils';
 
 let bar: HTMLElement | null = null;
 let ctx: CanvasContext | null = null;
+let slugPopoverEl: HTMLElement | null = null;
 
 // Cached state for efficient updates
 let _zoom = 1;
@@ -31,6 +32,25 @@ function summarizeSlugSource(source: string): string {
     return `${source.slice(0, 33)}...`;
 }
 
+function getSlugSourceDetails(source: string): { host: string; remoteUrl: string } {
+    if (!source) return { host: '', remoteUrl: '' };
+
+    const [host, remoteUrl] = source.split(' · ');
+    return {
+        host: remoteUrl ? host : '',
+        remoteUrl: remoteUrl || source,
+    };
+}
+
+async function copyText(text: string, successMessage: string) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(successMessage, 'success');
+    } catch {
+        showToast('Failed to copy to clipboard', 'error');
+    }
+}
+
 async function copyCanonicalSlug(includeSource = false) {
     if (!_repoSlug) return;
 
@@ -38,17 +58,91 @@ async function copyCanonicalSlug(includeSource = false) {
         ? `${_repoSlug}\n${_repoSlugSource}`
         : _repoSlug;
 
-    try {
-        await navigator.clipboard.writeText(text);
-        showToast(
-            includeSource && _repoSlugSource
-                ? 'Copied canonical slug + source'
-                : `Copied canonical slug: ${_repoSlug}`,
-            'success',
-        );
-    } catch {
-        showToast('Failed to copy canonical slug', 'error');
+    await copyText(
+        text,
+        includeSource && _repoSlugSource
+            ? 'Copied canonical slug + source'
+            : `Copied canonical slug: ${_repoSlug}`,
+    );
+}
+
+function closeSlugPopover() {
+    slugPopoverEl?.remove();
+    slugPopoverEl = null;
+}
+
+function renderSlugPopover() {
+    if (!bar || !_repoSlug) return;
+
+    closeSlugPopover();
+
+    const slugEl = bar.querySelector('#sbSlug') as HTMLElement | null;
+    if (!slugEl) return;
+
+    const { host, remoteUrl } = getSlugSourceDetails(_repoSlugSource);
+    const popover = document.createElement('div');
+    popover.className = 'sb-slug-popover';
+    popover.innerHTML = `
+        <div class="sb-slug-popover__header">
+            <div>
+                <div class="sb-slug-popover__eyebrow">Canonical route</div>
+                <div class="sb-slug-popover__slug">/${_repoSlug}</div>
+            </div>
+            <button class="sb-slug-popover__close" type="button" aria-label="Close canonical slug details">×</button>
+        </div>
+        <div class="sb-slug-popover__meta">
+            <div class="sb-slug-popover__row">
+                <span class="sb-slug-popover__label">Host</span>
+                <span class="sb-slug-popover__value">${safeHost}</span>
+            </div>
+            <div class="sb-slug-popover__row">
+                <span class="sb-slug-popover__label">Remote</span>
+                <span class="sb-slug-popover__value sb-slug-popover__value--multiline">${remoteUrl || 'Not available'}</span>
+            </div>
+        </div>
+        <div class="sb-slug-popover__actions">
+            <button class="sb-slug-popover__action" type="button" data-copy="slug">Copy slug</button>
+            <button class="sb-slug-popover__action" type="button" data-copy="source" ${_repoSlugSource ? '' : 'disabled'}>Copy source</button>
+            <button class="sb-slug-popover__action" type="button" data-copy="both" ${_repoSlugSource ? '' : 'disabled'}>Copy both</button>
+        </div>
+    `;
+
+    bar.appendChild(popover);
+    slugPopoverEl = popover;
+
+    const slugRect = slugEl.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+    const left = Math.max(8, Math.min(slugRect.left - barRect.left, barRect.width - 360));
+    popover.style.left = `${left}px`;
+    popover.style.bottom = '30px';
+
+    popover.querySelector('.sb-slug-popover__close')?.addEventListener('click', () => {
+        closeSlugPopover();
+    });
+
+    popover.querySelector('[data-copy="slug"]')?.addEventListener('click', () => {
+        void copyText(_repoSlug, `Copied canonical slug: ${_repoSlug}`);
+    });
+
+    popover.querySelector('[data-copy="source"]')?.addEventListener('click', () => {
+        if (_repoSlugSource) {
+            void copyText(_repoSlugSource, 'Copied canonical slug source');
+        }
+    });
+
+    popover.querySelector('[data-copy="both"]')?.addEventListener('click', () => {
+        if (_repoSlugSource) {
+            void copyText(`${_repoSlug}\n${_repoSlugSource}`, 'Copied canonical slug + source');
+        }
+    });
+}
+
+function toggleSlugPopover() {
+    if (slugPopoverEl) {
+        closeSlugPopover();
+        return;
     }
+    renderSlugPopover();
 }
 
 function createBar(): HTMLElement {
@@ -93,8 +187,8 @@ function render() {
         slugEl.style.display = _repoSlug ? '' : 'none';
         slugEl.title = _repoSlug
             ? (_repoSlugSource
-                ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}\nClick to copy slug · Shift+Click to copy slug + source`
-                : `Canonical slug: ${_repoSlug}\nClick to copy slug`)
+                ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}\nClick to inspect · Shift+Click to copy slug + source`
+                : `Canonical slug: ${_repoSlug}\nClick to inspect`)
             : 'Canonical remote slug';
     }
     if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash.substring(0, 7)}` : '';
@@ -108,6 +202,23 @@ function render() {
     }
     if (filesEl) filesEl.textContent = `📄 ${_fileCount} files`;
     if (zoomEl) zoomEl.textContent = `🔍 ${Math.round(_zoom * 100)}%`;
+
+    if (!_repoSlug) closeSlugPopover();
+}
+
+function installGlobalSlugPopoverHandlers() {
+    document.addEventListener('click', (event) => {
+        if (!slugPopoverEl) return;
+        const target = event.target as Node | null;
+        if (!target) return;
+        if (slugPopoverEl.contains(target)) return;
+        if ((target as HTMLElement).closest?.('#sbSlug')) return;
+        closeSlugPopover();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeSlugPopover();
+    });
 }
 
 // ─── Public API ──────────────────────────────────────────
@@ -125,8 +236,15 @@ export function initStatusBar(context: CanvasContext) {
 
     const slugEl = bar.querySelector('#sbSlug') as HTMLElement | null;
     slugEl?.addEventListener('click', (event) => {
-        void copyCanonicalSlug(Boolean((event as MouseEvent).shiftKey));
+        const mouseEvent = event as MouseEvent;
+        if (mouseEvent.shiftKey) {
+            void copyCanonicalSlug(true);
+            return;
+        }
+        toggleSlugPopover();
     });
+
+    installGlobalSlugPopoverHandlers();
 
     const state = ctx.snap().context;
     _zoom = state.zoom || 1;

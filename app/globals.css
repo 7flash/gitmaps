@@ -8157,6 +8157,112 @@ a.repo-card-btn {
   cursor: pointer;
 }
 
+.sb-slug-popover {
+  position: absolute;
+  width: min(380px, calc(100vw - 16px));
+  padding: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 12px;
+  background: rgba(10, 14, 22, 0.98);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  color: var(--text-primary, #e2e8f0);
+  z-index: 10001;
+}
+
+.sb-slug-popover__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sb-slug-popover__eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 4px;
+}
+
+.sb-slug-popover__slug {
+  font-size: 12px;
+  color: #7dd3fc;
+  word-break: break-word;
+}
+
+.sb-slug-popover__close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.sb-slug-popover__close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #e2e8f0);
+}
+
+.sb-slug-popover__meta {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sb-slug-popover__row {
+  display: grid;
+  gap: 4px;
+}
+
+.sb-slug-popover__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #94a3b8);
+}
+
+.sb-slug-popover__value {
+  font-size: 11px;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.sb-slug-popover__value--multiline {
+  word-break: break-word;
+  white-space: normal;
+}
+
+.sb-slug-popover__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sb-slug-popover__action {
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(125, 211, 252, 0.08);
+  color: #bae6fd;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.sb-slug-popover__action:hover:not(:disabled) {
+  background: rgba(125, 211, 252, 0.14);
+}
+
+.sb-slug-popover__action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .sb-mode--simple {
   color: var(--accent-tertiary, #10b981);
 }
