@@ -161,7 +161,13 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
 
       // Then select commit (from URL hash or first commit)
       if (data.commits.length > 0) {
-        updateLoadingProgress(ctx, "Loading commit diff...");
+        const totalFiles = ctx.allFilesData?.length || 0;
+        updateLoadingProgress(
+          ctx,
+          totalFiles > 0
+            ? `Loading commit diff — ${totalFiles} files indexed`
+            : "Loading commit diff...",
+        );
         const hashFromUrl = window.location.hash?.replace("#", "");
         const commitToSelect =
           hashFromUrl && data.commits.find((c) => c.hash === hashFromUrl)
@@ -236,7 +242,7 @@ export async function loadAllFiles(ctx: CanvasContext) {
             if (chunk.total !== undefined && !chunk.files) {
               // First message: total file count
               total = chunk.total;
-              showLoadingProgress(ctx, "Loading files...");
+              showLoadingProgress(ctx, `Loading files — ${total} total`);
               updateLoadingFileCount(ctx, 0, total, state.repoPath);
               continue;
             }
@@ -1315,6 +1321,13 @@ export async function processVirtualFiles(ctx: CanvasContext): Promise<void> {
       const data = await response.json();
       if (data.content) {
         await processFileForVirtualCards(ctx, file.path, data.content);
+      }
+    } catch (err) {
+      console.warn(`[virtual-files] Failed to process ${file.path}:`, err);
+    }
+  }
+}
+essFileForVirtualCards(ctx, file.path, data.content);
       }
     } catch (err) {
       console.warn(`[virtual-files] Failed to process ${file.path}:`, err);

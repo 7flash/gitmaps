@@ -24,11 +24,21 @@ function LoadingOverlayContent({
   const remaining = hasFileCount ? Math.max((total ?? 0) - (safeLoaded ?? 0), 0) : undefined;
   const pct = hasFileCount ? Math.round(((safeLoaded ?? 0) / (total ?? 1)) * 100) : progress;
 
+  const fileSummary = hasFileCount
+    ? `${total} total • ${safeLoaded} loaded • ${remaining} remaining`
+    : "";
+
   return (
     <div className="loading-content">
       <div className="loading-spinner"></div>
       <div className="loading-message">{message}</div>
-      <div className="loading-sub">{sub}</div>
+      {(sub || hasFileCount) && (
+        <div className="loading-sub">
+          {sub}
+          {sub && hasFileCount ? " · " : ""}
+          {fileSummary}
+        </div>
+      )}
       {hasFileCount && (
         <div className="loading-stats">
           <div className="loading-stat">
