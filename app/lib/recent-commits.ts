@@ -18,7 +18,31 @@ export function getRecentRepos(): RecentRepo[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    // Handle mixed formats: old entries may be plain strings
+    return parsed
+      .map((entry: any) => {
+        if (typeof entry === 'string') {
+          return {
+            path: entry,
+            name: entry.split(/[\\/]/).pop() || entry,
+            loadedAt: 0,
+            commitCount: 0,
+          };
+        }
+        if (entry && typeof entry === 'object' && entry.path) {
+          return {
+            path: entry.path,
+            name: entry.name || entry.path.split(/[\\/]/).pop() || entry.path,
+            loadedAt: entry.loadedAt || 0,
+            commitCount: entry.commitCount || 0,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as RecentRepo[];
   } catch {
     return [];
   }
@@ -53,60 +77,7 @@ export function removeRecentRepo(path: string): void {
 }
 
 export function renderRecentCommitsUI(): void {
-  const container = document.getElementById("recentCommits");
-  const listEl = document.getElementById("recentCommitsList");
-  if (!container || !listEl) return;
-
-  const repos = getRecentRepos();
-
-  if (repos.length === 0) {
-    container.style.display = "none";
-    return;
-  }
-
-  container.style.display = "block";
-  listEl.innerHTML = repos
-    .map(
-      (repo) => `
-        <div class="recent-repo-item" data-path="${escapeHtml(repo.path)}" style="
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-        " onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='transparent'">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" style="opacity:0.5">
-                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-            </svg>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                    ${escapeHtml(repo.name)}
-                </div>
-                <div style="font-size:10px;color:var(--text-muted);">
-                    ${repo.commitCount} commits • ${formatTimeAgo(repo.loadedAt)}
-                </div>
-            </div>
-        </div>
-    `,
-    )
-    .join("");
-
-  // Wire up click handlers
-  listEl.querySelectorAll(".recent-repo-item").forEach((el) => {
-    el.addEventListener("click", () => {
-      const path = el.getAttribute("data-path");
-      if (path) {
-        const { loadRepository } = require("./repo");
-        const { getCanvasContext } = require("./context");
-        const ctx = getCanvasContext();
-        if (ctx) loadRepository(ctx, path);
-      }
-    });
-  });
-
-  // Wire up pull button
+  // Pull button is now in the History header — just wire it up
   const pullBtn = document.getElementById("pullBtn");
   if (pullBtn) {
     pullBtn.addEventListener("click", async () => {

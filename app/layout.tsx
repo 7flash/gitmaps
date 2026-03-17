@@ -218,35 +218,6 @@ export default function RootLayout({ children }: { children: any }) {
                 <span className="badge" id="commitCount">
                   0
                 </span>
-              </div>
-              <div className="timeline-container" id="timelineContainer">
-                <div className="empty-state">
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    opacity="0.3"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-         </div>
-            </div>
-
-            <div
-              className="recent-commits"
-              id="recentCommits"
-              style={{
-                display: "none",
-                marginTop: "12px",
-                borderTop: "1px solid var(--border)",
-                paddingTop: "12px",
-              }}
-            >
-              <div className="section-header" style={{ marginBottom: "8px" }}>
-                <span className="section-title">Recent Commits</span>
                 <button
                   id="pullBtn"
                   className="btn-ghost btn-xs"
@@ -268,21 +239,23 @@ export default function RootLayout({ children }: { children: any }) {
                   Pull
                 </button>
               </div>
-              <div
-                id="recentCommitsList"
-                style={{ maxHeight: "200px", overflowY: "auto" }}
-              >
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "var(--text-muted)",
-                    padding: "8px 0",
-                  }}
-                >
-                  No recent commits
-                </div>
-              </div>
+              <div className="timeline-container" id="timelineContainer">
+                <div className="empty-state">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    opacity="0.3"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+         </div>
             </div>
+
+
 
             <div className="sidebar-bottom">
               <div className="canvas-controls">

@@ -148,14 +148,6 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
           `[gitmaps] canonical slug: ${canonicalSlug} ← ${repoPath}${data.canonicalSlugSource ? ` (${data.canonicalSlugSource})` : ""}`,
         );
       }
-      // Save to recent repos list
-      const recentKey = "gitcanvas:recentRepos";
-      const recent: string[] = JSON.parse(
-        localStorage.getItem(recentKey) || "[]",
-      );
-      const filtered = recent.filter((r) => r !== repoPath);
-      filtered.unshift(repoPath);
-      localStorage.setItem(recentKey, JSON.stringify(filtered.slice(0, 10)));
       // Update dropdown if it exists
       const sel = document.getElementById("repoSelect") as HTMLSelectElement;
       if (sel) sel.value = repoPath;
