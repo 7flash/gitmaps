@@ -1,7 +1,7 @@
 import { showToast } from './utils';
 
-let cachedCommit = 'unknown';
-let cachedCommitDate = '';
+let cachedCommit = '220aa78';
+let cachedCommitDate = '2026-03-17';
 
 export function getVersion(): string {
   return cachedCommit;
