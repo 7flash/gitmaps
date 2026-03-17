@@ -131,9 +131,9 @@ export default function RootLayout({ children }: { children: any }) {
         <script
           dangerouslySetInnerHTML={{
             __html: `
-                    window.__GITMAPS_BUILD_COMMIT__ = ${JSON.stringify(build.commit)};
-                    window.__GITMAPS_BUILD_DATE__ = ${JSON.stringify(build.date)};
                     (function() {
+                        window.__GITMAPS_BUILD_COMMIT__ = ${JSON.stringify(build.commit)};
+                        window.__GITMAPS_BUILD_DATE__ = ${JSON.stringify(build.date)};
                         if (window.innerWidth < 768) {
                             var g = document.getElementById('mobileGate');
                             if (g) { g.style.display = 'flex'; }
