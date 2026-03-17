@@ -54,8 +54,11 @@ export default function RootLayout({ children }: { children: any }) {
         <link rel="icon" type="image/png" href="/api/pwa-icon" />
         <link rel="manifest" href="/api/manifest.json" />
         <meta name="theme-color" content="#7c3aed" />
-        <meta name="gitmaps-build-commit" content={build.commit} />
-        <meta name="gitmaps-build-date" content={build.date} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__GITMAPS_BUILD__ = ${JSON.stringify(build)};`,
+          }}
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
           rel="stylesheet"
