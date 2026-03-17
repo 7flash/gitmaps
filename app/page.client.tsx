@@ -55,6 +55,7 @@ export default function mount(): () => void {
 
   function showLandingPlaceholder() {
     document.body.classList.add("landing-placeholder-visible");
+    ctx.actor.send({ type: "RESET_APP_STATE" });
     clearCanvas(ctx);
     ctx.fileCards.clear();
     ctx.deferredCards.clear();

@@ -192,5 +192,18 @@ export const canvasMachine = createMachine({
                 })
             }),
         },
+        RESET_APP_STATE: {
+            actions: assign({
+                repoPath: '',
+                commits: [],
+                currentCommitHash: null,
+                commitFiles: [],
+                allFiles: [],
+                selectedCards: [],
+                connections: [],
+                pendingConnection: null,
+                error: null,
+            }),
+        },
     },
 });
