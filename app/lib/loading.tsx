@@ -20,13 +20,31 @@ function LoadingOverlayContent({
   total?: number;
 }) {
   const hasFileCount = loaded !== undefined && total !== undefined && total > 0;
-  const pct = hasFileCount ? Math.round((loaded / total) * 100) : progress;
+  const safeLoaded = hasFileCount ? Math.min(loaded ?? 0, total ?? 0) : undefined;
+  const remaining = hasFileCount ? Math.max((total ?? 0) - (safeLoaded ?? 0), 0) : undefined;
+  const pct = hasFileCount ? Math.round(((safeLoaded ?? 0) / (total ?? 1)) * 100) : progress;
 
   return (
     <div className="loading-content">
       <div className="loading-spinner"></div>
       <div className="loading-message">{message}</div>
       <div className="loading-sub">{sub}</div>
+      {hasFileCount && (
+        <div className="loading-stats">
+          <div className="loading-stat">
+            <span className="loading-stat-label">Total</span>
+            <span className="loading-stat-value">{total}</span>
+          </div>
+          <div className="loading-stat">
+            <span className="loading-stat-label">Loaded</span>
+            <span className="loading-stat-value">{safeLoaded}</span>
+          </div>
+          <div className="loading-stat">
+            <span className="loading-stat-label">Remaining</span>
+            <span className="loading-stat-value">{remaining}</span>
+          </div>
+        </div>
+      )}
       {pct !== undefined && (
         <div className="loading-progress-container">
           <div className="loading-progress-bar">
@@ -36,7 +54,9 @@ function LoadingOverlayContent({
             ></div>
           </div>
           <div className="loading-progress-text">
-            {hasFileCount ? `${loaded} / ${total}` : `${Math.round(pct)}%`}
+            {hasFileCount
+              ? `${pct}% • ${remaining} remaining`
+              : `${Math.round(pct)}%`}
           </div>
         </div>
       )}

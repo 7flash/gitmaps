@@ -243,11 +243,13 @@ export async function loadAllFiles(ctx: CanvasContext) {
 
             if (chunk.files) {
               allFiles.push(...chunk.files);
+              const loaded = chunk.loaded || allFiles.length;
+              const remaining = Math.max(total - loaded, 0);
               updateLoadingFileCount(
                 ctx,
-                chunk.loaded || allFiles.length,
+                loaded,
                 total,
-                `${allFiles.length} / ${total} files`,
+                `${loaded} loaded • ${remaining} remaining`,
               );
             }
           } catch (e) {
@@ -266,7 +268,12 @@ export async function loadAllFiles(ctx: CanvasContext) {
 
       ctx.actor.send({ type: "ALL_FILES_LOADED", files: allFiles });
       ctx.allFilesData = allFiles;
-      updateLoadingFileCount(ctx, total, total, "Rendering cards...");
+      updateLoadingFileCount(
+        ctx,
+        total,
+        total,
+        `Rendering ${total} cards • 0 remaining`,
+      );
       renderAllFilesOnCanvas(ctx, allFiles);
       const fileCountEl = document.getElementById("fileCount");
       if (fileCountEl) fileCountEl.textContent = allFiles.length;
