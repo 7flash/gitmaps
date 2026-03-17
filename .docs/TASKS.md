@@ -87,7 +87,8 @@
 - [x] ~~**Canonical slug source UX polish**~~ — ✅ DONE. Status bar now shows inline source context for canonical slugs (for example `↗ owner/repo · via github.com`) while preserving the full tooltip details.
 - [x] ~~**Canonical slug badge interactions**~~ — ✅ DONE. Clicking the status-bar slug badge now copies the canonical slug, and Shift+Click copies the slug plus its source mapping.
 - [x] ~~**Canonical slug badge popover**~~ — ✅ DONE. Clicking the slug badge now opens a small popover showing the canonical route, remote host, and full remote URL, with explicit copy buttons for slug/source/both.
-- [ ] **Canonical slug badge keyboard access** — Add Enter/Space activation and arrow/focus behavior so the slug popover is fully keyboard accessible.
+- [x] ~~**Canonical slug badge keyboard access**~~ — ✅ DONE. The slug badge is now a real button with Enter/Space activation, ArrowDown open behavior, focus-visible styling, popover focus management, arrow-key cycling, and Escape-to-close focus restore.
+- [ ] **Canonical slug badge a11y tests** — Add focused DOM tests covering keyboard open/close, focus restore, and copy button navigation for the slug popover.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 
 ## 🔴 Priority: Performance

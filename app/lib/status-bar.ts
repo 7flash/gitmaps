@@ -6,11 +6,12 @@
  */
 
 import type { CanvasContext } from './context';
-import { showToast } from './utils';
+import { escapeHtml, showToast } from './utils';
 
 let bar: HTMLElement | null = null;
 let ctx: CanvasContext | null = null;
 let slugPopoverEl: HTMLElement | null = null;
+let slugTriggerEl: HTMLElement | null = null;
 
 // Cached state for efficient updates
 let _zoom = 1;
@@ -42,6 +43,18 @@ function getSlugSourceDetails(source: string): { host: string; remoteUrl: string
     };
 }
 
+function getPopoverButtons(): HTMLElement[] {
+    if (!slugPopoverEl) return [];
+    return Array.from(slugPopoverEl.querySelectorAll('button:not([disabled])')) as HTMLElement[];
+}
+
+function focusPopoverButton(index: number) {
+    const buttons = getPopoverButtons();
+    if (buttons.length === 0) return;
+    const nextIndex = (index + buttons.length) % buttons.length;
+    buttons[nextIndex]?.focus();
+}
+
 async function copyText(text: string, successMessage: string) {
     try {
         await navigator.clipboard.writeText(text);
@@ -66,27 +79,36 @@ async function copyCanonicalSlug(includeSource = false) {
     );
 }
 
-function closeSlugPopover() {
+function closeSlugPopover(restoreFocus = false) {
     slugPopoverEl?.remove();
     slugPopoverEl = null;
+
+    if (slugTriggerEl) {
+        slugTriggerEl.setAttribute('aria-expanded', 'false');
+        if (restoreFocus) slugTriggerEl.focus();
+    }
 }
 
 function renderSlugPopover() {
-    if (!bar || !_repoSlug) return;
+    if (!bar || !_repoSlug || !slugTriggerEl) return;
 
     closeSlugPopover();
 
-    const slugEl = bar.querySelector('#sbSlug') as HTMLElement | null;
-    if (!slugEl) return;
-
     const { host, remoteUrl } = getSlugSourceDetails(_repoSlugSource);
+    const safeSlug = escapeHtml(_repoSlug);
+    const safeHost = escapeHtml(host || 'Local/unknown');
+    const safeRemoteUrl = escapeHtml(remoteUrl || 'Not available');
+
     const popover = document.createElement('div');
     popover.className = 'sb-slug-popover';
+    popover.id = 'sbSlugPopover';
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-label', 'Canonical slug details');
     popover.innerHTML = `
         <div class="sb-slug-popover__header">
             <div>
                 <div class="sb-slug-popover__eyebrow">Canonical route</div>
-                <div class="sb-slug-popover__slug">/${_repoSlug}</div>
+                <div class="sb-slug-popover__slug">/${safeSlug}</div>
             </div>
             <button class="sb-slug-popover__close" type="button" aria-label="Close canonical slug details">×</button>
         </div>
@@ -97,7 +119,7 @@ function renderSlugPopover() {
             </div>
             <div class="sb-slug-popover__row">
                 <span class="sb-slug-popover__label">Remote</span>
-                <span class="sb-slug-popover__value sb-slug-popover__value--multiline">${remoteUrl || 'Not available'}</span>
+                <span class="sb-slug-popover__value sb-slug-popover__value--multiline">${safeRemoteUrl}</span>
             </div>
         </div>
         <div class="sb-slug-popover__actions">
@@ -109,15 +131,16 @@ function renderSlugPopover() {
 
     bar.appendChild(popover);
     slugPopoverEl = popover;
+    slugTriggerEl.setAttribute('aria-expanded', 'true');
 
-    const slugRect = slugEl.getBoundingClientRect();
+    const slugRect = slugTriggerEl.getBoundingClientRect();
     const barRect = bar.getBoundingClientRect();
-    const left = Math.max(8, Math.min(slugRect.left - barRect.left, barRect.width - 360));
+    const left = Math.max(8, Math.min(slugRect.left - barRect.left, Math.max(8, barRect.width - 360)));
     popover.style.left = `${left}px`;
     popover.style.bottom = '30px';
 
     popover.querySelector('.sb-slug-popover__close')?.addEventListener('click', () => {
-        closeSlugPopover();
+        closeSlugPopover(true);
     });
 
     popover.querySelector('[data-copy="slug"]')?.addEventListener('click', () => {
@@ -135,11 +158,32 @@ function renderSlugPopover() {
             void copyText(`${_repoSlug}\n${_repoSlugSource}`, 'Copied canonical slug + source');
         }
     });
+
+    popover.addEventListener('keydown', (event) => {
+        const buttons = getPopoverButtons();
+        if (buttons.length === 0) return;
+
+        const activeIndex = buttons.findIndex(button => button === document.activeElement);
+
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+            event.preventDefault();
+            focusPopoverButton(activeIndex + 1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            focusPopoverButton(activeIndex - 1);
+        } else if (event.key === 'Tab') {
+            event.preventDefault();
+            focusPopoverButton(activeIndex + (event.shiftKey ? -1 : 1));
+        }
+    });
+
+    const firstButton = getPopoverButtons()[0];
+    firstButton?.focus();
 }
 
 function toggleSlugPopover() {
     if (slugPopoverEl) {
-        closeSlugPopover();
+        closeSlugPopover(true);
         return;
     }
     renderSlugPopover();
@@ -151,7 +195,7 @@ function createBar(): HTMLElement {
     el.innerHTML = `
         <div class="sb-left">
             <span class="sb-item sb-repo" id="sbRepo" title="Current repository"></span>
-            <span class="sb-item sb-slug" id="sbSlug" title="Canonical remote slug" style="display:none"></span>
+            <button class="sb-item sb-slug" id="sbSlug" title="Canonical remote slug" style="display:none" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="sbSlugPopover"></button>
             <span class="sb-item sb-commit" id="sbCommit" title="Current commit"></span>
         </div>
         <div class="sb-right">
@@ -168,7 +212,7 @@ function render() {
     if (!bar) return;
 
     const repoEl = bar.querySelector('#sbRepo') as HTMLElement;
-    const slugEl = bar.querySelector('#sbSlug') as HTMLElement;
+    const slugEl = bar.querySelector('#sbSlug') as HTMLButtonElement;
     const commitEl = bar.querySelector('#sbCommit') as HTMLElement;
     const modeEl = bar.querySelector('#sbMode') as HTMLElement;
     const selectedEl = bar.querySelector('#sbSelected') as HTMLElement;
@@ -187,9 +231,13 @@ function render() {
         slugEl.style.display = _repoSlug ? '' : 'none';
         slugEl.title = _repoSlug
             ? (_repoSlugSource
-                ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}\nClick to inspect · Shift+Click to copy slug + source`
-                : `Canonical slug: ${_repoSlug}\nClick to inspect`)
+                ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}\nClick or press Enter/Space to inspect · Shift+Click to copy slug + source`
+                : `Canonical slug: ${_repoSlug}\nClick or press Enter/Space to inspect`)
             : 'Canonical remote slug';
+        slugEl.setAttribute('aria-label', _repoSlugSource
+            ? `Canonical slug ${_repoSlug}. Press Enter or Space for details. Shift click copies slug and source.`
+            : `Canonical slug ${_repoSlug}. Press Enter or Space for details.`);
+        slugTriggerEl = slugEl;
     }
     if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash.substring(0, 7)}` : '';
     if (modeEl) {
@@ -217,7 +265,7 @@ function installGlobalSlugPopoverHandlers() {
     });
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closeSlugPopover();
+        if (event.key === 'Escape') closeSlugPopover(true);
     });
 }
 
@@ -234,7 +282,9 @@ export function initStatusBar(context: CanvasContext) {
         document.body.appendChild(bar);
     }
 
-    const slugEl = bar.querySelector('#sbSlug') as HTMLElement | null;
+    const slugEl = bar.querySelector('#sbSlug') as HTMLButtonElement | null;
+    slugTriggerEl = slugEl;
+
     slugEl?.addEventListener('click', (event) => {
         const mouseEvent = event as MouseEvent;
         if (mouseEvent.shiftKey) {
@@ -242,6 +292,17 @@ export function initStatusBar(context: CanvasContext) {
             return;
         }
         toggleSlugPopover();
+    });
+
+    slugEl?.addEventListener('keydown', (event) => {
+        const keyboardEvent = event as KeyboardEvent;
+        if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+            keyboardEvent.preventDefault();
+            toggleSlugPopover();
+        } else if (keyboardEvent.key === 'ArrowDown' && !slugPopoverEl) {
+            keyboardEvent.preventDefault();
+            renderSlugPopover();
+        }
     });
 
     installGlobalSlugPopoverHandlers();
