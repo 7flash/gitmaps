@@ -90,10 +90,13 @@
 - [x] ~~**Canonical slug badge keyboard access**~~ — ✅ DONE. The slug badge is now a real button with Enter/Space activation, ArrowDown open behavior, focus-visible styling, popover focus management, arrow-key cycling, and Escape-to-close focus restore.
 - [x] ~~**Canonical slug badge a11y tests**~~ — ✅ DONE. Added focused DOM tests for Enter/Space and ArrowDown open behavior, Escape-to-close with focus restore, and keyboard cycling between slug popover controls using a headless DOM harness.
 - [x] ~~**Build commit badge reflects running version**~~ — ✅ DONE. Replaced the stale hardcoded corner badge with a runtime build-info API fetch and moved the visible build commit badge to the top-right corner.
+- [x] ~~**Recent commits sidebar shows undefined / NaN metadata**~~ — ✅ DONE. Normalized legacy `gitcanvas:recentRepos` entries, restored list rendering, and added focused DOM tests so malformed localStorage no longer produces `undefined commits · NaNd ago` rows.
 - [x] ~~**Use local Melina during framework work**~~ — ✅ DONE. GitMaps now points at `file:../melina.js` so local router/render fixes actually affect the running app during development.
 - [ ] **Status bar DOM test harness cleanup** — Reuse the new headless DOM setup helper for future status-bar/popover tests instead of duplicating global window/document bootstrapping.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 - [ ] **Repo loading overlay smoke test** — Add a reproducible slow-load or fixture-based test path so file-count loading UI can be verified without racing a fast local repo load.
+- [ ] **User journey smoke tests** — Cover landing page, repo picker, GitHub import, and recent-repo recovery flows with reproducible browser-driven checks.
+- [ ] **Recent repos click-through test** — Add a DOM/integration test that verifies clicking a recent repo entry reloads the repo instead of only rendering metadata.
 - [x] ~~**Binary-heavy repo loading stalls at 85%**~~ — ✅ DONE. Root cause: tree endpoint read all non-binary files synchronously with no size limit, blocking the stream on large repos. Fix: skip reading content for files >2MB, get binary file sizes via `Bun.file()`, and increase client fetch timeout from 60s to 300s.
 - [x] ~~**PDF rendering on canvas cards**~~ — ✅ DONE. PDF files now render as image thumbnails on canvas cards via `/api/repo/pdf-thumb` endpoint using `pdftoppm` (poppler-utils) or ImageMagick with graceful fallback. Cards show the first page as a preview image with lazy loading.
 - [ ] **PDF multi-page navigation** — Add page controls to PDF card previews so users can browse beyond the first page.

@@ -34,36 +34,20 @@ import { toggleCanvasChat } from './chat';
 import { exportCanvasAsPNG, exportViewportAsPNG } from './canvas-export';
 import { cancelPendingConnection, hasPendingConnection } from './connections';
 import { promptAddSection } from './layers';
+import { addRecentRepo, getRecentRepos } from './recent-commits';
 
 // ─── Recent repos helper ────────────────────────────────
-function _addRecentRepo(path: string) {
-    const key = 'gitcanvas:recentRepos';
-    const recent: string[] = JSON.parse(localStorage.getItem(key) || '[]');
-    // Remove if already exists, then prepend
-    const filtered = recent.filter(r => r !== path);
-    filtered.unshift(path);
-    // Keep max 10
-    localStorage.setItem(key, JSON.stringify(filtered.slice(0, 10)));
+function _addRecentRepo(path: string, commitCount: number = 0) {
+    addRecentRepo(path, commitCount);
 }
 
 function _refreshRepoDropdown() {
     const repoSel = document.getElementById('repoSelect') as HTMLSelectElement;
     if (!repoSel) return;
-    let updatedRepos: any[] = JSON.parse(localStorage.getItem('gitcanvas:recentRepos') || '[]');
-    // Clean up corrupted entries (strings only, no objects/elements)
-    updatedRepos = updatedRepos.filter(r => typeof r === 'string' && r && !r.includes('[object'));
-    localStorage.setItem('gitcanvas:recentRepos', JSON.stringify(updatedRepos));
+    const updatedRepos = getRecentRepos();
     while (repoSel.options.length > 1) repoSel.remove(1);
     updatedRepos.forEach((repo: any) => {
-        // Handle strings, objects with path property, or skip invalid entries
-        let repoPath = "";
-        if (typeof repo === "string") {
-            repoPath = repo;
-        } else if (repo && typeof repo.path === "string") {
-            repoPath = repo.path;
-        } else {
-            return; // Skip invalid entries
-        }
+        const repoPath = typeof repo === "string" ? repo : repo?.path || "";
         if (!repoPath) return;
         const opt = document.createElement('option');
         opt.value = repoPath;
@@ -567,20 +551,16 @@ export function setupEventListeners(ctx: CanvasContext) {
         const repoSelect = document.getElementById('repoSelect') as HTMLSelectElement;
         if (repoSelect) {
             // Populate dropdown from recent repos
-            const recentRepos: string[] = JSON.parse(localStorage.getItem('gitcanvas:recentRepos') || '[]');
+            const recentRepos = getRecentRepos();
             // Clear except first placeholder
             while (repoSelect.options.length > 1) repoSelect.remove(1);
             recentRepos.forEach(repo => {
-                // Handle both string paths and objects (legacy format)
-                const repoPath = typeof repo === 'string' ? repo : (repo.path || repo);
+                const repoPath = repo.path;
                 if (!repoPath) return;
-                
+
                 const opt = document.createElement('option');
                 opt.value = repoPath;
-                // Show short name (last folder part) + full path
-                const shortName = typeof repoPath === 'string' 
-                    ? repoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || repoPath 
-                    : 'Unknown';
+                const shortName = repoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || repoPath;
                 opt.textContent = shortName;
                 opt.title = repoPath;
                 repoSelect.add(opt);
@@ -593,7 +573,7 @@ export function setupEventListeners(ctx: CanvasContext) {
 
             // Set initial value from hash — otherwise keep placeholder
             const hashPath = decodeURIComponent(location.hash.slice(1));
-            if (hashPath && recentRepos.includes(hashPath)) {
+            if (hashPath && recentRepos.some(repo => repo.path === hashPath)) {
                 repoSelect.value = hashPath;
             } else if (!hashPath) {
                 repoSelect.value = '';  // Keep "Select a repository..." shown
@@ -602,7 +582,7 @@ export function setupEventListeners(ctx: CanvasContext) {
             // ── Also discover on-disk repos that may not be in localStorage ──
             fetch('/api/repo/list').then(r => r.json()).then((data: any) => {
                 if (!data.repos || data.repos.length === 0) return;
-                const currentPaths = new Set(recentRepos);
+                const currentPaths = new Set(recentRepos.map(repo => repo.path));
                 let added = false;
                 for (const repo of data.repos) {
                     if (!currentPaths.has(repo.path)) {
@@ -634,7 +614,7 @@ export function setupEventListeners(ctx: CanvasContext) {
                         _addRecentRepo(cleanPath);
                         loadRepository(ctx, cleanPath);
                         // Re-populate dropdown options
-                        const updatedRepos: string[] = JSON.parse(localStorage.getItem('gitcanvas:recentRepos') || '[]');
+                        const updatedRepos = getRecentRepos();
                         while (repoSelect.options.length > 1) repoSelect.remove(1);
                         updatedRepos.forEach((repo: any) => {
         const repoPath = typeof repo === "string" ? repo : repo.path || "";
