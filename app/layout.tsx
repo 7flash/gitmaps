@@ -65,6 +65,12 @@ export default function RootLayout({ children }: { children: any }) {
         />
       </head>
       <body>
+        <div
+          id="gitmapsBuildInfo"
+          data-commit={build.commit}
+          data-date={build.date}
+          style={{ display: 'none' }}
+        ></div>
         {/* Mobile gate — canvas needs a real screen */}
         <div
           id="mobileGate"
