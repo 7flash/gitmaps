@@ -12,11 +12,12 @@ export function getVersionDate(): string {
 }
 
 async function fetchVersion(): Promise<{ commit: string; commitDate: string }> {
-  const bootstrap = (window as any).__GITMAPS_BUILD__ || null;
+  const domCommit = document.body?.getAttribute('data-build-commit') || '';
+  const domDate = document.body?.getAttribute('data-build-date') || '';
 
-  if (bootstrap?.commit) {
-    cachedCommit = bootstrap.commit;
-    cachedCommitDate = bootstrap.date || '';
+  if (domCommit) {
+    cachedCommit = domCommit;
+    cachedCommitDate = domDate;
     return { commit: cachedCommit, commitDate: cachedCommitDate };
   }
 
