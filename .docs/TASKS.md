@@ -74,8 +74,9 @@
 - [x] ~~**Loading-state visibility polish**~~ — ✅ DONE. Sticky zoom `100%` is now hidden during landing/loading states, and commit-diff progress shows indexed file counts so users see meaningful loading info instead of ambiguous percentages.
 - [x] ~~**Root route UI reset polish**~~ — ✅ DONE. Returning to `/` now clears commit/file counters, commit header, timeline state, changed-files panel, commit progress bar, and status bar labels.
 - [x] ~~**Root route actor state reset**~~ — ✅ DONE. Added `RESET_APP_STATE` to the XState machine and dispatch it when returning to `/`, so internal repo/commit state now matches the cleared landing UI.
+- [x] ~~**Landing reset: clear multi-repo registry**~~ — ✅ DONE. Returning to `/` now clears loaded repo tabs/zone labels and resets hidden multi-repo workspace bookkeeping.
 - [ ] **Non-GitHub remote slug support** — Extend canonical URL detection beyond GitHub remotes (GitLab/Codeberg/self-hosted forge patterns).
-- [ ] **Landing reset: clear multi-repo registry** — Reset any loaded-repo workspace bookkeeping when returning to `/` so hidden multi-repo state cannot leak across sessions.
+- [ ] **Landing reset: clear recent active repo affordances** — Reset any repo-specific toolbar toggles or cached UI modes that can still visually imply an active workspace after returning to `/`.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

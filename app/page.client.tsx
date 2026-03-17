@@ -40,6 +40,7 @@ import { renderSyncControls } from "./lib/sync-controls";
 import { renderVersionBadge } from "./lib/version";
 import { renderRoleBadge } from "./lib/role";
 import { renderRecentCommitsUI, addRecentRepo } from "./lib/recent-commits";
+import { clearMultiRepoWorkspace } from "./lib/multi-repo";
 
 export default function mount(): () => void {
   // Stop any previous actor from a prior mount
@@ -56,6 +57,7 @@ export default function mount(): () => void {
   function showLandingPlaceholder() {
     document.body.classList.add("landing-placeholder-visible");
     ctx.actor.send({ type: "RESET_APP_STATE" });
+    clearMultiRepoWorkspace(ctx);
     clearCanvas(ctx);
     ctx.fileCards.clear();
     ctx.deferredCards.clear();

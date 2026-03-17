@@ -165,6 +165,20 @@ export function unloadRepo(ctx: CanvasContext, repoPath: string) {
 /**
  * Create repo zone tabs in the sidebar for switching between repos.
  */
+export function clearMultiRepoWorkspace(ctx?: CanvasContext) {
+    for (const [, repo] of loadedRepos) {
+        if (repo.zoneLabel) repo.zoneLabel.remove();
+    }
+    loadedRepos.clear();
+    _activeRepoPath = null;
+
+    const container = document.getElementById('repoTabs');
+    if (container) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+    }
+}
+
 export function renderRepoTabs(ctx: CanvasContext) {
     const container = document.getElementById('repoTabs');
     if (!container) return;
