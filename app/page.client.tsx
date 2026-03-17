@@ -69,10 +69,39 @@ export default function mount(): () => void {
     const repoSelect = document.getElementById("repoSelect") as HTMLSelectElement;
     if (repoSelect) repoSelect.value = "";
 
+    const fileCount = document.getElementById("fileCount");
+    if (fileCount) fileCount.textContent = "0";
+
+    const commitCount = document.getElementById("commitCount");
+    if (commitCount) commitCount.textContent = "0";
+
+    const commitInfo = document.getElementById("currentCommitInfo");
+    if (commitInfo) {
+      commitInfo.innerHTML = '<span class="commit-hash-label">No commit selected</span>';
+    }
+
+    const timeline = document.getElementById("timelineContainer");
+    if (timeline) {
+      timeline.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg><p>Load a repository</p></div>';
+    }
+
+    const changedFilesList = document.getElementById("changedFilesList");
+    if (changedFilesList) changedFilesList.innerHTML = "";
+
+    const changedFilesPanel = document.getElementById("changedFilesPanel");
+    if (changedFilesPanel) changedFilesPanel.style.display = "none";
+
+    const commitProgressBar = document.getElementById("commitProgressBar");
+    if (commitProgressBar) commitProgressBar.style.display = "none";
+
     hideLoadingProgress(ctx);
     updateCanvasTransform(ctx);
     updateZoomUI(ctx);
     updateFavoriteStar("");
+    updateStatusBarRepo("");
+    updateStatusBarCommit("");
+    updateStatusBarFiles(0);
+    updateStatusBarSelected(0);
   }
 
   // ─── Init ────────────────────────────────────────────

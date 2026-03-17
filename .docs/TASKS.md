@@ -72,8 +72,9 @@
 - [x] ~~**Repo load progress: render phase counts**~~ — ✅ DONE. Loading overlay now keeps file totals visible into the commit-diff/finalizing phase instead of degrading to a bare percentage.
 - [x] ~~**Canonical repo slug from remote**~~ — ✅ DONE. Local repos now prefer their GitHub `owner/repo` remote slug in the URL when an origin remote is available.
 - [x] ~~**Loading-state visibility polish**~~ — ✅ DONE. Sticky zoom `100%` is now hidden during landing/loading states, and commit-diff progress shows indexed file counts so users see meaningful loading info instead of ambiguous percentages.
-- [ ] **Root route UI reset polish** — Clear sidebar/status labels (commit/file counts, changed-files panel) when returning to `/` so the landing page is completely pristine.
+- [x] ~~**Root route UI reset polish**~~ — ✅ DONE. Returning to `/` now clears commit/file counters, commit header, timeline state, changed-files panel, commit progress bar, and status bar labels.
 - [ ] **Non-GitHub remote slug support** — Extend canonical URL detection beyond GitHub remotes (GitLab/Codeberg/self-hosted forge patterns).
+- [ ] **Root route actor state reset** — Reset the XState repo/commit context itself on landing navigation so internal state matches the cleared UI, not just the DOM.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.
