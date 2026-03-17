@@ -54,6 +54,7 @@ export default function mount(): () => void {
   let disposed = false;
 
   function showLandingPlaceholder() {
+    document.body.classList.add("landing-placeholder-visible");
     clearCanvas(ctx);
     ctx.fileCards.clear();
     ctx.deferredCards.clear();

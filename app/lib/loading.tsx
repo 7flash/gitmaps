@@ -155,4 +155,5 @@ export function hideLoadingProgress(ctx: CanvasContext) {
   if (ctx.loadingOverlay) {
     ctx.loadingOverlay.classList.remove("active");
   }
+  document.body.classList.remove("repo-loading");
 }

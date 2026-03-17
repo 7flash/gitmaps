@@ -75,6 +75,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
 
   return measure("repo:load", async () => {
     try {
+      document.body.classList.remove("landing-placeholder-visible");
       showLoadingProgress(ctx, "Loading repository...", 0);
       updateLoadingProgress(ctx, repoPath, 10);
 
@@ -565,9 +566,12 @@ export async function selectCommit(ctx: CanvasContext, hash: string) {
     const commit = state.commits.find((c) => c.hash === hash);
 
     // Show non-blocking inline progress bar (not overlay)
+    const indexedFiles = ctx.allFilesData?.length || 0;
     _showCommitProgress(
       true,
-      `${hash.substring(0, 7)} — ${commit?.message || ""}`,
+      indexedFiles > 0
+        ? `${hash.substring(0, 7)} • ${indexedFiles} indexed files`
+        : `${hash.substring(0, 7)} — ${commit?.message || ""}`,
     );
 
     try {

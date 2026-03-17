@@ -1144,6 +1144,11 @@ body {
 }
 
 /* ── Sticky Zoom Controls ── */
+body.repo-loading .sticky-zoom-pill,
+body.landing-placeholder-visible .sticky-zoom-pill {
+  display: none;
+}
+
 .sticky-zoom-pill {
   position: absolute;
   bottom: 16px;

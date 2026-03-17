@@ -71,6 +71,7 @@
 - [x] ~~**Remove replay tutorial entrypoint**~~ — ✅ DONE. Removed the toolbar tutorial button and its click handler so onboarding no longer pops back into the normal workflow.
 - [x] ~~**Repo load progress: render phase counts**~~ — ✅ DONE. Loading overlay now keeps file totals visible into the commit-diff/finalizing phase instead of degrading to a bare percentage.
 - [x] ~~**Canonical repo slug from remote**~~ — ✅ DONE. Local repos now prefer their GitHub `owner/repo` remote slug in the URL when an origin remote is available.
+- [x] ~~**Loading-state visibility polish**~~ — ✅ DONE. Sticky zoom `100%` is now hidden during landing/loading states, and commit-diff progress shows indexed file counts so users see meaningful loading info instead of ambiguous percentages.
 - [ ] **Root route UI reset polish** — Clear sidebar/status labels (commit/file counts, changed-files panel) when returning to `/` so the landing page is completely pristine.
 - [ ] **Non-GitHub remote slug support** — Extend canonical URL detection beyond GitHub remotes (GitLab/Codeberg/self-hosted forge patterns).
 
