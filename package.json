@@ -61,7 +61,7 @@
     "xydraw": "0.2.0",
     "jsx-ai": "0.1.2",
     "measure-fn": "3.10.1",
-    "melina": "^2.5.0",
+    "melina": "link:../melina.js",
     "pixi.js": "^8.17.0",
     "simple-git": "^3.30.0",
     "sqlite-zod-orm": "^3.26.0",

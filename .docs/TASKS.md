@@ -90,6 +90,7 @@
 - [x] ~~**Canonical slug badge keyboard access**~~ — ✅ DONE. The slug badge is now a real button with Enter/Space activation, ArrowDown open behavior, focus-visible styling, popover focus management, arrow-key cycling, and Escape-to-close focus restore.
 - [x] ~~**Canonical slug badge a11y tests**~~ — ✅ DONE. Added focused DOM tests for Enter/Space and ArrowDown open behavior, Escape-to-close with focus restore, and keyboard cycling between slug popover controls using a headless DOM harness.
 - [x] ~~**Build commit badge reflects running version**~~ — ✅ DONE. Replaced the stale hardcoded corner badge with a runtime build-info API fetch and moved the visible build commit badge to the top-right corner.
+- [x] ~~**Use local Melina during framework work**~~ — ✅ DONE. GitMaps now points at `file:../melina.js` so local router/render fixes actually affect the running app during development.
 - [ ] **Status bar DOM test harness cleanup** — Reuse the new headless DOM setup helper for future status-bar/popover tests instead of duplicating global window/document bootstrapping.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 - [ ] **Repo loading overlay smoke test** — Add a reproducible slow-load or fixture-based test path so file-count loading UI can be verified without racing a fast local repo load.
