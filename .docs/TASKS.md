@@ -94,6 +94,10 @@
 - [ ] **Status bar DOM test harness cleanup** — Reuse the new headless DOM setup helper for future status-bar/popover tests instead of duplicating global window/document bootstrapping.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 - [ ] **Repo loading overlay smoke test** — Add a reproducible slow-load or fixture-based test path so file-count loading UI can be verified without racing a fast local repo load.
+- [x] ~~**Binary-heavy repo loading stalls at 85%**~~ — ✅ DONE. Root cause: tree endpoint read all non-binary files synchronously with no size limit, blocking the stream on large repos. Fix: skip reading content for files >2MB, get binary file sizes via `Bun.file()`, and increase client fetch timeout from 60s to 300s.
+- [x] ~~**PDF rendering on canvas cards**~~ — ✅ DONE. PDF files now render as image thumbnails on canvas cards via `/api/repo/pdf-thumb` endpoint using `pdftoppm` (poppler-utils) or ImageMagick with graceful fallback. Cards show the first page as a preview image with lazy loading.
+- [ ] **PDF multi-page navigation** — Add page controls to PDF card previews so users can browse beyond the first page.
+- [ ] **Install poppler-utils in Dockerfile** — Add `pdftoppm` to the production Docker image so PDF thumbnails work in deployed environments.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

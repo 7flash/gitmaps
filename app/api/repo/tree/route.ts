@@ -65,25 +65,41 @@ export async function POST(req: Request) {
                 let lines = 0;
                 let size = 0;
                 let isBinary = BINARY_EXTS.has(ext);
+                const isImage = IMAGE_EXTS.has(ext);
+                const isPdf = PDF_EXTS.has(ext);
 
                 if (!isBinary) {
                     try {
                         const fullPath = path.join(repoPath, filePath);
-                        const raw = readFileSync(fullPath, 'utf-8');
-                        size = raw.length;
-                        const allLines = raw.split('\n');
-                        lines = allLines.length;
-                        if (allLines.length > 10000) {
-                            content = allLines.slice(0, 10000).join('\n');
+                        const file = Bun.file(fullPath);
+                        size = file.size;
+
+                        // Skip reading content for very large files
+                        if (size > MAX_READ_SIZE) {
+                            isBinary = true;
                         } else {
-                            content = raw;
+                            const raw = readFileSync(fullPath, 'utf-8');
+                            size = raw.length;
+                            const allLines = raw.split('\n');
+                            lines = allLines.length;
+                            if (allLines.length > 10000) {
+                                content = allLines.slice(0, 10000).join('\n');
+                            } else {
+                                content = raw;
+                            }
                         }
                     } catch (e) {
                         content = null;
                     }
+                } else {
+                    // For binary files, at least get the file size
+                    try {
+                        const fullPath = path.join(repoPath, filePath);
+                        size = Bun.file(fullPath).size;
+                    } catch (_) {}
                 }
 
-                return { path: filePath, name, ext, type: 'file', content, lines, size, isBinary };
+                return { path: filePath, name, ext, type: 'file', content, lines, size, isBinary, isImage, isPdf };
             }
 
             // ── Streaming mode: NDJSON with total header ──

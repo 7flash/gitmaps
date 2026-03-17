@@ -235,7 +235,7 @@ export async function loadAllFiles(ctx: CanvasContext) {
     try {
       // Use streaming endpoint for real progress
       const response = await fetch("/api/repo/tree", {
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(300000),
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: state.repoPath, stream: true }),

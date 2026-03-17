@@ -1014,7 +1014,9 @@ export function createAllFileCard(
     "bmp",
     "ico",
   ]);
+  const PDF_EXTS = new Set(["pdf"]);
   const isImage = IMAGE_EXTS.has(ext);
+  const isPdf = PDF_EXTS.has(ext);
 
   if (isImage) {
     contentHTML = `<div class="file-content-preview file-image-preview" style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-card);overflow:hidden;">
@@ -1022,6 +1024,14 @@ export function createAllFileCard(
                  alt="${escapeHtml(file.name)}" 
                  style="max-width:100%;max-height:100%;object-fit:contain;" 
                  loading="lazy" />
+        </div>`;
+  } else if (isPdf) {
+    contentHTML = `<div class="file-content-preview file-image-preview" style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-card);overflow:hidden;">
+            <img src="/api/repo/pdf-thumb?path=${encodeURIComponent(ctx.snap().context.repoPath || "")}&file=${encodeURIComponent(file.path)}" 
+                 alt="${escapeHtml(file.name)}" 
+                 style="max-width:100%;max-height:100%;object-fit:contain;" 
+                 loading="lazy"
+                 onerror="this.parentElement.innerHTML='<pre><code><span class=\\'error-notice\\'>PDF preview unavailable</span></code></pre>'" />
         </div>`;
   } else if (file.isBinary) {
     contentHTML = `<div class="file-content-preview"><pre><code><span class="error-notice">Binary file</span></code></pre></div>`;

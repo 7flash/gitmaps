@@ -143,6 +143,7 @@ export function updateLoadingFileCount(
   total: number,
   sub?: string,
 ) {
+
   if (ctx.loadingOverlay) {
     currentLoaded = loaded;
     currentTotal = total;
