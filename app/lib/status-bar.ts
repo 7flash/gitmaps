@@ -21,6 +21,15 @@ let _repoSlugSource = '';
 let _mode = 'Simple';
 let _commitHash = '';
 
+function summarizeSlugSource(source: string): string {
+    if (!source) return '';
+
+    const [host] = source.split(' · ');
+    if (host) return `via ${host}`;
+    if (source.length <= 36) return source;
+    return `${source.slice(0, 33)}...`;
+}
+
 function createBar(): HTMLElement {
     const el = document.createElement('div');
     el.id = 'status-bar';
@@ -56,7 +65,10 @@ function render() {
         repoEl.title = _repoPath || 'Current repository';
     }
     if (slugEl) {
-        slugEl.textContent = _repoSlug ? `↗ ${_repoSlug}` : '';
+        const slugSourceSummary = summarizeSlugSource(_repoSlugSource);
+        slugEl.textContent = _repoSlug
+            ? `↗ ${_repoSlug}${slugSourceSummary ? ` · ${slugSourceSummary}` : ''}`
+            : '';
         slugEl.style.display = _repoSlug ? '' : 'none';
         slugEl.title = _repoSlug
             ? (_repoSlugSource ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}` : `Canonical slug: ${_repoSlug}`)

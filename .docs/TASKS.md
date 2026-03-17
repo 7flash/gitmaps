@@ -84,7 +84,8 @@
 - [x] ~~**Route cleanup: single dynamic strategy**~~ — ✅ DONE. Removed the legacy `[slug]` page so GitMaps now relies on a single catch-all dynamic route for repo slugs.
 - [x] ~~**Slug detection tests**~~ — ✅ DONE. Added focused backend tests for HTTPS/SSH forge remotes, deep namespace handling, helper path filtering, invalid segments, and source metadata extraction in `app/api/repo/load/route.test.ts`.
 - [x] ~~**Catch-all route verification tests**~~ — ✅ DONE. Added app-level routing tests using Melina's router to prove GitMaps resolves both single-segment and deep namespace slugs through `[...slug]`, while static routes still win.
-- [ ] **Canonical slug source UX polish** — Consider surfacing source details somewhere more discoverable than a tooltip/console log for non-technical users.
+- [x] ~~**Canonical slug source UX polish**~~ — ✅ DONE. Status bar now shows inline source context for canonical slugs (for example `↗ owner/repo · via github.com`) while preserving the full tooltip details.
+- [ ] **Canonical slug badge interactions** — Make the slug badge clickable so users can copy the canonical slug or inspect the full remote mapping without opening devtools.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 
 ## 🔴 Priority: Performance

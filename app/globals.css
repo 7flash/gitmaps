@@ -8149,6 +8149,13 @@ a.repo-card-btn {
   color: var(--accent-primary, #a78bfa);
 }
 
+.sb-slug {
+  color: #7dd3fc;
+  max-width: min(46vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sb-mode--simple {
   color: var(--accent-tertiary, #10b981);
 }
