@@ -1,7 +1,7 @@
 /**
  * Status Bar — VS Code-style bottom bar for GitMaps
- * 
- * Shows: zoom %, file count, selected count, repo name, mode.
+ *
+ * Shows: zoom %, file count, selected count, repo name, canonical slug, mode.
  * Updates reactively via exported update functions.
  */
 
@@ -15,6 +15,9 @@ let _zoom = 1;
 let _fileCount = 0;
 let _selectedCount = 0;
 let _repoName = '';
+let _repoPath = '';
+let _repoSlug = '';
+let _repoSlugSource = '';
 let _mode = 'Simple';
 let _commitHash = '';
 
@@ -24,6 +27,7 @@ function createBar(): HTMLElement {
     el.innerHTML = `
         <div class="sb-left">
             <span class="sb-item sb-repo" id="sbRepo" title="Current repository"></span>
+            <span class="sb-item sb-slug" id="sbSlug" title="Canonical remote slug" style="display:none"></span>
             <span class="sb-item sb-commit" id="sbCommit" title="Current commit"></span>
         </div>
         <div class="sb-right">
@@ -40,6 +44,7 @@ function render() {
     if (!bar) return;
 
     const repoEl = bar.querySelector('#sbRepo') as HTMLElement;
+    const slugEl = bar.querySelector('#sbSlug') as HTMLElement;
     const commitEl = bar.querySelector('#sbCommit') as HTMLElement;
     const modeEl = bar.querySelector('#sbMode') as HTMLElement;
     const selectedEl = bar.querySelector('#sbSelected') as HTMLElement;
@@ -48,12 +53,14 @@ function render() {
 
     if (repoEl) {
         repoEl.textContent = _repoName ? `📂 ${_repoName}` : '';
-        repoEl.title = _repoName ? `Local repo: ${_repoName}` : 'Current repository';
+        repoEl.title = _repoPath || 'Current repository';
     }
     if (slugEl) {
         slugEl.textContent = _repoSlug ? `↗ ${_repoSlug}` : '';
         slugEl.style.display = _repoSlug ? '' : 'none';
-        slugEl.title = _repoSlug ? `Canonical slug: ${_repoSlug}` : 'Canonical remote slug';
+        slugEl.title = _repoSlug
+            ? (_repoSlugSource ? `Canonical slug: ${_repoSlug}\nSource: ${_repoSlugSource}` : `Canonical slug: ${_repoSlug}`)
+            : 'Canonical remote slug';
     }
     if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash.substring(0, 7)}` : '';
     if (modeEl) {
@@ -74,7 +81,6 @@ export function initStatusBar(context: CanvasContext) {
     ctx = context;
     bar = createBar();
 
-    // Insert after canvas-area
     const canvasArea = document.querySelector('.canvas-area');
     if (canvasArea) {
         canvasArea.parentElement?.insertBefore(bar, canvasArea.nextSibling);
@@ -82,10 +88,12 @@ export function initStatusBar(context: CanvasContext) {
         document.body.appendChild(bar);
     }
 
-    // Initial sync
     const state = ctx.snap().context;
     _zoom = state.zoom || 1;
-    _repoName = (state.repoPath || '').split('/').pop() || '';
+    _repoPath = state.repoPath || '';
+    _repoName = (_repoPath || '').split('/').pop() || '';
+    _repoSlug = '';
+    _repoSlugSource = '';
     _fileCount = ctx.fileCards.size;
     _mode = state.mode === 'advanced' ? 'Advanced' : 'Simple';
     _commitHash = state.currentCommitHash || '';
@@ -114,10 +122,12 @@ export function updateStatusBarSelected(count: number) {
     }
 }
 
-export function updateStatusBarRepo(repoPath: string) {
+export function updateStatusBarRepo(repoPath: string, canonicalSlug = '', canonicalSource = '') {
+    _repoPath = repoPath;
     _repoName = repoPath.split('/').pop() || repoPath.split('\\').pop() || '';
-    const el = bar?.querySelector('#sbRepo') as HTMLElement;
-    if (el) el.textContent = `📂 ${_repoName}`;
+    _repoSlug = canonicalSlug || '';
+    _repoSlugSource = canonicalSource || '';
+    render();
 }
 
 export function updateStatusBarCommit(hash: string) {
@@ -131,10 +141,6 @@ export function updateStatusBarMode(mode: string) {
     const el = bar?.querySelector('#sbMode') as HTMLElement;
     if (el) {
         el.textContent = `${mode === 'Advanced' ? '🎯' : '✋'} ${mode}`;
-        el.className = `sb-item sb-mode sb-mode--${mode.toLowerCase()}`;
-    }
-}
-'Advanced' ? '🎯' : '✋'} ${mode}`;
         el.className = `sb-item sb-mode sb-mode--${mode.toLowerCase()}`;
     }
 }

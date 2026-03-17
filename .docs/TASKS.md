@@ -80,8 +80,9 @@
 - [x] ~~**Deep forge namespace routing**~~ — ✅ DONE. Canonical forge slug extraction now preserves full namespace depth (up to 5 segments), and GitMaps ships matching deeper dynamic routes so nested forge group paths can round-trip cleanly.
 - [x] ~~**Canonical slug verification in UI**~~ — ✅ DONE. Status bar now shows a visible `↗ slug` badge when a canonical remote slug is detected, and repo loads log the slug mapping in the console.
 - [x] ~~**Catch-all route support in Melina**~~ — ✅ DONE. Melina router now supports `[...slug]`, and GitMaps now uses a real catch-all route instead of fixed-depth namespace page files.
-- [ ] **Canonical slug source details** — Include forge host / remote URL source in the debug surfacing so mis-detections are easier to trace.
+- [x] ~~**Canonical slug source details**~~ — ✅ DONE. Status bar slug badge now includes source details in its tooltip, and console logs include forge host / remote URL context for slug detection.
 - [ ] **Route cleanup: single dynamic strategy** — Evaluate whether `[slug]` can be removed too so GitMaps uses only one canonical catch-all dynamic route path.
+- [ ] **Slug detection tests** — Add focused backend tests for HTTPS/SSH forge remote parsing and source metadata extraction so routing regressions are caught automatically.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

@@ -138,9 +138,15 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       if (isCurrentCanonicalSlug) {
         localStorage.setItem(`gitcanvas:slug:${currentPath}`, repoPath);
       }
-      updateStatusBarRepo(repoPath, canonicalSlug || "");
+      updateStatusBarRepo(
+        repoPath,
+        canonicalSlug || "",
+        data.canonicalSlugSource || "",
+      );
       if (canonicalSlug) {
-        console.info(`[gitmaps] canonical slug: ${canonicalSlug} ← ${repoPath}`);
+        console.info(
+          `[gitmaps] canonical slug: ${canonicalSlug} ← ${repoPath}${data.canonicalSlugSource ? ` (${data.canonicalSlugSource})` : ""}`,
+        );
       }
       // Save to recent repos list
       const recentKey = "gitcanvas:recentRepos";

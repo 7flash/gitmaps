@@ -118,7 +118,7 @@ export default function mount(): () => void {
     updateCanvasTransform(ctx);
     updateZoomUI(ctx);
     updateFavoriteStar("");
-    updateStatusBarRepo("", "");
+    updateStatusBarRepo("", "", "");
     updateStatusBarCommit("");
     updateStatusBarFiles(0);
     updateStatusBarSelected(0);

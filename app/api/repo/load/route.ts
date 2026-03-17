@@ -3,15 +3,16 @@ import simpleGit from 'simple-git';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
-function extractCanonicalForgeSlug(remoteUrl?: string | null): string | null {
-    if (!remoteUrl) return null;
+function extractCanonicalForgeSlugInfo(remoteUrl?: string | null): { slug: string | null; source: string } {
+    if (!remoteUrl) return { slug: null, source: '' };
 
     const normalized = remoteUrl.trim().replace(/\.git$/i, '');
 
     const sshMatch = normalized.match(/^[^@]+@([^:]+):(.+)$/);
-    const httpsMatch = normalized.match(/^(?:https?|ssh):\/\/[^/]+\/(.+)$/i);
-    const pathPart = sshMatch?.[2] || httpsMatch?.[1];
-    if (!pathPart) return null;
+    const httpsMatch = normalized.match(/^(?:https?|ssh):\/\/([^/]+)\/(.+)$/i);
+    const host = sshMatch?.[1] || httpsMatch?.[1] || '';
+    const pathPart = sshMatch?.[2] || httpsMatch?.[2];
+    if (!pathPart) return { slug: null, source: normalized };
 
     const segments = pathPart
         .split('/')
@@ -19,11 +20,14 @@ function extractCanonicalForgeSlug(remoteUrl?: string | null): string | null {
         .filter(Boolean)
         .filter(s => s !== '-' && s !== 'scm');
 
-    if (segments.length < 2) return null;
-    if (segments.length > 5) return null;
-    if (segments.some(part => /[:\\]/.test(part))) return null;
+    if (segments.length < 2) return { slug: null, source: normalized };
+    if (segments.length > 5) return { slug: null, source: normalized };
+    if (segments.some(part => /[:\\]/.test(part))) return { slug: null, source: normalized };
 
-    return segments.join('/');
+    return {
+        slug: segments.join('/'),
+        source: host ? `${host} · ${normalized}` : normalized,
+    };
 }
 
 export async function POST(req: Request) {
