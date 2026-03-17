@@ -3,7 +3,7 @@ import simpleGit from 'simple-git';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
-function extractCanonicalForgeSlugInfo(remoteUrl?: string | null): { slug: string | null; source: string } {
+export function extractCanonicalForgeSlugInfo(remoteUrl?: string | null): { slug: string | null; source: string } {
     if (!remoteUrl) return { slug: null, source: '' };
 
     const normalized = remoteUrl.trim().replace(/\.git$/i, '');
@@ -75,15 +75,19 @@ export async function POST(req: Request) {
             }));
 
             let canonicalSlug: string | null = null;
+            let canonicalSlugSource = '';
             try {
                 const remotes = await git.getRemotes(true);
                 const origin = remotes.find(r => r.name === 'origin') || remotes[0];
-                canonicalSlug = extractCanonicalForgeSlug(origin?.refs?.fetch || origin?.refs?.push || null);
+                const info = extractCanonicalForgeSlugInfo(origin?.refs?.fetch || origin?.refs?.push || null);
+                canonicalSlug = info.slug;
+                canonicalSlugSource = info.source;
             } catch {
                 canonicalSlug = null;
+                canonicalSlugSource = '';
             }
 
-            return Response.json({ commits, canonicalSlug });
+            return Response.json({ commits, canonicalSlug, canonicalSlugSource });
         } catch (error: any) {
             console.error('api:repo:load:error', error);
             return new Response(`Error: ${error.message}`, { status: 500 });
