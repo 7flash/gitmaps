@@ -79,8 +79,9 @@
 - [x] ~~**Landing reset: clear recent active repo affordances**~~ — ✅ DONE. Landing reset now clears repo-specific toggle/panel affordances including changed-files persistence, connections toggle state, hidden-file badge, connections panel, and arrange toolbar visibility.
 - [x] ~~**Deep forge namespace routing**~~ — ✅ DONE. Canonical forge slug extraction now preserves full namespace depth (up to 5 segments), and GitMaps ships matching deeper dynamic routes so nested forge group paths can round-trip cleanly.
 - [x] ~~**Canonical slug verification in UI**~~ — ✅ DONE. Status bar now shows a visible `↗ slug` badge when a canonical remote slug is detected, and repo loads log the slug mapping in the console.
-- [ ] **Catch-all route support in Melina** — Add first-class catch-all dynamic segments to the router so GitMaps no longer needs a fixed maximum namespace depth.
+- [x] ~~**Catch-all route support in Melina**~~ — ✅ DONE. Melina router now supports `[...slug]`, and GitMaps now uses a real catch-all route instead of fixed-depth namespace page files.
 - [ ] **Canonical slug source details** — Include forge host / remote URL source in the debug surfacing so mis-detections are easier to trace.
+- [ ] **Route cleanup: single dynamic strategy** — Evaluate whether `[slug]` can be removed too so GitMaps uses only one canonical catch-all dynamic route path.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.
