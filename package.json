@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "bun run server.ts",
     "start": "bun run server.ts",
-    "test": "bun test app/api/repo/load/route.test.ts app/lib/route-catchall.test.ts app/lib/xydraw.test.ts packages/galaxydraw/perf.test.ts",
+    "test": "bun test app/api/repo/load/route.test.ts app/lib/route-catchall.test.ts app/lib/status-bar.test.ts app/lib/xydraw.test.ts packages/galaxydraw/perf.test.ts",
     "prepublishOnly": "echo 'Publishing gitmaps to npm'"
   },
   "keywords": [
@@ -69,6 +69,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.3.10",
+    "happy-dom": "^20.8.4",
     "puppeteer": "^24.39.1"
   },
   "overrides": {
