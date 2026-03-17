@@ -20,14 +20,10 @@ function extractCanonicalForgeSlug(remoteUrl?: string | null): string | null {
         .filter(s => s !== '-' && s !== 'scm');
 
     if (segments.length < 2) return null;
+    if (segments.length > 5) return null;
+    if (segments.some(part => /[:\\]/.test(part))) return null;
 
-    // Current client router supports /owner/repo cleanly.
-    // For deeper forge namespaces, prefer the last 2 segments rather than emitting
-    // a path shape the client cannot currently route to.
-    const slugParts = segments.slice(-2);
-    if (slugParts.some(part => /[:\\]/.test(part))) return null;
-
-    return `${slugParts[0]}/${slugParts[1]}`;
+    return segments.join('/');
 }
 
 export async function POST(req: Request) {
@@ -78,7 +74,7 @@ export async function POST(req: Request) {
             try {
                 const remotes = await git.getRemotes(true);
                 const origin = remotes.find(r => r.name === 'origin') || remotes[0];
-                canonicalSlug = extractGitHubSlug(origin?.refs?.fetch || origin?.refs?.push || null);
+                canonicalSlug = extractCanonicalForgeSlug(origin?.refs?.fetch || origin?.refs?.push || null);
             } catch {
                 canonicalSlug = null;
             }

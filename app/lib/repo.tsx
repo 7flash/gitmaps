@@ -108,13 +108,17 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       const currentPath = decodeURIComponent(
         window.location.pathname.replace(/^\//, ""),
       );
-      const isCurrentGitHubSlug =
-        /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(currentPath) &&
+      const isCurrentCanonicalSlug =
+        currentPath.includes("/") &&
+        !currentPath.includes("\\") &&
+        !currentPath.includes(":") &&
         localStorage.getItem(`gitcanvas:slug:${currentPath}`) === repoPath;
       const repoSlug =
         repoPath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ||
         repoPath;
-      const displaySlug = isCurrentGitHubSlug ? currentPath : repoSlug;
+      const displaySlug = isCurrentCanonicalSlug
+        ? currentPath
+        : canonicalSlug || repoSlug;
       const commitHash = data.commits[0]?.hash || "";
       history.replaceState(
         null,
@@ -131,7 +135,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       if (canonicalSlug) {
         localStorage.setItem(`gitcanvas:slug:${canonicalSlug}`, repoPath);
       }
-      if (isCurrentGitHubSlug) {
+      if (isCurrentCanonicalSlug) {
         localStorage.setItem(`gitcanvas:slug:${currentPath}`, repoPath);
       }
       updateStatusBarRepo(repoPath);

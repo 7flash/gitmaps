@@ -255,7 +255,8 @@ export default function mount(): () => void {
           history.replaceState(null, "", "/" + encodeURIComponent(hashSlug));
         }
 
-        // Detect GitHub owner/repo pattern (exactly one /, no \ or : which indicate local paths)
+        // Detect cloneable GitHub owner/repo slug (exactly one /). Deeper slash paths
+        // are treated as canonical forge paths and resolved via localStorage mapping.
         const isGitHubSlug =
           /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(urlSlug) &&
           !urlSlug.includes("\\") &&
