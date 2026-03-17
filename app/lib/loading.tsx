@@ -125,6 +125,18 @@ export function updateLoadingProgress(
   }
 }
 
+export function updateLoadingMessage(
+  ctx: CanvasContext,
+  message: string,
+  progress?: number,
+) {
+  if (ctx.loadingOverlay) {
+    currentMessage = message;
+    if (progress !== undefined) currentProgress = progress;
+    rerender(ctx);
+  }
+}
+
 export function updateLoadingFileCount(
   ctx: CanvasContext,
   loaded: number,

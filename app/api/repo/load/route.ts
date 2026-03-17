@@ -47,7 +47,16 @@ export async function POST(req: Request) {
                 refs: commit.refs ? commit.refs.split(',').map(r => r.trim()).filter(Boolean) : []
             }));
 
-            return Response.json({ commits });
+            let canonicalSlug: string | null = null;
+            try {
+                const remotes = await git.getRemotes(true);
+                const origin = remotes.find(r => r.name === 'origin') || remotes[0];
+                canonicalSlug = extractGitHubSlug(origin?.refs?.fetch || origin?.refs?.push || null);
+            } catch {
+                canonicalSlug = null;
+            }
+
+            return Response.json({ commits, canonicalSlug });
         } catch (error: any) {
             console.error('api:repo:load:error', error);
             return new Response(`Error: ${error.message}`, { status: 500 });

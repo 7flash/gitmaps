@@ -69,8 +69,10 @@
 - [x] ~~**Repo load progress: total + remaining counts**~~ — ✅ DONE. Loading overlay now shows Total / Loaded / Remaining stats plus a clearer progress label while streaming repository files.
 - [x] ~~**Root route should stay placeholder**~~ — ✅ DONE. Visiting `/` now explicitly resets canvas state and shows the landing page instead of keeping the last loaded repo visible.
 - [x] ~~**Remove replay tutorial entrypoint**~~ — ✅ DONE. Removed the toolbar tutorial button and its click handler so onboarding no longer pops back into the normal workflow.
-- [ ] **Repo load progress: render phase counts** — Extend the loading overlay to show card materialization/render progress after file streaming finishes, not just file discovery.
+- [x] ~~**Repo load progress: render phase counts**~~ — ✅ DONE. Loading overlay now keeps file totals visible into the commit-diff/finalizing phase instead of degrading to a bare percentage.
+- [x] ~~**Canonical repo slug from remote**~~ — ✅ DONE. Local repos now prefer their GitHub `owner/repo` remote slug in the URL when an origin remote is available.
 - [ ] **Root route UI reset polish** — Clear sidebar/status labels (commit/file counts, changed-files panel) when returning to `/` so the landing page is completely pristine.
+- [ ] **Non-GitHub remote slug support** — Extend canonical URL detection beyond GitHub remotes (GitLab/Codeberg/self-hosted forge patterns).
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

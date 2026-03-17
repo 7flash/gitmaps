@@ -127,6 +127,9 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       localStorage.setItem("gitcanvas:lastRepo", repoPath);
       // Store slug→path mapping for URL-based loading (both short and GitHub-style)
       localStorage.setItem(`gitcanvas:slug:${repoSlug}`, repoPath);
+      if (canonicalSlug) {
+        localStorage.setItem(`gitcanvas:slug:${canonicalSlug}`, repoPath);
+      }
       if (isCurrentGitHubSlug) {
         localStorage.setItem(`gitcanvas:slug:${currentPath}`, repoPath);
       }
@@ -162,12 +165,20 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       // Then select commit (from URL hash or first commit)
       if (data.commits.length > 0) {
         const totalFiles = ctx.allFilesData?.length || 0;
-        updateLoadingProgress(
-          ctx,
-          totalFiles > 0
-            ? `Loading commit diff — ${totalFiles} files indexed`
-            : "Loading commit diff...",
-        );
+        if (totalFiles > 0) {
+          updateLoadingMessage(
+            ctx,
+            `Loading commit diff — ${totalFiles} files indexed`,
+          );
+          updateLoadingFileCount(
+            ctx,
+            totalFiles,
+            totalFiles,
+            `Comparing selected commit against ${totalFiles} indexed files`,
+          );
+        } else {
+          updateLoadingProgress(ctx, "Loading commit diff...");
+        }
         const hashFromUrl = window.location.hash?.replace("#", "");
         const commitToSelect =
           hashFromUrl && data.commits.find((c) => c.hash === hashFromUrl)
@@ -242,7 +253,7 @@ export async function loadAllFiles(ctx: CanvasContext) {
             if (chunk.total !== undefined && !chunk.files) {
               // First message: total file count
               total = chunk.total;
-              showLoadingProgress(ctx, `Loading files — ${total} total`);
+              updateLoadingMessage(ctx, `Loading files — ${total} total`);
               updateLoadingFileCount(ctx, 0, total, state.repoPath);
               continue;
             }
