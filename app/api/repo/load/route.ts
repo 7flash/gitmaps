@@ -3,6 +3,33 @@ import simpleGit from 'simple-git';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
+function extractCanonicalForgeSlug(remoteUrl?: string | null): string | null {
+    if (!remoteUrl) return null;
+
+    const normalized = remoteUrl.trim().replace(/\.git$/i, '');
+
+    const sshMatch = normalized.match(/^[^@]+@([^:]+):(.+)$/);
+    const httpsMatch = normalized.match(/^(?:https?|ssh):\/\/[^/]+\/(.+)$/i);
+    const pathPart = sshMatch?.[2] || httpsMatch?.[1];
+    if (!pathPart) return null;
+
+    const segments = pathPart
+        .split('/')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .filter(s => s !== '-' && s !== 'scm');
+
+    if (segments.length < 2) return null;
+
+    // Current client router supports /owner/repo cleanly.
+    // For deeper forge namespaces, prefer the last 2 segments rather than emitting
+    // a path shape the client cannot currently route to.
+    const slugParts = segments.slice(-2);
+    if (slugParts.some(part => /[:\\]/.test(part))) return null;
+
+    return `${slugParts[0]}/${slugParts[1]}`;
+}
+
 export async function POST(req: Request) {
     return measure('api:repo:load', async () => {
         try {
