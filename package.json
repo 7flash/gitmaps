@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "bun run server.ts",
     "start": "bun run server.ts",
-    "test": "bun test app/api/repo/load/route.test.ts app/lib/route-catchall.test.ts app/lib/status-bar.test.ts app/lib/xydraw.test.ts packages/galaxydraw/perf.test.ts",
+    "test": "bun test app/api/repo/load/route.test.ts app/lib/route-catchall.test.ts app/lib/status-bar.test.ts app/lib/xydraw.test.ts app/lib/transclusion-smoke.test.ts packages/galaxydraw/perf.test.ts",
     "prepublishOnly": "echo 'Publishing gitmaps to npm'"
   },
   "keywords": [
