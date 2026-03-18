@@ -59,6 +59,7 @@ export function setPanelCtx(ctx: CanvasContext) {
 // Dedup guard: prevent concurrent or duplicate loadRepository calls
 let _loadingRepo: string | null = null;
 let _repoLoadRequestId = 0;
+const LARGE_REPO_AUTO_COMMIT_THRESHOLD = 1000;
 
 // ─── Load repository ─────────────────────────────────────
 export async function loadRepository(ctx: CanvasContext, repoPath: string) {
@@ -189,27 +190,41 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       // Then select commit (from URL hash or first commit)
       if (data.commits.length > 0) {
         const totalFiles = ctx.allFilesData?.length || 0;
-        updateLoadingMessage(
-          ctx,
-          totalFiles > 0
-            ? `Loading commit diff — ${totalFiles} files indexed`
-            : "Loading commit diff...",
-        );
-        if (totalFiles > 0) {
-          updateLoadingFileCount(
-            ctx,
-            totalFiles,
-            totalFiles,
-            `Comparing selected commit against ${totalFiles} indexed files`,
-          );
-        }
         const hashFromUrl = window.location.hash?.replace("#", "");
         const commitToSelect =
           hashFromUrl && data.commits.find((c) => c.hash === hashFromUrl)
             ? hashFromUrl
             : data.commits[0].hash;
-        await selectCommit(ctx, commitToSelect);
-        if (isStale()) return;
+
+        if (totalFiles > LARGE_REPO_AUTO_COMMIT_THRESHOLD) {
+          const selectedCommit =
+            data.commits.find((c) => c.hash === commitToSelect) || data.commits[0];
+          ctx.actor.send({ type: "SELECT_COMMIT", hash: commitToSelect });
+          updateCommitInfo(commitToSelect, selectedCommit?.message || "", true);
+          updateStatusBarCommit(commitToSelect);
+          const [basePath] = window.location.href.split("#");
+          history.replaceState(null, "", `${basePath}#${commitToSelect}`);
+          console.info(
+            `[repo] Skipping initial commit diff render for large repo (${totalFiles} files): ${repoPath}`,
+          );
+        } else {
+          updateLoadingMessage(
+            ctx,
+            totalFiles > 0
+              ? `Loading commit diff — ${totalFiles} files indexed`
+              : "Loading commit diff...",
+          );
+          if (totalFiles > 0) {
+            updateLoadingFileCount(
+              ctx,
+              totalFiles,
+              totalFiles,
+              `Comparing selected commit against ${totalFiles} indexed files`,
+            );
+          }
+          await selectCommit(ctx, commitToSelect);
+          if (isStale()) return;
+        }
       }
 
       // Generate virtual transclusion cards only after the final commit/file render settles.
@@ -730,11 +745,6 @@ export function renderFilesOnCanvas(
 // Virtualized: only creates DOM for cards in/near the viewport.
 // Remaining cards are deferred and materialized on-demand by viewport culling.
 export function renderAllFilesOnCanvas(ctx: CanvasContext, files: any[]) {
-  // Use progressive loading for large repos (500+ files)
-  if (files.length >= 500) {
-    return;
-  }
-
   measure("canvas:renderAllFiles", () => {
     // In multi-repo mode, don't clear canvas if adding a second repo
     const isAdditionalRepo = isMultiRepoLoad();

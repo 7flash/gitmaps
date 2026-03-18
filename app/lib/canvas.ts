@@ -5,7 +5,7 @@
 import { measure } from 'measure-fn';
 import { updateStatusBarZoom } from './status-bar';
 import type { CanvasContext } from './context';
-import { scheduleViewportCulling, uncullAllCards, markTransformActive, clearAllPills } from './viewport-culling';
+import { scheduleViewportCulling, markTransformActive, clearAllPills } from './viewport-culling';
 import { clearVirtualCards } from './virtual-files';
 import { getGalaxyDrawState } from './xydraw-bridge';
 
@@ -432,9 +432,6 @@ export function fitAllFiles(ctx: CanvasContext) {
         if (ctx.fileCards.size === 0 && (!ctx.deferredCards || ctx.deferredCards.size === 0)) {
             if (!ctx.canvasViewport) return;
         }
-
-        // Temporarily uncull all cards so offsetWidth/Height are measurable
-        uncullAllCards(ctx);
 
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         ctx.fileCards.forEach(card => {
