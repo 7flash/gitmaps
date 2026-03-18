@@ -25,12 +25,32 @@ export interface VirtualFile {
 
 const MIN_LINES = 120;
 const MIN_BYTES = 12_000;
-const MAX_VIRTUAL_FILES = 8;
+const MAX_VIRTUAL_FILES = 6;
 const MAX_SEGMENTS_PER_FILE = 2;
 const VIRTUAL_CARD_WIDTH = 320;
 const VIRTUAL_CARD_HEIGHT = 200;
 const VIRTUAL_CARD_GAP_X = 36;
 const VIRTUAL_CARD_GAP_Y = 22;
+
+const EXCLUDED_PATH_PATTERNS = [
+  /(^|\/)dist\//,
+  /(^|\/)build\//,
+  /(^|\/)coverage\//,
+  /(^|\/)\.docs\//,
+  /(^|\/)docs\//,
+  /(^|\/)tests?\//,
+  /(^|\/)__tests__\//,
+  /(^|\/)packages\/galaxydraw\/dist\//,
+  /(^|\/)node_modules\//,
+  /(^|\/)app\/globals\.css$/,
+  /(^|\/)app\/styles\/main\.css$/,
+  /(^|\/)app\/layout\.tsx$/,
+  /\.test\.[^.]+$/,
+  /\.spec\.[^.]+$/,
+  /-lock\./,
+];
+
+const DEPRIORITIZED_EXTS = new Set(['css', 'scss', 'less', 'md', 'txt', 'svg', 'json']);
 
 // ─── Detection ───────────────────────────────────────────
 
@@ -62,7 +82,10 @@ export function detectVirtualSegments(content: string, filePath: string): Virtua
 }
 
 function compressionScore(segment: VirtualSegment): number {
-  return segment.content.length * Math.max(segment.occurrences - 1, 1);
+  const base = segment.content.length * Math.max(segment.occurrences - 1, 1);
+  const typeBoost = segment.type === 'repeating' ? 1.35 : 1;
+  const occurrenceBoost = Math.min(segment.occurrences / 8, 2.5);
+  return Math.round(base * typeBoost * occurrenceBoost);
 }
 
 /**
@@ -106,8 +129,12 @@ function detectCommonPrefixes(lines: string[], filePath: string): VirtualSegment
 function looksCompressiblePrefix(prefix: string): boolean {
   // Avoid generating cards for boring indentation or very low-signal prefixes.
   const trimmed = prefix.trim();
-  if (trimmed.length < 8) return false;
+  if (trimmed.length < 12) return false;
   if (/^[\[{(<\-_=:.\s]+$/.test(prefix)) return false;
+  if (/^[A-Z_-]+:?$/.test(trimmed)) return false;
+  if (/^[a-z0-9_-]+$/i.test(trimmed) && trimmed.length < 18) return false;
+  const alphaCount = (trimmed.match(/[A-Za-z]/g) || []).length;
+  if (alphaCount < 4) return false;
   return /[A-Za-z0-9]/.test(prefix);
 }
 
@@ -180,20 +207,42 @@ function getOriginalPlacement(ctx: CanvasContext, originalFilePath: string) {
 function shouldCreateVirtualCards(file: any): boolean {
   if (!file?.content || typeof file.content !== 'string') return false;
   if (file.isBinary || file.type !== 'file') return false;
+  const normalizedPath = String(file.path || '').replace(/\\/g, '/');
+  if (EXCLUDED_PATH_PATTERNS.some((pattern) => pattern.test(normalizedPath))) return false;
   const lineCount = file.lines || file.content.split('\n').length;
   const byteSize = file.size || file.content.length;
   return lineCount >= MIN_LINES || byteSize >= MIN_BYTES;
+}
+
+function getFilePriorityScore(file: any): number {
+  const normalizedPath = String(file.path || '').replace(/\\/g, '/');
+  const ext = String(file.ext || '').toLowerCase();
+  let score = 1;
+
+  if (normalizedPath.startsWith('app/') || normalizedPath.startsWith('src/')) score += 1.4;
+  if (normalizedPath.includes('/lib/')) score += 0.8;
+  if (normalizedPath.includes('/api/')) score += 0.45;
+  if (normalizedPath.includes('/components/')) score += 0.45;
+  if (normalizedPath.includes('/route.')) score += 0.2;
+
+  if (DEPRIORITIZED_EXTS.has(ext)) score -= 0.9;
+  if (ext === 'ts' || ext === 'tsx' || ext === 'js' || ext === 'jsx') score += 0.75;
+
+  return Math.max(score, 0.15);
 }
 
 function getEligibleVirtualFiles(files: any[]): any[] {
   return files
     .filter(shouldCreateVirtualCards)
     .map((file) => {
-      const segments = detectVirtualSegments(file.content, file.path);
-      const score = segments.reduce((sum, seg) => sum + compressionScore(seg), 0);
+      const segments = detectVirtualSegments(file.content, file.path)
+        .filter((seg) => seg.type === 'repeating' || seg.occurrences >= 12)
+        .slice(0, 3);
+      const baseScore = segments.reduce((sum, seg) => sum + compressionScore(seg), 0);
+      const score = Math.round(baseScore * getFilePriorityScore(file));
       return { file, segments, score };
     })
-    .filter((entry) => entry.segments.length > 0)
+    .filter((entry) => entry.segments.length > 0 && entry.score > 900)
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_VIRTUAL_FILES);
 }
