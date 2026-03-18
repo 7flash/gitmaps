@@ -97,7 +97,7 @@
 - [x] ~~**Transclusion UX/threshold tuning**~~ — ✅ DONE. Tightened prefix heuristics, excluded style/layout/docs/test/dist noise from candidate ranking, weighted real source files higher, and reduced visual spam so transclusion cards now target meaningful logic files.
 - [x] ~~**Transclusion interactions**~~ — ✅ DONE. Virtual cards now show better source-file/line context and clicking a transclusion card jumps/highlights the source file using the shared canvas navigation path.
 - [x] ~~**Repo-load + transclusion smoke test**~~ — ✅ DONE. Added `app/lib/transclusion-smoke.test.ts` using happy-dom to verify transclusion card generation plus click-to-source navigation/highlight behavior, and wired it into the test script.
-- [ ] **Status bar DOM test harness cleanup** — Reuse the new headless DOM setup helper for future status-bar/popover tests instead of duplicating global window/document bootstrapping.
+- [x] ~~**Status bar DOM test harness cleanup**~~ — ✅ DONE. Added shared `app/lib/test-dom.ts` happy-dom setup helpers and migrated status-bar, recent-commits, and transclusion smoke tests to the reusable harness.
 - [ ] **Transclusion smoke coverage for slug hydration** — Extend the current smoke test to also assert catch-all slug hydration and repo bootstrap together with transclusion rendering.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 - [ ] **Repo loading overlay smoke test** — Add a reproducible slow-load or fixture-based test path so file-count loading UI can be verified without racing a fast local repo load.

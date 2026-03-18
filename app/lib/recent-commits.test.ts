@@ -1,36 +1,29 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
+import type { Window } from 'happy-dom';
 import { addRecentRepo, getRecentRepos, renderRecentCommitsUI } from './recent-commits';
+import { setupDomTest } from './test-dom';
 
 describe('recent commits sidebar', () => {
   let window: Window;
 
+  let cleanup: (() => void) | undefined;
+
   beforeEach(() => {
-    window = new Window({ url: 'http://localhost:3335/' });
-
-    (window as any).SyntaxError = SyntaxError;
-
-    Object.assign(globalThis, {
-      window,
-      document: window.document,
-      navigator: window.navigator,
-      HTMLElement: window.HTMLElement,
-      HTMLButtonElement: window.HTMLButtonElement,
-      localStorage: window.localStorage,
+    const handle = setupDomTest({
+      url: 'http://localhost:3335/',
+      html: `
+        <div id="recentCommits" style="display:none">
+          <div id="recentCommitsList"></div>
+        </div>
+        <button id="pullBtn">Pull</button>
+      `,
     });
-
-    document.body.innerHTML = `
-      <div id="recentCommits" style="display:none">
-        <div id="recentCommitsList"></div>
-      </div>
-      <button id="pullBtn">Pull</button>
-    `;
+    window = handle.window;
+    cleanup = handle.cleanup;
   });
 
   afterEach(() => {
-    window?.close();
-    document.body.innerHTML = '';
-    localStorage.clear();
+    cleanup?.();
   });
 
   test('normalizes legacy localStorage entries and removes malformed ones', () => {

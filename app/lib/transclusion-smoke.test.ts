@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
+import type { Window } from 'happy-dom';
 import { processVirtualFileSet } from './virtual-files';
+import { setElementRect, setupDomTest } from './test-dom';
 
 function makeActor() {
   const state = {
@@ -29,22 +30,6 @@ function makeActor() {
   };
 }
 
-function setRect(el: HTMLElement, width: number, height: number) {
-  Object.defineProperty(el, 'offsetWidth', { value: width, configurable: true });
-  Object.defineProperty(el, 'offsetHeight', { value: height, configurable: true });
-  (el as any).getBoundingClientRect = () => ({
-    left: 0,
-    top: 0,
-    width,
-    height,
-    right: width,
-    bottom: height,
-    x: 0,
-    y: 0,
-    toJSON() {},
-  });
-}
-
 function makeRepeatingContent() {
   const repeated = [
     'export function renderWidget(ctx) {',
@@ -69,41 +54,32 @@ describe('transclusion smoke', () => {
   let ctx: any;
   let sourceCard: HTMLElement;
 
+  let cleanup: (() => void) | undefined;
+
   beforeEach(() => {
-    window = new Window({ url: 'http://localhost:3335/gitmaps' });
-    (window as any).SyntaxError = SyntaxError;
-
-    Object.assign(globalThis, {
-      window,
-      document: window.document,
-      navigator: window.navigator,
-      localStorage: window.localStorage,
-      HTMLElement: window.HTMLElement,
-      SVGElement: window.SVGElement,
-      Node: window.Node,
-      Event: window.Event,
-      MouseEvent: window.MouseEvent,
-      requestAnimationFrame: (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0),
-      cancelAnimationFrame: (id: any) => clearTimeout(id),
+    const handle = setupDomTest({
+      url: 'http://localhost:3335/gitmaps',
+      raf: true,
+      html: `
+        <div class="canvas-area"></div>
+        <div id="canvasViewport"><div id="canvasContent"><svg id="connectionsOverlay"></svg></div></div>
+        <input id="zoomSlider" />
+        <span id="zoomValue"></span>
+        <input id="stickyZoomSlider" />
+        <span id="stickyZoomValue"></span>
+        <div id="minimap"></div>
+        <div id="minimapViewport"></div>
+      `,
     });
-
-    document.body.innerHTML = `
-      <div class="canvas-area"></div>
-      <div id="canvasViewport"><div id="canvasContent"><svg id="connectionsOverlay"></svg></div></div>
-      <input id="zoomSlider" />
-      <span id="zoomValue"></span>
-      <input id="stickyZoomSlider" />
-      <span id="stickyZoomValue"></span>
-      <div id="minimap"></div>
-      <div id="minimapViewport"></div>
-    `;
+    window = handle.window;
+    cleanup = handle.cleanup;
 
     const viewport = document.getElementById('canvasViewport') as HTMLElement;
     const canvas = document.getElementById('canvasContent') as HTMLElement;
     const overlay = document.getElementById('connectionsOverlay') as unknown as SVGSVGElement;
-    setRect(viewport, 1400, 900);
-    setRect(canvas, 4000, 3000);
-    setRect(overlay as unknown as HTMLElement, 1400, 900);
+    setElementRect(viewport, 1400, 900);
+    setElementRect(canvas, 4000, 3000);
+    setElementRect(overlay as unknown as HTMLElement, 1400, 900);
 
     actor = makeActor();
     ctx = {
@@ -135,15 +111,13 @@ describe('transclusion smoke', () => {
     sourceCard.dataset.path = 'app/lib/events.tsx';
     sourceCard.style.left = '900px';
     sourceCard.style.top = '600px';
-    setRect(sourceCard, 580, 700);
+    setElementRect(sourceCard, 580, 700);
     canvas.appendChild(sourceCard);
     ctx.fileCards.set('app/lib/events.tsx', sourceCard);
   });
 
   afterEach(() => {
-    window?.close();
-    document.body.innerHTML = '';
-    localStorage.clear();
+    cleanup?.();
   });
 
   test('creates transclusion cards and clicking one highlights the source card', async () => {

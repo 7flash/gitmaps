@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
+import type { Window } from 'happy-dom';
 import { initStatusBar, updateStatusBarRepo } from './status-bar';
+import { setupDomTest } from './test-dom';
 
 function makeContext() {
     return {
@@ -32,33 +33,20 @@ function pressKey(target: EventTarget, key: string, options: Record<string, any>
 describe('status bar canonical slug accessibility', () => {
     let window: Window;
 
+    let cleanup: (() => void) | undefined;
+
     beforeEach(() => {
-        window = new Window({ url: 'http://localhost:3335/' });
-
-        (window as any).SyntaxError = SyntaxError;
-
-        Object.assign(globalThis, {
-            window,
-            document: window.document,
-            navigator: window.navigator,
-            HTMLElement: window.HTMLElement,
-            HTMLButtonElement: window.HTMLButtonElement,
-            Node: window.Node,
-            Event: window.Event,
-            MouseEvent: window.MouseEvent,
-            KeyboardEvent: window.KeyboardEvent,
+        const handle = setupDomTest({
+            url: 'http://localhost:3335/',
+            html: '<div class="canvas-area"></div>',
+            clipboard: { writeText: async () => {} },
         });
-
-        document.body.innerHTML = '<div class="canvas-area"></div>';
-        Object.defineProperty(navigator, 'clipboard', {
-            value: { writeText: async () => {} },
-            configurable: true,
-        });
+        window = handle.window;
+        cleanup = handle.cleanup;
     });
 
     afterEach(() => {
-        window?.close();
-        document.body.innerHTML = '';
+        cleanup?.();
     });
 
     test('Enter opens slug popover and focuses first button', () => {
