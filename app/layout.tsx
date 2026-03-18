@@ -252,7 +252,9 @@ export default function RootLayout({ children }: { children: any }) {
                   >
                     <circle cx="12" cy="12" r="10" />
                     <path d="M12 6v6l4 2" />
-         </div>
+                  </svg>
+                </div>
+              </div>
             </div>
 
 
@@ -783,7 +785,9 @@ export default function RootLayout({ children }: { children: any }) {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItemsr(--border)",
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  borderBottom: "1px solid var(--border)",
                 }}
               >
                 <span
@@ -934,19 +938,13 @@ export default function RootLayout({ children }: { children: any }) {
         </div>
 
         {/* File Preview Modal */}
-        <diviner"></div>
-          </main>
-        </div>
-
-        {/* File Preview Modal */}
         <div className="file-preview-modal" id="filePreviewModal">
           <div className="modal-backdrop"></div>
           <div className="modal-content">
             <div className="modal-header">
               <div className="modal-header-left">
                 <span className="file-path" id="previewFilePath"></span>
-                <span classNameme="modal-file-status"
-                  id="previewFileStatus"   <span
+                <span
                   className="modal-file-status"
                   id="previewFileStatus"
                 ></span>
@@ -1024,10 +1022,7 @@ export default function RootLayout({ children }: { children: any }) {
                   </button>
                 </div>
                 <span
-                 Diff
-                  </button>
-                </div>
-SaveStatus"
+                  id="modalSaveStatus"
                   style={{ display: "none" }}
                 ></span>
                 <button
@@ -1035,9 +1030,6 @@ SaveStatus"
                   id="outlineToggle"
                   title="Toggle symbol outline (Ctrl+Shift+O)"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                               >
                   <svg
                     viewBox="0 0 24 24"
                     width="14"
@@ -1055,7 +1047,11 @@ SaveStatus"
                   </svg>
                 </button>
                 <button className="modal-close" id="closePreview">
-          <div className="modal-body-wrapper">
+                  &times;
+                </button>
+              </div>
+            </div>
+            <div className="modal-body-wrapper">
               <pre className="modal-body" id="modalBodyPre">
                 <code id="previewContent"></code>
               </pre>
@@ -1089,19 +1085,17 @@ SaveStatus"
               <div className="modal-edit-toolbar" id="modalEditToolbar">
                 <span className="edit-line-info" id="editLineInfo">
                   Line 1, Col 1
-             <span className="edit-line-info" id="editLineInfo">
-                  Line 1, Col 1
                 </span>
                 <div className="edit-toolbar-right">
                   <div
                     className="edit-commit-section"
-            >
+                    id="editCommitSection"
+                    style={{ display: "none" }}
+                  >
                     <input
                       type="text"
                       id="editCommitMsg"
                       className="edit-commit-input"
-                      placeholder="Commit message..."
-                      spellCheck={fainput"
                       placeholder="Commit message..."
                       spellCheck={false}
                       autoComplete="off"
@@ -1120,7 +1114,7 @@ SaveStatus"
                         strokeWidth="2"
                       >
                         <circle cx="12" cy="12" r="4" />
-                        <line x1=2" />
+                        <path d="M5 12l5 5L20 7" />
                       </svg>
                       Commit
                     </button>
@@ -1301,28 +1295,6 @@ SaveStatus"
                     if ('serviceWorker' in navigator) {
                         navigator.serviceWorker.register('/api/sw.js', { scope: '/' })
                             .catch(function(e) { console.warn('[SW] Registration failed:', e); });
-                    }
-                    fetch('/api/analytics', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ path: location.pathname })
-                    }).catch(function(){});
-                `,
-          }}
-        />
-      </body>
-    </html>
-  );
-}
-function(){});
-                `,
-          }}
-        />
-      </body>
-    </html>
-  );
-}
- .catch(function(e) { console.warn('[SW] Registration failed:', e); });
                     }
                     fetch('/api/analytics', {
                         method: 'POST',

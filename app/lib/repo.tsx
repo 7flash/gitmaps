@@ -22,6 +22,7 @@ import {
   showLoadingProgress,
   updateLoadingProgress,
   updateLoadingFileCount,
+  updateLoadingMessage,
   hideLoadingProgress,
 } from "./loading";
 import {
@@ -105,6 +106,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       // Determine the best URL slug to display:
       // If the current URL is already a GitHub owner/repo slug that maps to this repo, keep it.
       // Otherwise fall back to the short folder name.
+      const canonicalSlug = data.canonicalSlug || "";
       const currentPath = decodeURIComponent(
         window.location.pathname.replace(/^\//, ""),
       );
@@ -213,6 +215,8 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       _loadingRepo = null; // Allow retry
       ctx.actor.send({ type: "REPO_ERROR", error: err.message });
       measure("repo:loadError", () => err);
+      console.error("[repo:loadError] Full error:", err, err?.stack);
+      (window as any).__lastLoadError = { message: err?.message, stack: err?.stack, name: err?.name, err: String(err) };
       showToast(`Failed: ${err.message} `, "error");
     }
   });
@@ -1341,13 +1345,6 @@ export async function processVirtualFiles(ctx: CanvasContext): Promise<void> {
       const data = await response.json();
       if (data.content) {
         await processFileForVirtualCards(ctx, file.path, data.content);
-      }
-    } catch (err) {
-      console.warn(`[virtual-files] Failed to process ${file.path}:`, err);
-    }
-  }
-}
-essFileForVirtualCards(ctx, file.path, data.content);
       }
     } catch (err) {
       console.warn(`[virtual-files] Failed to process ${file.path}:`, err);

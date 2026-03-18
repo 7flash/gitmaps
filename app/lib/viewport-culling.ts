@@ -283,11 +283,16 @@ export function performViewportCulling(ctx: CanvasContext) {
     if (!worldRect) return;
 
     // Phase 4c: also materialize deferred CardManager cards
-    materializeViewport(ctx);
-
     // Reuse zoom from worldRect (already snapped) — avoids redundant ctx.snap()
     const zoom = worldRect.zoom;
     const isLowZoom = zoom <= LOD_ZOOM_THRESHOLD;
+
+    // Important: never materialize full cards while in low-zoom pill mode.
+    // Otherwise CardManager keeps mounting heavyweight cards right when the
+    // UI is supposed to collapse into lightweight placeholders.
+    if (!isLowZoom) {
+        materializeViewport(ctx);
+    }
     const newLodMode = isLowZoom ? 'pill' : 'full';
 
     let culled = 0;

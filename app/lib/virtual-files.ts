@@ -197,6 +197,25 @@ export function createVirtualCard(
   return card;
 }
 
+// ─── Process File for Virtual Cards ──────────────────────
+
+export async function processFileForVirtualCards(
+  ctx: CanvasContext,
+  filePath: string,
+  content: string
+): Promise<void> {
+  const segments = detectVirtualSegments(content, filePath);
+  if (segments.length === 0) return;
+
+  const canvasContent = document.getElementById('canvasContent');
+  if (!canvasContent) return;
+
+  for (const segment of segments) {
+    const card = createVirtualCard(ctx, segment, filePath);
+    canvasContent.appendChild(card);
+  }
+}
+
 // ─── Connection Highlighting ─────────────────────────────
 
 function highlightConnections(
@@ -254,4 +273,20 @@ function drawConnectionLine(from: HTMLElement, to: HTMLElement): void {
   const toRect = to.getBoundingClientRect();
   const viewport = overlay.getBoundingClientRect();
   
-  const x1 = fromRect.left + fromRect.width / 2 - viewp
+  const x1 = fromRect.left + fromRect.width / 2 - viewport.left;
+  const y1 = fromRect.top + fromRect.height / 2 - viewport.top;
+  const x2 = toRect.left + toRect.width / 2 - viewport.left;
+  const y2 = toRect.top + toRect.height / 2 - viewport.top;
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', String(x1));
+  line.setAttribute('y1', String(y1));
+  line.setAttribute('x2', String(x2));
+  line.setAttribute('y2', String(y2));
+  line.setAttribute('class', 'virtual-connection');
+  line.setAttribute('stroke', 'var(--accent)');
+  line.setAttribute('stroke-width', '1.5');
+  line.setAttribute('stroke-dasharray', '4 4');
+  line.setAttribute('opacity', '0.4');
+  overlay.appendChild(line);
+}
