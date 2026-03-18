@@ -58,6 +58,7 @@ export function setPanelCtx(ctx: CanvasContext) {
 
 // Dedup guard: prevent concurrent or duplicate loadRepository calls
 let _loadingRepo: string | null = null;
+let _repoLoadRequestId = 0;
 
 // ─── Load repository ─────────────────────────────────────
 export async function loadRepository(ctx: CanvasContext, repoPath: string) {
@@ -70,6 +71,15 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
     );
     return;
   }
+
+  const requestId = ++_repoLoadRequestId;
+  const isStale = () => requestId !== _repoLoadRequestId;
+  const clearLoadingGuard = () => {
+    if (!isStale() && _loadingRepo === repoPath) {
+      _loadingRepo = null;
+    }
+  };
+
   _loadingRepo = repoPath;
   _panelCtx = ctx;
   ctx.actor.send({ type: "LOAD_REPO", path: repoPath });
@@ -90,6 +100,10 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
 
       updateLoadingProgress(ctx, "Parsing commits...", 30);
       const data = await response.json();
+      if (isStale()) {
+        console.log(`[repo] Ignoring stale load result for "${repoPath}"`);
+        return;
+      }
       ctx.actor.send({ type: "REPO_LOADED", commits: data.commits });
 
       // Add to recent repos
@@ -165,10 +179,12 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       // so cards get placed at their correct saved locations
       ctx.snap().context.repoPath = repoPath;
       await loadSavedPositions(ctx);
+      if (isStale()) return;
 
       const viewState = ctx.snap().value?.view;
       // Always load all files first — loadAllFiles now shows real file count progress
       await loadAllFiles(ctx);
+      if (isStale()) return;
 
       // Then select commit (from URL hash or first commit)
       if (data.commits.length > 0) {
@@ -193,16 +209,17 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
             ? hashFromUrl
             : data.commits[0].hash;
         await selectCommit(ctx, commitToSelect);
+        if (isStale()) return;
       }
 
       // Generate virtual transclusion cards only after the final commit/file render settles.
       setTimeout(() => {
-        processVirtualFiles(ctx);
+        if (!isStale()) processVirtualFiles(ctx);
       }, 120);
 
       updateLoadingProgress(ctx, "Done!", 100);
       hideLoadingProgress(ctx);
-      _loadingRepo = null; // Allow future reloads
+      clearLoadingGuard(); // Allow future reloads
 
       // Re-render timeline after all async work — the initial renderCommitTimeline
       // at line 76 can get clobbered if DOM re-renders during loadAllFiles/selectCommit
@@ -216,13 +233,15 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
 
       // Onboarding removed — users learn by exploring the canvas directly
     } catch (err) {
-      hideLoadingProgress(ctx);
-      _loadingRepo = null; // Allow retry
-      ctx.actor.send({ type: "REPO_ERROR", error: err.message });
-      measure("repo:loadError", () => err);
-      console.error("[repo:loadError] Full error:", err, err?.stack);
-      (window as any).__lastLoadError = { message: err?.message, stack: err?.stack, name: err?.name, err: String(err) };
-      showToast(`Failed: ${err.message} `, "error");
+      if (!isStale()) {
+        hideLoadingProgress(ctx);
+        clearLoadingGuard(); // Allow retry
+        ctx.actor.send({ type: "REPO_ERROR", error: err.message });
+        measure("repo:loadError", () => err);
+        console.error("[repo:loadError] Full error:", err, err?.stack);
+        (window as any).__lastLoadError = { message: err?.message, stack: err?.stack, name: err?.name, err: String(err) };
+        showToast(`Failed: ${err.message} `, "error");
+      }
     }
   });
 }
