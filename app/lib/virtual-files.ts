@@ -7,6 +7,7 @@
 
 import type { CanvasContext } from './context';
 import { escapeHtml } from './utils';
+import { jumpToFile } from './canvas';
 
 export interface VirtualSegment {
   id: string;
@@ -268,23 +269,30 @@ export function createVirtualCard(
   const typeIcon = segment.type === 'prefix' ? '🔖' : segment.type === 'repeating' ? '🔁' : '📋';
   const compressionRatio = Math.round((1 - 1 / Math.max(segment.occurrences, 1)) * 100);
   const title = segment.type === 'prefix' ? 'Shared Prefix' : 'Repeated Block';
-  const lines = segment.lineNumbers.slice(0, 4).map((n) => n + 1).join(', ');
+  const fileName = originalFilePath.split('/').pop() || originalFilePath;
+  const linePreview = segment.lineNumbers.slice(0, 4).map((n) => n + 1).join(', ');
+  const lineSummary = segment.lineNumbers.length === 1
+    ? `line ${segment.lineNumbers[0] + 1}`
+    : `lines ${linePreview}${segment.lineNumbers.length > 4 ? ', …' : ''}`;
 
   card.innerHTML = `
     <div class="card-header" style="background: linear-gradient(135deg, rgba(124,58,237,0.22), rgba(59,130,246,0.22)); border-bottom: 1px solid var(--border-primary); display:flex; align-items:center; gap:8px; padding:10px 12px;">
       <span style="font-size: 14px;">${typeIcon}</span>
-      <span style="flex:1; font-weight:600; font-size:11px; color:var(--text-primary);">${title}</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:600; font-size:11px; color:var(--text-primary);">${title}</div>
+        <div style="font-size:10px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(fileName)} · ${lineSummary}</div>
+      </div>
       <span style="font-size:10px; color: var(--accent-primary);">-${compressionRatio}%</span>
     </div>
     <div class="card-body" style="padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); overflow: hidden;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:var(--text-primary);">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:var(--text-primary); gap:8px;">
         <span>${segment.occurrences} occurrences</span>
-        <span>lines ${lines}${segment.lineNumbers.length > 4 ? ', …' : ''}</span>
+        <span style="text-align:right; opacity:0.9;">click to jump to source</span>
       </div>
       <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; max-height: 120px; overflow: hidden;">
         <code style="white-space: pre-wrap; word-break: break-word; color: #94a3b8;">${escapeHtml(segment.content.substring(0, 340))}${segment.content.length > 340 ? '…' : ''}</code>
       </div>
-      <div style="margin-top:8px; font-size:10px; opacity:0.8;">↗ transcluded from ${escapeHtml(originalFilePath.split('/').pop() || originalFilePath)}</div>
+      <div style="margin-top:8px; font-size:10px; opacity:0.8;">↗ ${escapeHtml(originalFilePath)} · ${lineSummary}</div>
     </div>
   `;
 
@@ -311,11 +319,10 @@ export function createVirtualCard(
     card.style.transform = '';
   });
 
+  card.title = `Jump to ${originalFilePath}`;
+
   card.addEventListener('click', () => {
-    const originalCard = ctx.fileCards.get(originalFilePath);
-    if (originalCard) {
-      originalCard.scrollIntoView({ block: 'center', inline: 'center' });
-    }
+    jumpToFile(ctx, originalFilePath);
   });
 
   return card;
