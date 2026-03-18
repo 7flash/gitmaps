@@ -35,6 +35,7 @@ import { exportCanvasAsPNG, exportViewportAsPNG } from './canvas-export';
 import { cancelPendingConnection, hasPendingConnection } from './connections';
 import { promptAddSection } from './layers';
 import { addRecentRepo, getRecentRepos } from './recent-commits';
+import { appendDiscoveredRepos, populateRepoSelect } from './repo-select';
 
 // ─── Recent repos helper ────────────────────────────────
 function _addRecentRepo(path: string, commitCount: number = 0) {
@@ -44,21 +45,7 @@ function _addRecentRepo(path: string, commitCount: number = 0) {
 function _refreshRepoDropdown() {
     const repoSel = document.getElementById('repoSelect') as HTMLSelectElement;
     if (!repoSel) return;
-    const updatedRepos = getRecentRepos();
-    while (repoSel.options.length > 1) repoSel.remove(1);
-    updatedRepos.forEach((repo: any) => {
-        const repoPath = typeof repo === "string" ? repo : repo?.path || "";
-        if (!repoPath) return;
-        const opt = document.createElement('option');
-        opt.value = repoPath;
-        opt.textContent = repoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || repoPath;
-        opt.title = repoPath;
-        repoSel.add(opt);
-    });
-    const newOpt = document.createElement('option');
-    newOpt.value = '__new__';
-    newOpt.textContent = '＋ Open new repo...';
-    repoSel.add(newOpt);
+    populateRepoSelect(repoSel, getRecentRepos(), { hashPath: '' });
 }
 
 // ─── Canvas interaction (pan/zoom/select) ───────────────
@@ -552,56 +539,15 @@ export function setupEventListeners(ctx: CanvasContext) {
         if (repoSelect) {
             // Populate dropdown from recent repos
             const recentRepos = getRecentRepos();
-            // Clear except first placeholder
-            while (repoSelect.options.length > 1) repoSelect.remove(1);
-            recentRepos.forEach(repo => {
-                const repoPath = repo.path;
-                if (!repoPath) return;
-
-                const opt = document.createElement('option');
-                opt.value = repoPath;
-                const shortName = repoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() || repoPath;
-                opt.textContent = shortName;
-                opt.title = repoPath;
-                repoSelect.add(opt);
-            });
-            // "Open new repo..." option at the end
-            const newOpt = document.createElement('option');
-            newOpt.value = '__new__';
-            newOpt.textContent = '＋ Open new repo...';
-            repoSelect.add(newOpt);
-
-            // Set initial value from hash — otherwise keep placeholder
             const hashPath = decodeURIComponent(location.hash.slice(1));
-            if (hashPath && recentRepos.some(repo => repo.path === hashPath)) {
-                repoSelect.value = hashPath;
-            } else if (!hashPath) {
-                repoSelect.value = '';  // Keep "Select a repository..." shown
-            }
+            populateRepoSelect(repoSelect, recentRepos, { hashPath });
 
             // ── Also discover on-disk repos that may not be in localStorage ──
             fetch('/api/repo/list').then(r => r.json()).then((data: any) => {
                 if (!data.repos || data.repos.length === 0) return;
-                const currentPaths = new Set(recentRepos.map(repo => repo.path));
-                let added = false;
-                for (const repo of data.repos) {
-                    if (!currentPaths.has(repo.path)) {
-                        // Add to localStorage recent repos
-                        _addRecentRepo(repo.path);
-                        // Add to dropdown (before the __new__ option)
-                        const opt = document.createElement('option');
-                        opt.value = repo.path;
-                        opt.textContent = repo.name;
-                        opt.title = repo.path;
-                        const newOpt2 = repoSelect.querySelector('option[value="__new__"]');
-                        if (newOpt2) {
-                            repoSelect.insertBefore(opt, newOpt2);
-                        } else {
-                            repoSelect.add(opt);
-                        }
-                        added = true;
-                    }
-                }
+                appendDiscoveredRepos(repoSelect, recentRepos, data.repos, (repoPath) => {
+                    _addRecentRepo(repoPath);
+                });
             }).catch(() => { });
 
             repoSelect.addEventListener('change', async () => {

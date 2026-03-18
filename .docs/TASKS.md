@@ -101,7 +101,7 @@
 - [x] ~~**Transclusion smoke coverage for slug hydration**~~ — ✅ DONE. Extended `app/lib/transclusion-smoke.test.ts` to assert `/gitmaps` slug-route bootstrap assumptions alongside transclusion render and click-to-source behavior.
 - [ ] **Router contract tests across repos** — Add a tiny shared fixture or contract test pattern so Melina catch-all changes are automatically verified against GitMaps routing assumptions.
 - [ ] **Repo loading overlay smoke test** — Add a reproducible slow-load or fixture-based test path so file-count loading UI can be verified without racing a fast local repo load.
-- [ ] **User journey smoke tests** — Cover landing page, repo picker, GitHub import, and recent-repo recovery flows with reproducible browser-driven checks.
+- [ ] **User journey smoke tests** — In progress. Added repo-picker smoke coverage via `app/lib/repo-select.test.ts`; remaining flows: recent-repo recovery click-through, landing shell assertions, and GitHub import modal/search behavior.
 - [ ] **Repo load smoke path via browser-tools scripts** — Add a small repeatable helper flow for loading a known local repo through the browser-tools harness so route hydration and canvas bootstrap can be checked without manual clicking.
 - [ ] **Recent repos click-through test** — Add a DOM/integration test that verifies clicking a recent repo entry reloads the repo instead of only rendering metadata.
 - [x] ~~**Binary-heavy repo loading stalls at 85%**~~ — ✅ DONE. Root cause: tree endpoint read all non-binary files synchronously with no size limit, blocking the stream on large repos. Fix: skip reading content for files >2MB, get binary file sizes via `Bun.file()`, and increase client fetch timeout from 60s to 300s.
