@@ -120,6 +120,13 @@ describe('transclusion smoke', () => {
     cleanup?.();
   });
 
+  test('preserves slug-route bootstrap assumptions for transclusion flows', () => {
+    expect(window.location.pathname).toBe('/gitmaps');
+    expect(ctx.snap().context.repoPath).toBe('C:/Code/gitmaps');
+    expect(document.getElementById('canvasViewport')).toBeTruthy();
+    expect(document.getElementById('canvasContent')).toBeTruthy();
+  });
+
   test('creates transclusion cards and clicking one highlights the source card', async () => {
     const files = [
       {
