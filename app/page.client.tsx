@@ -270,6 +270,25 @@ export default function mount(): () => void {
           if (cached) {
             resolvedPath = cached;
           } else {
+            try {
+              const resolveRes = await fetch("/api/repo/resolve-slug", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slug: urlSlug }),
+              });
+              if (resolveRes.ok) {
+                const resolveData = await resolveRes.json();
+                if (resolveData?.path) {
+                  resolvedPath = resolveData.path;
+                  localStorage.setItem(`gitcanvas:slug:${urlSlug}`, resolvedPath);
+                }
+              }
+            } catch {
+              // Fall through to clone path below
+            }
+          }
+
+          if (!resolvedPath) {
             // Clone from GitHub and use the local clone path
             const landing = document.getElementById("landingOverlay");
             if (landing) landing.style.display = "none";
