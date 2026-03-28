@@ -110,8 +110,9 @@
 - [x] ~~**Shared canvas context lifecycle cleanup**~~ — ✅ DONE. Fixed `createCanvasContext()` registration, wired `page.client.tsx` mount/cleanup to set and clear the shared context consistently, and added `app/lib/context.test.ts` regression coverage.
 - [ ] **DOM harness helper ergonomics** — Add optional helpers for common globals like `window.open`, `fetch`, and observer stubs so new UI smoke tests need less repetitive setup.
 - [x] ~~**Clone completion flow isolation**~~ — ✅ DONE. GitHub import clone completion now hands off through a small helper in `app/lib/events.tsx`, allowing tests to inject `ctx.onRepoReady` instead of depending on real repo-load side effects.
-- [ ] **Context source unification** — Decide whether UI helpers should read the shared context from `app/lib/context.ts`, `window.__GITCANVAS_CTX__`, or both, and remove the duplicate source of truth.
+- [x] ~~**Context source unification**~~ — ✅ DONE. `app/lib/sync-controls.tsx` now reads the shared canvas context via `app/lib/context.ts` instead of `window.__GITCANVAS_CTX__`, with focused regression coverage in `app/lib/sync-controls.test.ts`.
 - [ ] **Repo-load handoff helper reuse** — Consider reusing the clone completion handoff helper in other repo-entry flows so navigation/load triggers share the same seam for tests.
+- [ ] **Window context global removal** — Audit whether `window.__GITCANVAS_CTX__` is still needed anywhere; remove it if no remaining runtime consumers need that legacy access path.
 - [ ] **Repo load smoke path via browser-tools scripts** — Add a small repeatable helper flow for loading a known local repo through the browser-tools harness so route hydration and canvas bootstrap can be checked without manual clicking.
 - [ ] **Recent repos click-through test** — Add a DOM/integration test that verifies clicking a recent repo entry reloads the repo instead of only rendering metadata.
 - [x] ~~**Repo switch race can restore previous repo after dropdown change**~~ — ✅ DONE. Hardened `app/lib/repo.tsx` so only the newest `loadRepository()` request may mutate UI/state; stale in-flight loads are ignored instead of overwriting a newer repo switch.
