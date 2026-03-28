@@ -30,6 +30,7 @@ import { hideSelectedFiles, showHiddenFilesModal as showHiddenModal } from './hi
 import { updatePillSelectionHighlights } from './viewport-culling';
 import { clearSelectionHighlights, updateSelectionHighlights, updateArrangeToolbar, arrangeRow, arrangeColumn, arrangeGrid, toggleCardExpand, fitScreenSize, changeCardsFontSize } from './cards';
 import { loadRepository, rerenderCurrentView, selectCommit } from './repo';
+import { handoffRepoLoad, syncRepoSelection } from './repo-handoff';
 import { toggleCanvasChat } from './chat';
 import { exportCanvasAsPNG, exportViewportAsPNG } from './canvas-export';
 import { cancelPendingConnection, hasPendingConnection } from './connections';
@@ -582,7 +583,7 @@ export function setupEventListeners(ctx: CanvasContext) {
                         repoSelect.value = '';
                     }
                 } else if (val) {
-                    loadRepository(ctx, val);
+                    handoffRepoLoad(ctx, val);
                 }
             });
 
@@ -1514,11 +1515,7 @@ export function setupGithubImport(ctx: CanvasContext) {
 }
 
 function _handoffClonedRepo(ctx: CanvasContext, path: string) {
-    if ((ctx as any)?.onRepoReady) {
-        (ctx as any).onRepoReady(path);
-        return;
-    }
-    loadRepository(ctx, path);
+    handoffRepoLoad(ctx, path);
 }
 
 // ─── Trigger clone (self-contained, uses clone-stream API) ──
@@ -1728,9 +1725,8 @@ function setupDragAndDrop(ctx: CanvasContext) {
                 const repoPath = data.path;
                 _addRecentRepo(repoPath);
                 _refreshRepoDropdown();
-                const repoSel = document.getElementById('repoSelect') as HTMLSelectElement;
-                if (repoSel) repoSel.value = repoPath;
-                import('./repo').then(m => m.loadRepository(ctx, repoPath));
+                syncRepoSelection(repoPath);
+                handoffRepoLoad(ctx, repoPath);
 
                 setTimeout(() => cloneStatus.style.display = 'none', 3000);
             }

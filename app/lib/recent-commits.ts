@@ -149,10 +149,10 @@ function renderRecentReposList(): void {
 
       try {
         const { getCanvasContext } = require("./context");
-        const { loadRepository } = require("./repo");
+        const { handoffRepoLoad } = require("./repo-handoff");
         const ctx = getCanvasContext();
         if (!ctx) return;
-        await loadRepository(ctx, path);
+        await handoffRepoLoad(ctx, path);
       } catch (err) {
         console.error("Failed to load recent repo", err);
       }

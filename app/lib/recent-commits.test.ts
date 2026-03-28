@@ -117,4 +117,36 @@ describe('recent commits sidebar', () => {
     });
     expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain('C:/Code/gitmaps');
   });
+
+  test('clicking a recent repo uses onRepoReady when provided', async () => {
+    const onRepoReady = mock(() => undefined);
+    const ctx = {
+      onRepoReady,
+      actor: { send: mock(() => undefined) },
+      snap: () => ({ context: { repoPath: '', zoom: 1, offsetX: 0, offsetY: 0, commits: [] }, value: { view: 'allfiles' } }),
+      fileCards: new Map(),
+      deferredCards: new Map(),
+      changedFilePaths: new Set(),
+      positions: new Map(),
+      hiddenFiles: new Set(),
+      allFilesData: [],
+      commitFilesData: [],
+      canvas: document.createElement('div'),
+      canvasViewport: document.createElement('div'),
+      svgOverlay: null,
+      loadingOverlay: null,
+    } as any;
+    setCanvasContext(ctx);
+
+    addRecentRepo('C:/Code/jsx-ai', 5);
+
+    const item = document.querySelector('[data-path="C:/Code/jsx-ai"]') as HTMLButtonElement;
+    expect(item).toBeTruthy();
+
+    item.click();
+    await Promise.resolve();
+
+    expect(onRepoReady).toHaveBeenCalledWith('C:/Code/jsx-ai');
+    expect(ctx.actor.send).not.toHaveBeenCalled();
+  });
 });
