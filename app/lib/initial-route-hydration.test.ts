@@ -1,5 +1,13 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { bootstrapInitialRouteUi, getInitialRouteParts, hydrateInitialRouteRepo, isGithubOwnerRepoSlug, resolveInitialRepoPath } from './initial-route-hydration';
+import {
+  bootstrapInitialRouteUi,
+  getInitialRouteParts,
+  handleInitialRouteError,
+  hydrateInitialRouteRepo,
+  isGithubOwnerRepoSlug,
+  resolveInitialRepoPath,
+  showInitialRouteCloneStart,
+} from './initial-route-hydration';
 import { installFetchMock, setupDomTest } from './test-dom';
 
 describe('initial route hydration helper', () => {
@@ -80,6 +88,36 @@ describe('initial route hydration helper', () => {
       fetchHandle.restore();
       handle.cleanup();
     }
+  });
+
+  test('shows clone-start loading ui for github route hydration', () => {
+    const handle = setupDomTest({
+      html: '<div id="landingOverlay" style="display:block"></div><div id="loadingProgress" style="display:none"><span class="loading-message"></span></div>',
+    });
+
+    try {
+      showInitialRouteCloneStart('7flash/gitmaps');
+
+      expect((document.getElementById('landingOverlay') as HTMLElement).style.display).toBe('none');
+      expect((document.getElementById('loadingProgress') as HTMLElement).style.display).toBe('flex');
+      expect(document.querySelector('.loading-message')?.textContent).toBe('Cloning 7flash/gitmaps from GitHub...');
+    } finally {
+      handle.cleanup();
+    }
+  });
+
+  test('reports initial route errors and shows toast through injected helpers', async () => {
+    const reportError = mock(() => undefined);
+    const showToast = mock(() => undefined);
+
+    const result = await handleInitialRouteError(new Error('boom'), {
+      reportError,
+      showToast,
+    });
+
+    expect(result).toBeNull();
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(showToast).toHaveBeenCalledWith('Failed to load route: boom', 'error');
   });
 
   test('bootstraps initial route ui in a small reusable sequence', async () => {

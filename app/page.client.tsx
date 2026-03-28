@@ -24,8 +24,13 @@ import {
   restoreViewport,
 } from "./lib/canvas";
 import { setupPillInteraction } from "./lib/viewport-culling";
-import { syncRepoSelection } from "./lib/repo-handoff";
-import { hydrateInitialRouteRepo } from "./lib/initial-route-hydration";
+import {
+  bootstrapInitialRouteUi,
+  handleInitialRouteError,
+  hydrateInitialRouteRepo,
+  resolveInitialRepoPath,
+  showInitialRouteCloneStart,
+} from "./lib/initial-route-hydration";
 import { handlePopstateRepoEntry } from "./lib/route-repo-entry";
 import { initLayers, renderLayersUI } from "./lib/layers";
 import { setupAuth, updateFavoriteStar } from "./lib/user";
@@ -250,26 +255,11 @@ export default function mount(): () => void {
         },
         resolveRepoPath: async (slug) => {
           try {
-            const { resolveInitialRepoPath } = await import("./lib/initial-route-hydration");
             return await resolveInitialRepoPath(slug, {
-              onCloneStart: (cloneSlug) => {
-                const landing = document.getElementById("landingOverlay");
-                if (landing) landing.style.display = "none";
-                const loadingEl = document.getElementById("loadingProgress");
-                if (loadingEl) {
-                  loadingEl.style.display = "flex";
-                  const msgEl = loadingEl.querySelector(".loading-message");
-                  if (msgEl) {
-                    msgEl.textContent = `Cloning ${cloneSlug} from GitHub...`;
-                  }
-                }
-              },
+              onCloneStart: showInitialRouteCloneStart,
             });
           } catch (err: any) {
-            console.error(`[gitmaps] Failed to hydrate initial route:`, err);
-            const { showToast } = await import("./lib/utils");
-            showToast(`Failed to load route: ${err.message}`, "error");
-            return null;
+            return await handleInitialRouteError(err);
           }
         },
         bootstrapRepoUi: async (resolvedPath) => {

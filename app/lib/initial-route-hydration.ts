@@ -84,6 +84,40 @@ export async function resolveInitialRepoPath(
   return cloneData.path;
 }
 
+export function showInitialRouteCloneStart(slug: string) {
+  const landing = document.getElementById('landingOverlay');
+  if (landing) landing.style.display = 'none';
+
+  const loadingEl = document.getElementById('loadingProgress');
+  if (loadingEl) {
+    loadingEl.style.display = 'flex';
+    const msgEl = loadingEl.querySelector('.loading-message');
+    if (msgEl) {
+      msgEl.textContent = `Cloning ${slug} from GitHub...`;
+    }
+  }
+}
+
+export async function handleInitialRouteError(err: any, options?: {
+  reportError?: (err: any) => void;
+  showToast?: (message: string, type: string) => void;
+}) {
+  const reportError = options?.reportError || ((error) => {
+    console.error(`[gitmaps] Failed to hydrate initial route:`, error);
+  });
+
+  reportError(err);
+
+  if (options?.showToast) {
+    options.showToast(`Failed to load route: ${err.message}`, 'error');
+    return null;
+  }
+
+  const { showToast } = await import('./utils');
+  showToast(`Failed to load route: ${err.message}`, 'error');
+  return null;
+}
+
 export async function bootstrapInitialRouteUi(
   ctx: CanvasContext,
   resolvedPath: string,
