@@ -14,6 +14,7 @@ import { canvasMachine } from "./state/machine.js";
 import { createCanvasContext } from "./lib/context";
 import { clearCanvasMount, registerCanvasMount } from "./lib/mount-lifecycle";
 import { loadSavedPositions } from "./lib/positions";
+import { applySharedLayout } from "./lib/shared-layout";
 import { loadHiddenFiles, updateHiddenUI } from "./lib/hidden-files";
 import { setupCanvasInteraction, setupEventListeners } from "./lib/events";
 import { loadConnections } from "./lib/connections";
@@ -21,7 +22,6 @@ import {
   clearCanvas,
   updateCanvasTransform,
   updateZoomUI,
-  restoreViewport,
 } from "./lib/canvas";
 import { setupPillInteraction } from "./lib/viewport-culling";
 import {
@@ -35,7 +35,6 @@ import {
 } from "./lib/initial-route-hydration";
 import { handlePopstateRepoEntry } from "./lib/route-repo-entry";
 import { showLandingPlaceholder as showLandingReset } from "./lib/landing-reset";
-import { initLayers, renderLayersUI } from "./lib/layers";
 import { setupAuth, updateFavoriteStar } from "./lib/user";
 import { setupPerfOverlay } from "./lib/perf-overlay";
 import { initGalaxyDrawState, initCardManager } from "./lib/xydraw-bridge";
@@ -45,15 +44,12 @@ import { initCommandPalette } from "./lib/command-palette";
 import { initShortcutsPanel } from "./lib/shortcuts-panel";
 import { initStatusBar } from "./lib/status-bar";
 import { initLayoutSnapshots } from "./lib/layout-snapshots";
-// Tutorial removed — users learn by exploring
 import { renderSyncControls } from "./lib/sync-controls";
 import { renderVersionBadge } from "./lib/version";
 import { renderRoleBadge } from "./lib/role";
-import { renderRecentCommitsUI, addRecentRepo } from "./lib/recent-commits";
-import { clearMultiRepoWorkspace } from "./lib/multi-repo";
+import { renderRecentCommitsUI } from "./lib/recent-commits";
 
 export default function mount(): () => void {
-  // Stop any previous actor from a prior mount
   if ((window as any).__gitcanvas_cleanup__) {
     try {
       (window as any).__gitcanvas_cleanup__();
@@ -68,18 +64,15 @@ export default function mount(): () => void {
     showLandingReset(ctx);
   }
 
-  // ─── Init ────────────────────────────────────────────
   async function init() {
     return measure("app:init", async () => {
       ctx.canvas = document.getElementById("canvasContent");
       ctx.canvasViewport = document.getElementById("canvasViewport");
 
-      // Reuse existing SVG overlay from server-rendered DOM
       ctx.svgOverlay = document.getElementById(
         "connectionsOverlay",
       ) as unknown as SVGSVGElement;
       if (!ctx.svgOverlay && ctx.canvas) {
-        // Fallback: create overlay if not present
         ctx.svgOverlay = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "svg",
@@ -90,10 +83,7 @@ export default function mount(): () => void {
         ctx.canvas.appendChild(ctx.svgOverlay);
       }
 
-      // Init xydraw state engine (binds to existing DOM)
       initGalaxyDrawState(ctx);
-
-      // Init xydraw card manager (Phase 4 — registers file + diff plugins)
       initCardManager(ctx);
 
       actor.start();
@@ -107,87 +97,24 @@ export default function mount(): () => void {
       initShortcutsPanel();
       initStatusBar(ctx);
       initLayoutSnapshots(ctx);
-      await loadSavedPositions(ctx); // initial load (may be empty if no repo yet)
-      if (disposed) return; // bail if cleaned up during await
+      await loadSavedPositions(ctx);
+      if (disposed) return;
       loadHiddenFiles(ctx);
       updateHiddenUI(ctx);
       loadConnections(ctx);
-      if (disposed) return; // bail if cleaned up during await
+      if (disposed) return;
 
-      // Init auth UI
       setupAuth();
-
-      // Render role badge
       renderRoleBadge();
-
-      // Render sync controls (leader-only)
       renderSyncControls();
       await renderVersionBadge();
-
-      // Render recent commits
       renderRecentCommitsUI();
 
-      // Onboarding tutorial removed — users learn by doing
-
-      // ── Shared Layout Decoder ──────────────────────────────────────────
-      const applySharedLayout = async (ctx: CanvasContext) => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const sharedLayout = urlParams.get("layout");
-        if (!sharedLayout) return;
-
-        try {
-          const parsed = JSON.parse(atob(sharedLayout));
-          if (parsed.positions) {
-            ctx.positions = new Map(Object.entries(parsed.positions));
-            const { savePosition } = await import("./lib/positions");
-            // Quick dummy save to trigger debounced persistence
-            savePosition(ctx, "_share_", "_trigger_", 0, 0);
-          }
-          if (parsed.hiddenFiles) {
-            ctx.hiddenFiles = new Set(parsed.hiddenFiles);
-            const { saveHiddenFiles } = await import("./lib/hidden-files");
-            saveHiddenFiles(ctx);
-            updateHiddenUI(ctx);
-          }
-          if (parsed.zoom !== undefined)
-            ctx.actor.send({ type: "SET_ZOOM", zoom: parsed.zoom });
-          if (parsed.offsetX !== undefined)
-            ctx.actor.send({
-              type: "SET_OFFSET",
-              x: parsed.offsetX,
-              y: parsed.offsetY,
-            });
-          if (parsed.cardSizes) {
-            for (const [path, size] of Object.entries(parsed.cardSizes)) {
-              ctx.actor.send({
-                type: "RESIZE_CARD",
-                path,
-                width: (size as any).width,
-                height: (size as any).height,
-              });
-            }
-          }
-
-          const cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete("layout");
-          window.history.replaceState({}, "", cleanUrl.toString());
-          const { showToast } = await import("./lib/utils");
-          showToast("Shared layout applied!", "success");
-        } catch (e) {
-          console.error("Failed to decode shared layout", e);
-        }
-      };
-
       await hydrateInitialRouteRepo(ctx, {
         disposed,
         showLandingPlaceholder,
-        hideLanding: () => {
-          const landing = document.getElementById("landingOverlay");
-          if (landing) landing.style.display = "none";
-        },
-        migrateLegacyHashRoute: (hashSlug) => {
-          history.replaceState(null, "", "/" + encodeURIComponent(hashSlug));
-        },
+        hideLanding: hideInitialRouteLanding,
+        migrateLegacyHashRoute,
         resolveRepoPath: async (slug) => {
           try {
             return await resolveInitialRepoPath(slug, {
@@ -200,13 +127,12 @@ export default function mount(): () => void {
         bootstrapRepoUi: async (resolvedPath) => {
           await bootstrapInitialRouteUi(ctx, resolvedPath, {
             disposed,
-            applySharedLayout,
+            applySharedLayout: () => applySharedLayout(ctx),
           });
         },
         updateFavoriteStar,
       });
 
-      // Listen for popstate (back/forward navigation with path-based routing)
       window.addEventListener("popstate", () => {
         handlePopstateRepoEntry(ctx, {
           disposed,
@@ -218,10 +144,8 @@ export default function mount(): () => void {
     });
   }
 
-  // ─── Boot ────────────────────────────────────────────
   init();
 
-  // ─── Cleanup ─────────────────────────────────────────
   const cleanup = () => {
     disposed = true;
     clearCanvasMount();
@@ -233,91 +157,5 @@ export default function mount(): () => void {
   };
   registerCanvasMount(ctx, cleanup);
   return cleanup;
-}
-// Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
-tor.send({
-              type: "SET_OFFSET",
-              x: parsed.offsetX,
-              y: parsed.offsetY,
-            });
-          if (parsed.cardSizes) {
-            for (const [path, size] of Object.entries(parsed.cardSizes)) {
-              ctx.actor.send({
-                type: "RESIZE_CARD",
-                path,
-                width: (size as any).width,
-                height: (size as any).height,
-              });
-            }
-          }
-
-          const cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete("layout");
-          window.history.replaceState({}, "", cleanUrl.toString());
-          const { showToast } = await import("./lib/utils");
-          showToast("Shared layout applied!", "success");
-        } catch (e) {
-          console.error("Failed to decode shared layout", e);
-        }
-      };
-
-      await hydrateInitialRouteRepo(ctx, {
-        disposed,
-        showLandingPlaceholder,
-        hideLanding: () => {
-          const landing = document.getElementById("landingOverlay");
-          if (landing) landing.style.display = "none";
-        },
-        migrateLegacyHashRoute: (hashSlug) => {
-          history.replaceState(null, "", "/" + encodeURIComponent(hashSlug));
-        },
-        resolveRepoPath: async (slug) => {
-          try {
-            return await resolveInitialRepoPath(slug, {
-              onCloneStart: showInitialRouteCloneStart,
-            });
-          } catch (err: any) {
-            return await handleInitialRouteError(err);
-          }
-        },
-        bootstrapRepoUi: async (resolvedPath) => {
-          await bootstrapInitialRouteUi(ctx, resolvedPath, {
-            disposed,
-            applySharedLayout,
-          });
-        },
-        updateFavoriteStar,
-      });
-
-      // Listen for popstate (back/forward navigation with path-based routing)
-      window.addEventListener("popstate", () => {
-        handlePopstateRepoEntry(ctx, {
-          disposed,
-          currentRepoPath: ctx.snap().context.repoPath,
-          showLandingPlaceholder,
-          updateFavoriteStar,
-        });
-      });
-    });
-  }
-
-  // ─── Boot ────────────────────────────────────────────
-  init();
-
-  // ─── Cleanup ─────────────────────────────────────────
-  const cleanup = () => {
-    disposed = true;
-    clearCanvasMount();
-    try {
-      actor.stop();
-    } catch (_) {}
-    if (ctx.canvasViewport) destroyFilePreview(ctx.canvasViewport);
-    clearCanvas(ctx);
-  };
-  registerCanvasMount(ctx, cleanup);
-  return cleanup;
-}
-// Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
-
 }
 // Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
