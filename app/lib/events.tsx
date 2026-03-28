@@ -1513,6 +1513,14 @@ export function setupGithubImport(ctx: CanvasContext) {
     if (lastUser && userInput) userInput.value = lastUser;
 }
 
+function _handoffClonedRepo(ctx: CanvasContext, path: string) {
+    if ((ctx as any)?.onRepoReady) {
+        (ctx as any).onRepoReady(path);
+        return;
+    }
+    loadRepository(ctx, path);
+}
+
 // ─── Trigger clone (self-contained, uses clone-stream API) ──
 function _triggerClone(ctx: CanvasContext, url: string) {
     const cloneStatus = document.getElementById('cloneStatus');
@@ -1549,7 +1557,7 @@ function _triggerClone(ctx: CanvasContext, url: string) {
             _refreshRepoDropdown();
             const repoSel = document.getElementById('repoSelect') as HTMLSelectElement;
             if (repoSel) repoSel.value = data.path;
-            loadRepository(ctx, data.path);
+            _handoffClonedRepo(ctx, data.path);
             setTimeout(() => { cloneStatus.style.display = 'none'; }, 3000);
             return;
         }
@@ -1582,7 +1590,7 @@ function _triggerClone(ctx: CanvasContext, url: string) {
                         _refreshRepoDropdown();
                         const repoSel2 = document.getElementById('repoSelect') as HTMLSelectElement;
                         if (repoSel2) repoSel2.value = payload.path;
-                        loadRepository(ctx, payload.path);
+                        _handoffClonedRepo(ctx, payload.path);
                         setTimeout(() => { cloneStatus.style.display = 'none'; }, 3000);
                     } else if (evtType === 'error') {
                         cloneStatus.className = 'clone-status error';

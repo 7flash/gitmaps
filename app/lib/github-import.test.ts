@@ -271,8 +271,10 @@ describe('GitHub import modal smoke', () => {
   });
 
   test('cached clone response shows success and selects the cached repo path', async () => {
+    const onRepoReady = mock(() => undefined);
     const ctx = {
       actor: { send: mock(() => undefined) },
+      onRepoReady,
       snap: () => ({ context: { repoPath: '', zoom: 1, offsetX: 0, offsetY: 0, commits: [] }, value: { view: 'allfiles' } }),
       fileCards: new Map(),
       deferredCards: new Map(),
@@ -324,6 +326,7 @@ describe('GitHub import modal smoke', () => {
       expect(cloneStatus.textContent).toContain('Updated — loading');
       expect(repoSelect.value).toBe('C:/Code/gitmaps');
       expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(onRepoReady).toHaveBeenCalledWith('C:/Code/gitmaps');
     } finally {
       (globalThis as any).fetch = originalFetch;
       (window as any).fetch = originalWindowFetch;
@@ -331,8 +334,10 @@ describe('GitHub import modal smoke', () => {
   });
 
   test('SSE clone done updates success state and selects the cloned repo path', async () => {
+    const onRepoReady = mock(() => undefined);
     const ctx = {
       actor: { send: mock(() => undefined) },
+      onRepoReady,
       snap: () => ({ context: { repoPath: '', zoom: 1, offsetX: 0, offsetY: 0, commits: [] }, value: { view: 'allfiles' } }),
       fileCards: new Map(),
       deferredCards: new Map(),
@@ -386,6 +391,7 @@ describe('GitHub import modal smoke', () => {
       expect(cloneStatus.textContent).toContain('Cloned — loading');
       expect(repoSelect.value).toBe('C:/Code/jsx-ai');
       expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(onRepoReady).toHaveBeenCalledWith('C:/Code/jsx-ai');
     } finally {
       (globalThis as any).fetch = originalFetch;
       (window as any).fetch = originalWindowFetch;
@@ -432,3 +438,4 @@ describe('GitHub import modal smoke', () => {
     }
   });
 });
+
