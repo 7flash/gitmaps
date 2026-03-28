@@ -184,9 +184,6 @@ export default function mount(): () => void {
       // Render recent commits
       renderRecentCommitsUI();
 
-      // Store context globally for sync controls
-      (window as any).__GITCANVAS_CTX__ = ctx;
-
       // Onboarding tutorial removed — users learn by doing
 
       // ── Shared Layout Decoder ──────────────────────────────────────────
@@ -408,4 +405,6 @@ export default function mount(): () => void {
   return cleanup;
 }
 // Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
+lastRepo autoload
 emoved onboarding + tutorial + lastRepo autoload
+ autoload

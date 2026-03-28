@@ -233,7 +233,7 @@ export function createSyncControlsUI(): HTMLElement {
 
   const pushBtn = container.querySelector("#pushBtn") as HTMLButtonElement;
   pushBtn?.addEventListener("click", async () => {
-    const ctx = (window as any).__GITCANVAS_CTX__;
+    const ctx = getCanvasContext();
     if (!ctx) return;
 
     const repoPath = ctx.snap()?.context?.repoPath;
