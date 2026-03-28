@@ -34,12 +34,12 @@ import {
   showInitialRouteCloneStart,
 } from "./lib/initial-route-hydration";
 import { handlePopstateRepoEntry } from "./lib/route-repo-entry";
+import { showLandingPlaceholder as showLandingReset } from "./lib/landing-reset";
 import { initLayers, renderLayersUI } from "./lib/layers";
 import { setupAuth, updateFavoriteStar } from "./lib/user";
 import { setupPerfOverlay } from "./lib/perf-overlay";
 import { initGalaxyDrawState, initCardManager } from "./lib/xydraw-bridge";
 import { initFilePreview, destroyFilePreview } from "./lib/file-preview";
-import { hideLoadingProgress } from "./lib/loading";
 import { initBranchCompare } from "./lib/branch-compare";
 import { initCommandPalette } from "./lib/command-palette";
 import { initShortcutsPanel } from "./lib/shortcuts-panel";
@@ -62,77 +62,10 @@ export default function mount(): () => void {
 
   const actor = createActor(canvasMachine);
   const ctx = createCanvasContext(actor);
-  setCanvasContext(ctx);
   let disposed = false;
 
   function showLandingPlaceholder() {
-    document.body.classList.add("landing-placeholder-visible");
-    ctx.actor.send({ type: "RESET_APP_STATE" });
-    clearMultiRepoWorkspace(ctx);
-    clearCanvas(ctx);
-    ctx.fileCards.clear();
-    ctx.deferredCards.clear();
-    ctx.allFilesData = [];
-    ctx.commitFilesData = [];
-    ctx.changedFilePaths = new Set();
-    ctx.snap().context.repoPath = "";
-
-    const landing = document.getElementById("landingOverlay");
-    if (landing) landing.style.display = "flex";
-
-    const repoSelect = document.getElementById("repoSelect") as HTMLSelectElement;
-    if (repoSelect) repoSelect.value = "";
-
-    const fileCount = document.getElementById("fileCount");
-    if (fileCount) fileCount.textContent = "0";
-
-    const commitCount = document.getElementById("commitCount");
-    if (commitCount) commitCount.textContent = "0";
-
-    const commitInfo = document.getElementById("currentCommitInfo");
-    if (commitInfo) {
-      commitInfo.innerHTML = '<span class="commit-hash-label">No commit selected</span>';
-    }
-
-    const timeline = document.getElementById("timelineContainer");
-    if (timeline) {
-      timeline.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg><p>Load a repository</p></div>';
-    }
-
-    const changedFilesList = document.getElementById("changedFilesList");
-    if (changedFilesList) changedFilesList.innerHTML = "";
-
-    const changedFilesPanel = document.getElementById("changedFilesPanel");
-    if (changedFilesPanel) changedFilesPanel.style.display = "none";
-
-    const connectionsPanel = document.getElementById("connectionsPanel");
-    if (connectionsPanel) connectionsPanel.style.display = "none";
-
-    const arrangeToolbar = document.getElementById("arrangeToolbar");
-    if (arrangeToolbar) arrangeToolbar.style.display = "none";
-
-    const toggleConnections = document.getElementById("toggleConnections");
-    if (toggleConnections) toggleConnections.classList.remove("active");
-
-    const showHidden = document.getElementById("showHidden");
-    if (showHidden) showHidden.style.display = "none";
-
-    const hiddenCount = document.getElementById("hiddenCount");
-    if (hiddenCount) hiddenCount.textContent = "0";
-
-    const commitProgressBar = document.getElementById("commitProgressBar");
-    if (commitProgressBar) commitProgressBar.style.display = "none";
-
-    localStorage.setItem("gitcanvas:changedFilesPanelClosed", "true");
-
-    hideLoadingProgress(ctx);
-    updateCanvasTransform(ctx);
-    updateZoomUI(ctx);
-    updateFavoriteStar("");
-    updateStatusBarRepo("", "", "");
-    updateStatusBarCommit("");
-    updateStatusBarFiles(0);
-    updateStatusBarSelected(0);
+    showLandingReset(ctx);
   }
 
   // ─── Init ────────────────────────────────────────────
@@ -300,5 +233,91 @@ export default function mount(): () => void {
   };
   registerCanvasMount(ctx, cleanup);
   return cleanup;
+}
+// Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
+tor.send({
+              type: "SET_OFFSET",
+              x: parsed.offsetX,
+              y: parsed.offsetY,
+            });
+          if (parsed.cardSizes) {
+            for (const [path, size] of Object.entries(parsed.cardSizes)) {
+              ctx.actor.send({
+                type: "RESIZE_CARD",
+                path,
+                width: (size as any).width,
+                height: (size as any).height,
+              });
+            }
+          }
+
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete("layout");
+          window.history.replaceState({}, "", cleanUrl.toString());
+          const { showToast } = await import("./lib/utils");
+          showToast("Shared layout applied!", "success");
+        } catch (e) {
+          console.error("Failed to decode shared layout", e);
+        }
+      };
+
+      await hydrateInitialRouteRepo(ctx, {
+        disposed,
+        showLandingPlaceholder,
+        hideLanding: () => {
+          const landing = document.getElementById("landingOverlay");
+          if (landing) landing.style.display = "none";
+        },
+        migrateLegacyHashRoute: (hashSlug) => {
+          history.replaceState(null, "", "/" + encodeURIComponent(hashSlug));
+        },
+        resolveRepoPath: async (slug) => {
+          try {
+            return await resolveInitialRepoPath(slug, {
+              onCloneStart: showInitialRouteCloneStart,
+            });
+          } catch (err: any) {
+            return await handleInitialRouteError(err);
+          }
+        },
+        bootstrapRepoUi: async (resolvedPath) => {
+          await bootstrapInitialRouteUi(ctx, resolvedPath, {
+            disposed,
+            applySharedLayout,
+          });
+        },
+        updateFavoriteStar,
+      });
+
+      // Listen for popstate (back/forward navigation with path-based routing)
+      window.addEventListener("popstate", () => {
+        handlePopstateRepoEntry(ctx, {
+          disposed,
+          currentRepoPath: ctx.snap().context.repoPath,
+          showLandingPlaceholder,
+          updateFavoriteStar,
+        });
+      });
+    });
+  }
+
+  // ─── Boot ────────────────────────────────────────────
+  init();
+
+  // ─── Cleanup ─────────────────────────────────────────
+  const cleanup = () => {
+    disposed = true;
+    clearCanvasMount();
+    try {
+      actor.stop();
+    } catch (_) {}
+    if (ctx.canvasViewport) destroyFilePreview(ctx.canvasViewport);
+    clearCanvas(ctx);
+  };
+  registerCanvasMount(ctx, cleanup);
+  return cleanup;
+}
+// Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
+
 }
 // Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
