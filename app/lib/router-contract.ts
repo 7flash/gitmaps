@@ -8,13 +8,7 @@ export interface RouteExpectation {
 }
 
 export function discoverContractRoutes(appDir: string) {
-  const originalLog = console.log;
-  try {
-    console.log = () => {};
-    return discoverRoutes(path.resolve(appDir));
-  } finally {
-    console.log = originalLog;
-  }
+  return discoverRoutes(path.resolve(appDir), { quiet: true });
 }
 
 export function assertRouteExpectation(
