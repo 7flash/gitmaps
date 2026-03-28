@@ -108,7 +108,7 @@
 - [x] ~~**GitHub import SSE completion smoke coverage**~~ — ✅ DONE. `app/lib/github-import.test.ts` now covers cached JSON success, SSE `done`, and SSE `error` clone-stream outcomes using synthetic responses.
 - [ ] **Routing helper extraction upstream** — Consider moving the test-time route-discovery log suppression into Melina or a shared test utility so multi-repo routing tests stay consistent.
 - [x] ~~**Shared canvas context lifecycle cleanup**~~ — ✅ DONE. Fixed `createCanvasContext()` registration, wired `page.client.tsx` mount/cleanup to set and clear the shared context consistently, and added `app/lib/context.test.ts` regression coverage.
-- [ ] **DOM harness helper ergonomics** — Add optional helpers for common globals like `window.open`, `fetch`, and observer stubs so new UI smoke tests need less repetitive setup.
+- [x] ~~**DOM harness helper ergonomics**~~ — ✅ DONE. Added `installFetchMock()` and `installWindowOpenMock()` to `app/lib/test-dom.ts` and migrated repetitive smoke tests to use them.
 - [x] ~~**Clone completion flow isolation**~~ — ✅ DONE. GitHub import clone completion now hands off through a small helper in `app/lib/events.tsx`, allowing tests to inject `ctx.onRepoReady` instead of depending on real repo-load side effects.
 - [x] ~~**Context source unification**~~ — ✅ DONE. `app/lib/sync-controls.tsx` now reads the shared canvas context via `app/lib/context.ts` instead of `window.__GITCANVAS_CTX__`, with focused regression coverage in `app/lib/sync-controls.test.ts`.
 - [ ] **Repo-load handoff helper reuse** — Consider reusing the clone completion handoff helper in other repo-entry flows so navigation/load triggers share the same seam for tests.

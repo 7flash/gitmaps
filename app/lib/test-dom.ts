@@ -105,6 +105,29 @@ export function setupDomTest(options: SetupDomTestOptions = {}): DomTestHandle {
   return { window, cleanup };
 }
 
+export function installFetchMock(fetchImpl: typeof globalThis.fetch): RestoreHandle {
+  const originalFetch = globalThis.fetch;
+  const originalWindowFetch = window.fetch;
+  (globalThis as any).fetch = fetchImpl;
+  (window as any).fetch = fetchImpl;
+  return {
+    restore() {
+      (globalThis as any).fetch = originalFetch;
+      (window as any).fetch = originalWindowFetch;
+    },
+  };
+}
+
+export function installWindowOpenMock(openImpl: typeof window.open): RestoreHandle {
+  const originalOpen = window.open;
+  (window as any).open = openImpl;
+  return {
+    restore() {
+      (window as any).open = originalOpen;
+    },
+  };
+}
+
 export function setElementRect(el: HTMLElement, width: number, height: number) {
   Object.defineProperty(el, 'offsetWidth', { value: width, configurable: true });
   Object.defineProperty(el, 'offsetHeight', { value: height, configurable: true });

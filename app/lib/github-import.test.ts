@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { setupGithubImport } from './events';
-import { setupDomTest } from './test-dom';
+import { installFetchMock, installWindowOpenMock, setupDomTest } from './test-dom';
 
 function makeSseResponse(chunks: string[]): Response {
   const stream = new ReadableStream({
@@ -101,11 +101,9 @@ describe('GitHub import modal smoke', () => {
       });
     });
 
-    const originalFetch = globalThis.fetch;
-    const originalOpen = window.open;
     const openMock = mock(() => null as any);
-    (globalThis as any).fetch = fetchMock;
-    (window as any).open = openMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
+    const openHandle = installWindowOpenMock(openMock as any);
 
     try {
       setupGithubImport({} as any);
@@ -149,8 +147,8 @@ describe('GitHub import modal smoke', () => {
       cards[0].click();
       expect(openMock).toHaveBeenCalledWith('https://github.com/7flash/gitmaps', '_blank');
     } finally {
-      (globalThis as any).fetch = originalFetch;
-      (window as any).open = originalOpen;
+      fetchHandle.restore();
+      openHandle.restore();
     }
   });
 
@@ -170,8 +168,7 @@ describe('GitHub import modal smoke', () => {
 
   test('pressing Enter on a direct GitHub URL starts clone-stream and closes the modal', async () => {
     const fetchMock = mock(() => new Promise<Response>(() => {}));
-    const originalFetch = globalThis.fetch;
-    (globalThis as any).fetch = fetchMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
 
     try {
       setupGithubImport({} as any);
@@ -196,7 +193,7 @@ describe('GitHub import modal smoke', () => {
       expect(cloneStatus.style.display).toBe('block');
       expect(cloneStatus.textContent).toContain('Cloning');
     } finally {
-      (globalThis as any).fetch = originalFetch;
+      fetchHandle.restore();
     }
   });
 
@@ -230,11 +227,9 @@ describe('GitHub import modal smoke', () => {
       return new Promise<Response>(() => {});
     });
 
-    const originalFetch = globalThis.fetch;
-    const originalOpen = window.open;
     const openMock = mock(() => null as any);
-    (globalThis as any).fetch = fetchMock;
-    (window as any).open = openMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
+    const openHandle = installWindowOpenMock(openMock as any);
 
     try {
       setupGithubImport({} as any);
@@ -265,8 +260,8 @@ describe('GitHub import modal smoke', () => {
       expect(cloneStatus.textContent).toContain('Cloning');
       expect(openMock).not.toHaveBeenCalled();
     } finally {
-      (globalThis as any).fetch = originalFetch;
-      (window as any).open = originalOpen;
+      fetchHandle.restore();
+      openHandle.restore();
     }
   });
 
@@ -301,10 +296,7 @@ describe('GitHub import modal smoke', () => {
       throw new Error(`Unexpected fetch: ${input}`);
     });
 
-    const originalFetch = globalThis.fetch;
-    const originalWindowFetch = window.fetch;
-    (globalThis as any).fetch = fetchMock;
-    (window as any).fetch = fetchMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
 
     try {
       setupGithubImport(ctx);
@@ -328,8 +320,7 @@ describe('GitHub import modal smoke', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(onRepoReady).toHaveBeenCalledWith('C:/Code/gitmaps');
     } finally {
-      (globalThis as any).fetch = originalFetch;
-      (window as any).fetch = originalWindowFetch;
+      fetchHandle.restore();
     }
   });
 
@@ -365,10 +356,7 @@ describe('GitHub import modal smoke', () => {
       throw new Error(`Unexpected fetch: ${input}`);
     });
 
-    const originalFetch = globalThis.fetch;
-    const originalWindowFetch = window.fetch;
-    (globalThis as any).fetch = fetchMock;
-    (window as any).fetch = fetchMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
 
     try {
       setupGithubImport(ctx);
@@ -393,8 +381,7 @@ describe('GitHub import modal smoke', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(onRepoReady).toHaveBeenCalledWith('C:/Code/jsx-ai');
     } finally {
-      (globalThis as any).fetch = originalFetch;
-      (window as any).fetch = originalWindowFetch;
+      fetchHandle.restore();
     }
   });
 
@@ -409,10 +396,7 @@ describe('GitHub import modal smoke', () => {
       throw new Error(`Unexpected fetch: ${input}`);
     });
 
-    const originalFetch = globalThis.fetch;
-    const originalWindowFetch = window.fetch;
-    (globalThis as any).fetch = fetchMock;
-    (window as any).fetch = fetchMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
 
     try {
       setupGithubImport({} as any);
@@ -433,8 +417,7 @@ describe('GitHub import modal smoke', () => {
       expect(cloneStatus.className).toContain('error');
       expect(cloneStatus.textContent).toContain('Repository not found');
     } finally {
-      (globalThis as any).fetch = originalFetch;
-      (window as any).fetch = originalWindowFetch;
+      fetchHandle.restore();
     }
   });
 });

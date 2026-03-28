@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { Window } from 'happy-dom';
 import { addRecentRepo, getRecentRepos, renderRecentCommitsUI } from './recent-commits';
 import { setCanvasContext } from './context';
-import { setupDomTest } from './test-dom';
+import { installFetchMock, setupDomTest } from './test-dom';
 
 describe('recent commits sidebar', () => {
   let window: Window;
@@ -94,8 +94,7 @@ describe('recent commits sidebar', () => {
       expect(input).toBe('/api/repo/load');
       return new Response('boom', { status: 500 });
     });
-    const originalFetch = globalThis.fetch;
-    (globalThis as any).fetch = fetchMock;
+    const fetchHandle = installFetchMock(fetchMock as any);
 
     addRecentRepo('C:/Code/gitmaps', 12);
 
@@ -107,7 +106,7 @@ describe('recent commits sidebar', () => {
       await Promise.resolve();
       await Promise.resolve();
     } finally {
-      (globalThis as any).fetch = originalFetch;
+      fetchHandle.restore();
     }
 
     expect(ctx.actor.send).toHaveBeenCalledWith({ type: 'LOAD_REPO', path: 'C:/Code/gitmaps' });
