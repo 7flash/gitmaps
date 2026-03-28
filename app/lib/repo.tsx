@@ -65,6 +65,12 @@ const LARGE_REPO_AUTO_COMMIT_THRESHOLD = 1000;
 export async function loadRepository(ctx: CanvasContext, repoPath: string) {
   if (!repoPath) return;
 
+  // Always init layers when loading a repo — ensures layers bar is visible
+  const { initLayers, renderLayersUI } = await import('./layers');
+  ctx.snap().context.repoPath = repoPath;
+  initLayers(ctx);
+  renderLayersUI(ctx);
+
   // Prevent duplicate loads of the same repo (e.g. mount triggers both hash + localStorage paths)
   if (_loadingRepo === repoPath) {
     console.log(
