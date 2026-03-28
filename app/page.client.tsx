@@ -12,6 +12,7 @@ import { measure } from "measure-fn";
 import { createActor } from "xstate";
 import { canvasMachine } from "./state/machine.js";
 import { createCanvasContext } from "./lib/context";
+import { clearCanvasMount, registerCanvasMount } from "./lib/mount-lifecycle";
 import { loadSavedPositions } from "./lib/positions";
 import { loadHiddenFiles, updateHiddenUI } from "./lib/hidden-files";
 import { setupCanvasInteraction, setupEventListeners } from "./lib/events";
