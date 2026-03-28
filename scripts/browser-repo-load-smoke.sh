@@ -3,7 +3,6 @@ set -euo pipefail
 
 URL="${1:-http://localhost:3335/}"
 REPO_PATH="${2:-C:/Code/gitmaps}"
-SECOND_REPO_PATH="${3:-C:/Code/jsx-ai}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-60}"
 SCREENSHOT_PATH="${SCREENSHOT_PATH:-}"
 SCREENSHOT_ON_SUCCESS="${SCREENSHOT_ON_SUCCESS:-0}"
@@ -20,9 +19,10 @@ source "$LIB_DIR/browser-tools-common.sh"
 source "$LIB_DIR/browser-smoke-assemble.sh"
 trap on_error ERR
 
-FIRST_EXPECTATIONS=$(read_repo_expectations "$REPO_PATH")
-SECOND_EXPECTATIONS=$(read_repo_expectations "$SECOND_REPO_PATH")
-SMOKE_SCRIPT=$(build_browser_smoke_script "$FIRST_EXPECTATIONS" "$SECOND_EXPECTATIONS" "$((TIMEOUT_SECONDS * 1000))")
+EXPECTED_REPO=$(read_repo_expectations "$REPO_PATH")
+FLOW_TEMPLATE=$(<"$LIB_DIR/browser-repo-load-smoke-flow.js")
+SMOKE_SCRIPT=${FLOW_TEMPLATE//__EXPECTED_REPO__/$EXPECTED_REPO}
+SMOKE_SCRIPT=${SMOKE_SCRIPT//__TIMEOUT_MS__/$((TIMEOUT_SECONDS * 1000))}
 
 ensure_browser_ready || fail_with_message "Browser tools did not become ready"
 navigate_to_app "$URL" || fail_with_message "Failed to navigate browser to $URL"
