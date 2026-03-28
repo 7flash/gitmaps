@@ -15,9 +15,7 @@ import { createCanvasContext } from "./lib/context";
 import { clearCanvasMount, registerCanvasMount } from "./lib/mount-lifecycle";
 import { loadSavedPositions } from "./lib/positions";
 import { applySharedLayout } from "./lib/shared-layout";
-import { loadHiddenFiles, updateHiddenUI } from "./lib/hidden-files";
-import { setupCanvasInteraction, setupEventListeners } from "./lib/events";
-import { loadConnections } from "./lib/connections";
+import { ensureSvgOverlay, initializeMountUi } from "./lib/mount-init";
 import {
   clearCanvas,
   updateCanvasTransform,
@@ -69,46 +67,12 @@ export default function mount(): () => void {
       ctx.canvas = document.getElementById("canvasContent");
       ctx.canvasViewport = document.getElementById("canvasViewport");
 
-      ctx.svgOverlay = document.getElementById(
-        "connectionsOverlay",
-      ) as unknown as SVGSVGElement;
-      if (!ctx.svgOverlay && ctx.canvas) {
-        ctx.svgOverlay = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg",
-        ) as SVGSVGElement;
-        ctx.svgOverlay.id = "connectionsOverlay";
-        ctx.svgOverlay.style.cssText =
-          "position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible;";
-        ctx.canvas.appendChild(ctx.svgOverlay);
-      }
+      ensureSvgOverlay(ctx);
 
-      initGalaxyDrawState(ctx);
-      initCardManager(ctx);
-
-      actor.start();
-      setupCanvasInteraction(ctx);
-      setupEventListeners(ctx);
-      setupPillInteraction(ctx);
-      setupPerfOverlay(ctx);
-      if (ctx.canvasViewport) initFilePreview(ctx.canvasViewport, ctx);
-      initBranchCompare(ctx);
-      initCommandPalette(ctx);
-      initShortcutsPanel();
-      initStatusBar(ctx);
-      initLayoutSnapshots(ctx);
-      await loadSavedPositions(ctx);
+      await initializeMountUi(ctx, actor, {
+        isDisposed: () => disposed,
+      });
       if (disposed) return;
-      loadHiddenFiles(ctx);
-      updateHiddenUI(ctx);
-      loadConnections(ctx);
-      if (disposed) return;
-
-      setupAuth();
-      renderRoleBadge();
-      renderSyncControls();
-      await renderVersionBadge();
-      renderRecentCommitsUI();
 
       await hydrateInitialRouteRepo(ctx, {
         disposed,
@@ -159,3 +123,4 @@ export default function mount(): () => void {
   return cleanup;
 }
 // Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
+ Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
