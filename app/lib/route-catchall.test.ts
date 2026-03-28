@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import path from 'path';
 import {
     assertRouteExpectation,
-    catchAllRoutingContract,
     discoverContractRoutes,
+    gitmapsCatchAllRoutingContract,
 } from './router-contract';
 
 describe('GitMaps catch-all route integration', () => {
@@ -15,7 +15,7 @@ describe('GitMaps catch-all route integration', () => {
         expect(catchAll).toBeDefined();
     });
 
-    for (const expectation of catchAllRoutingContract) {
+    for (const expectation of gitmapsCatchAllRoutingContract) {
         test(`${expectation.pathname} matches ${expectation.pattern} in the real app`, () => {
             const result = assertRouteExpectation(routes, expectation);
             expect(result.route.pattern).toBe(expectation.pattern);
