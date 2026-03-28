@@ -395,17 +395,14 @@ export default function mount(): () => void {
   // ─── Cleanup ─────────────────────────────────────────
   const cleanup = () => {
     disposed = true;
-    (window as any).__gitcanvas_cleanup__ = null;
+    clearCanvasMount();
     try {
       actor.stop();
     } catch (_) {}
     if (ctx.canvasViewport) destroyFilePreview(ctx.canvasViewport);
     clearCanvas(ctx);
   };
-  (window as any).__gitcanvas_cleanup__ = cleanup;
+  registerCanvasMount(ctx, cleanup);
   return cleanup;
 }
 // Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
-lastRepo autoload
-emoved onboarding + tutorial + lastRepo autoload
- autoload
