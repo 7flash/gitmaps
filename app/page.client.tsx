@@ -74,36 +74,11 @@ export default function mount(): () => void {
       });
       if (disposed) return;
 
-      await hydrateInitialRouteRepo(ctx, {
-        disposed,
+      await wireMountRoutes(ctx, {
+        isDisposed: () => disposed,
         showLandingPlaceholder,
-        hideLanding: hideInitialRouteLanding,
-        migrateLegacyHashRoute,
-        resolveRepoPath: async (slug) => {
-          try {
-            return await resolveInitialRepoPath(slug, {
-              onCloneStart: showInitialRouteCloneStart,
-            });
-          } catch (err: any) {
-            return await handleInitialRouteError(err);
-          }
-        },
-        bootstrapRepoUi: async (resolvedPath) => {
-          await bootstrapInitialRouteUi(ctx, resolvedPath, {
-            disposed,
-            applySharedLayout: () => applySharedLayout(ctx),
-          });
-        },
         updateFavoriteStar,
-      });
-
-      window.addEventListener("popstate", () => {
-        handlePopstateRepoEntry(ctx, {
-          disposed,
-          currentRepoPath: ctx.snap().context.repoPath,
-          showLandingPlaceholder,
-          updateFavoriteStar,
-        });
+        applySharedLayout: () => applySharedLayout(ctx),
       });
     });
   }
