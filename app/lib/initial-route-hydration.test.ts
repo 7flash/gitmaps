@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { getInitialRouteParts, hydrateInitialRouteRepo, isGithubOwnerRepoSlug, resolveInitialRepoPath } from './initial-route-hydration';
+import { bootstrapInitialRouteUi, getInitialRouteParts, hydrateInitialRouteRepo, isGithubOwnerRepoSlug, resolveInitialRepoPath } from './initial-route-hydration';
 import { installFetchMock, setupDomTest } from './test-dom';
 
 describe('initial route hydration helper', () => {
@@ -78,6 +78,82 @@ describe('initial route hydration helper', () => {
       expect(localStorage.getItem('gitcanvas:slug:7flash/gitmaps')).toBe('C:/Code/gitmaps');
     } finally {
       fetchHandle.restore();
+      handle.cleanup();
+    }
+  });
+
+  test('bootstraps initial route ui in a small reusable sequence', async () => {
+    const handle = setupDomTest({
+      html: '<select id="repoSelect"><option value="">Select</option><option value="C:/Code/gitmaps">gitmaps</option></select>',
+    });
+
+    try {
+      const calls: string[] = [];
+      const snapshot = { context: { repoPath: '' } };
+      const ctx = {
+        actor: { send: mock((event: any) => calls.push(`send:${event.type}:${event.path}`)) },
+        snap: () => snapshot,
+      } as any;
+
+      await bootstrapInitialRouteUi(ctx, 'C:/Code/gitmaps', {
+        applySharedLayout: mock(async () => { calls.push('applySharedLayout'); }),
+        syncSelection: mock((path: string) => {
+          calls.push(`syncSelection:${path}`);
+          (document.getElementById('repoSelect') as HTMLSelectElement).value = path;
+        }),
+        loadPositions: mock(async () => { calls.push('loadPositions'); }),
+        initRouteLayers: mock(() => { calls.push('initLayers'); }),
+        renderRouteLayers: mock(() => { calls.push('renderLayersUI'); }),
+        restoreRouteViewport: mock(() => { calls.push('restoreViewport'); }),
+        updateRouteCanvasTransform: mock(() => { calls.push('updateCanvasTransform'); }),
+        updateRouteZoomUi: mock(() => { calls.push('updateZoomUI'); }),
+      });
+
+      expect((document.getElementById('repoSelect') as HTMLSelectElement).value).toBe('C:/Code/gitmaps');
+      expect(ctx.snap().context.repoPath).toBe('C:/Code/gitmaps');
+      expect(calls).toEqual([
+        'syncSelection:C:/Code/gitmaps',
+        'send:LOAD_REPO:C:/Code/gitmaps',
+        'loadPositions',
+        'applySharedLayout',
+        'initLayers',
+        'renderLayersUI',
+        'restoreViewport',
+        'updateCanvasTransform',
+        'updateZoomUI',
+      ]);
+    } finally {
+      handle.cleanup();
+    }
+  });
+
+  test('bootstrap initial route ui stops after positions when disposed', async () => {
+    const handle = setupDomTest();
+
+    try {
+      const applySharedLayout = mock(async () => undefined);
+      const initRouteLayers = mock(() => undefined);
+      const snapshot = { context: { repoPath: '' } };
+      const ctx = {
+        actor: { send: mock(() => undefined) },
+        snap: () => snapshot,
+      } as any;
+
+      await bootstrapInitialRouteUi(ctx, 'C:/Code/gitmaps', {
+        disposed: true,
+        applySharedLayout,
+        loadPositions: mock(async () => undefined),
+        initRouteLayers,
+        renderRouteLayers: mock(() => undefined),
+        restoreRouteViewport: mock(() => undefined),
+        updateRouteCanvasTransform: mock(() => undefined),
+        updateRouteZoomUi: mock(() => undefined),
+      });
+
+      expect(ctx.snap().context.repoPath).toBe('C:/Code/gitmaps');
+      expect(applySharedLayout).not.toHaveBeenCalled();
+      expect(initRouteLayers).not.toHaveBeenCalled();
+    } finally {
       handle.cleanup();
     }
   });

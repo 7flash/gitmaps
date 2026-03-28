@@ -273,17 +273,10 @@ export default function mount(): () => void {
           }
         },
         bootstrapRepoUi: async (resolvedPath) => {
-          syncRepoSelection(resolvedPath);
-          ctx.actor.send({ type: "LOAD_REPO", path: resolvedPath });
-          ctx.snap().context.repoPath = resolvedPath;
-          await loadSavedPositions(ctx);
-          if (disposed) return;
-          await applySharedLayout(ctx);
-          initLayers(ctx);
-          renderLayersUI(ctx);
-          restoreViewport(ctx);
-          updateCanvasTransform(ctx);
-          updateZoomUI(ctx);
+          await bootstrapInitialRouteUi(ctx, resolvedPath, {
+            disposed,
+            applySharedLayout,
+          });
         },
         updateFavoriteStar,
       });

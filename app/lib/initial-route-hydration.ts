@@ -1,4 +1,7 @@
 import type { CanvasContext } from './context';
+import { loadSavedPositions } from './positions';
+import { restoreViewport, updateCanvasTransform, updateZoomUI } from './canvas';
+import { initLayers, renderLayersUI } from './layers';
 import { handoffRepoLoad, syncRepoSelection } from './repo-handoff';
 
 export interface InitialRouteParts {
@@ -79,6 +82,42 @@ export async function resolveInitialRepoPath(
   const cloneData = await cloneRes.json();
   localStorage.setItem(`gitcanvas:slug:${urlSlug}`, cloneData.path);
   return cloneData.path;
+}
+
+export async function bootstrapInitialRouteUi(
+  ctx: CanvasContext,
+  resolvedPath: string,
+  options: {
+    disposed?: boolean;
+    applySharedLayout: () => Promise<void>;
+    syncSelection?: (path: string) => void;
+    loadPositions?: (ctx: CanvasContext) => Promise<void>;
+    initRouteLayers?: (ctx: CanvasContext) => void;
+    renderRouteLayers?: (ctx: CanvasContext) => void;
+    restoreRouteViewport?: (ctx: CanvasContext) => void;
+    updateRouteCanvasTransform?: (ctx: CanvasContext) => void;
+    updateRouteZoomUi?: (ctx: CanvasContext) => void;
+  },
+) {
+  const syncSelection = options.syncSelection || syncRepoSelection;
+  const loadPositions = options.loadPositions || loadSavedPositions;
+  const initRouteLayers = options.initRouteLayers || initLayers;
+  const renderRouteLayers = options.renderRouteLayers || renderLayersUI;
+  const restoreRouteViewport = options.restoreRouteViewport || restoreViewport;
+  const updateRouteCanvasTransform = options.updateRouteCanvasTransform || updateCanvasTransform;
+  const updateRouteZoomUi = options.updateRouteZoomUi || updateZoomUI;
+
+  syncSelection(resolvedPath);
+  ctx.actor.send({ type: 'LOAD_REPO', path: resolvedPath });
+  ctx.snap().context.repoPath = resolvedPath;
+  await loadPositions(ctx);
+  if (options.disposed) return;
+  await options.applySharedLayout();
+  initRouteLayers(ctx);
+  renderRouteLayers(ctx);
+  restoreRouteViewport(ctx);
+  updateRouteCanvasTransform(ctx);
+  updateRouteZoomUi(ctx);
 }
 
 export async function hydrateInitialRouteRepo(
