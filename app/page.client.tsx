@@ -52,6 +52,7 @@ export default function mount(): () => void {
 
   const actor = createActor(canvasMachine);
   const ctx = createCanvasContext(actor);
+  setCanvasContext(ctx);
   let disposed = false;
 
   function showLandingPlaceholder() {
@@ -407,3 +408,4 @@ export default function mount(): () => void {
   return cleanup;
 }
 // Force cache bust Mon Mar 17 - removed onboarding + tutorial + lastRepo autoload
+emoved onboarding + tutorial + lastRepo autoload

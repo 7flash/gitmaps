@@ -67,7 +67,7 @@ export interface CanvasContext {
 
 /** Creates a fresh context (call once per mount). */
 export function createCanvasContext(actor: any): CanvasContext {
-    return {
+    const ctx: CanvasContext = {
         actor,
         snap: () => actor.getSnapshot(),
 
