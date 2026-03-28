@@ -354,7 +354,7 @@ export default function mount(): () => void {
         updateZoomUI(ctx);
 
         if (!disposed) {
-          loadRepository(ctx, resolvedPath);
+          handoffRepoLoad(ctx, resolvedPath);
           updateFavoriteStar(resolvedPath);
         }
       } else {
@@ -365,26 +365,12 @@ export default function mount(): () => void {
 
       // Listen for popstate (back/forward navigation with path-based routing)
       window.addEventListener("popstate", () => {
-        if (disposed) return;
-        const slug = decodeURIComponent(
-          window.location.pathname.replace(/^\//, ""),
-        );
-
-        if (!slug) {
-          showLandingPlaceholder();
-          return;
-        }
-
-        const resolvedPath =
-          localStorage.getItem(`gitcanvas:slug:${slug}`) || slug;
-        if (resolvedPath && resolvedPath !== ctx.snap().context.repoPath) {
-          const sel3 = document.getElementById(
-            "repoSelect",
-          ) as HTMLSelectElement;
-          if (sel3) sel3.value = resolvedPath;
-          loadRepository(ctx, resolvedPath);
-          updateFavoriteStar(resolvedPath);
-        }
+        handlePopstateRepoEntry(ctx, {
+          disposed,
+          currentRepoPath: ctx.snap().context.repoPath,
+          showLandingPlaceholder,
+          updateFavoriteStar,
+        });
       });
     });
   }
