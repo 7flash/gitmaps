@@ -17,7 +17,15 @@ It will:
 5. wait for `#fileCount > 0`
 6. print a JSON summary
 
-Optional args:
+### Primary flow examples
+
+Default repo:
+
+```bash
+bun run smoke:browser
+```
+
+Custom repo:
 
 ```bash
 bun scripts/browser-smoke-local.ts http://localhost:3335/ C:/Code/jsx-ai
@@ -31,9 +39,44 @@ A browser-tools shell helper is also available:
 bun run smoke:browser-tools
 ```
 
-This path now handles the local Chrome profile-picker case by auto-clicking `Guest mode`, and it can recover from stale/unhealthy `:9222` sessions by restarting the dedicated browser-tools Chrome debug process before retrying `browser-nav`.
+This path now:
+- auto-dismisses Chrome's profile picker via `Guest mode`
+- recovers from stale/unhealthy `:9222` sessions by restarting the dedicated browser-tools Chrome debug process
+- loads two repos in the same browser session
+- verifies the second switch with backend-derived expected slug / file-count / commit-count assertions
 
-Optional screenshot env vars:
+### Browser-tools examples
+
+Default two-repo switch:
+
+```bash
+bun run smoke:browser-tools
+```
+
+Explicit URL + first repo + second repo:
+
+```bash
+bash scripts/browser-smoke-local.sh http://localhost:3335/ C:/Code/gitmaps C:/Code/jsx-ai
+```
+
+Switch to a different second repo:
+
+```bash
+bash scripts/browser-smoke-local.sh http://localhost:3335/ C:/Code/gitmaps C:/Code/melina.js
+```
+
+Tune retries/timeouts for a slow machine:
+
+```bash
+BROWSER_READY_RETRIES=12 \
+NAV_RETRIES=6 \
+TIMEOUT_SECONDS=90 \
+  bash scripts/browser-smoke-local.sh http://localhost:3335/ C:/Code/gitmaps C:/Code/jsx-ai
+```
+
+### Screenshot examples
+
+Save a success screenshot:
 
 ```bash
 SCREENSHOT_ON_SUCCESS=1 \
@@ -41,9 +84,32 @@ SCREENSHOT_PATH=C:/Code/gitmaps/.docs/browser-smoke.png \
   bun run smoke:browser-tools
 ```
 
+Keep failure screenshots in a named location:
+
+```bash
+SCREENSHOT_PATH=C:/Code/gitmaps/.docs/browser-switch.png \
+  bash scripts/browser-smoke-local.sh http://localhost:3335/ C:/Code/gitmaps C:/Code/jsx-ai
+```
+
 - `SCREENSHOT_PATH` — target artifact path for saved screenshots
 - `SCREENSHOT_ON_SUCCESS=1` — save a screenshot after a passing run
-- `SCREENSHOT_ON_FAILURE=1` — save `*.failure.png` on errors (enabled by default)
+- `SCREENSHOT_ON_FAILURE=1` — save `*.failure.png` on errors, enabled by default
+
+## Extracted helper layout
+
+The browser-tools smoke path is split into reusable helpers under `scripts/lib/`:
+
+- `scripts/lib/browser-tools-common.sh` — browser startup, restart, screenshot, and failure helpers
+- `scripts/lib/browser-smoke-expectations.py` — backend-derived expected slug / commit-count / file-count lookup
+- `scripts/lib/browser-smoke-flow.js` — in-browser repo-load / repo-switch assertions
+- `scripts/browser-smoke-local.sh` — thin wrapper that wires everything together
+
+### Which file to edit
+
+- change Chrome startup/recovery/screenshot behavior → `scripts/lib/browser-tools-common.sh`
+- change backend expected repo metadata lookup → `scripts/lib/browser-smoke-expectations.py`
+- change in-browser assertions or repo-switch flow → `scripts/lib/browser-smoke-flow.js`
+- change CLI args / top-level orchestration → `scripts/browser-smoke-local.sh`
 
 ## Expected output
 
@@ -62,8 +128,5 @@ SCREENSHOT_PATH=C:/Code/gitmaps/.docs/browser-smoke.png \
     "commitCount": "23",
     "pathname": "/7flash/jsx-ai"
   }
-}
-```
-": "/gitmaps"
 }
 ```
