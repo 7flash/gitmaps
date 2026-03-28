@@ -24,7 +24,9 @@ import {
   restoreViewport,
 } from "./lib/canvas";
 import { setupPillInteraction } from "./lib/viewport-culling";
-import { loadRepository } from "./lib/repo";
+import { syncRepoSelection } from "./lib/repo-handoff";
+import { hydrateInitialRouteRepo } from "./lib/initial-route-hydration";
+import { handlePopstateRepoEntry } from "./lib/route-repo-entry";
 import { initLayers, renderLayersUI } from "./lib/layers";
 import { setupAuth, updateFavoriteStar } from "./lib/user";
 import { setupPerfOverlay } from "./lib/perf-overlay";
@@ -236,132 +238,55 @@ export default function mount(): () => void {
         }
       };
 
-      // Check URL path for repo slug (e.g. /starwar or /galaxy-canvas/starwar)
-      // Fallback: also check hash for legacy URLs (e.g. #starwar)
-      const rawPath = decodeURIComponent(
-        window.location.pathname.replace(/^\//, ""),
-      );
-      // Strip the route-name prefix if we're served at /galaxy-canvas
-      const pathSlug = rawPath.replace(/^galaxy-canvas\/?/, "");
-      const hashSlug = decodeURIComponent(
-        window.location.hash.replace("#", ""),
-      );
-      const urlSlug = pathSlug || hashSlug;
-
-      if (urlSlug) {
-        // Migrate legacy hash URL to path URL
-        if (hashSlug && !pathSlug) {
+      await hydrateInitialRouteRepo(ctx, {
+        disposed,
+        showLandingPlaceholder,
+        hideLanding: () => {
+          const landing = document.getElementById("landingOverlay");
+          if (landing) landing.style.display = "none";
+        },
+        migrateLegacyHashRoute: (hashSlug) => {
           history.replaceState(null, "", "/" + encodeURIComponent(hashSlug));
-        }
-
-        // Detect cloneable GitHub owner/repo slug (exactly one /). Deeper slash paths
-        // are treated as canonical forge paths and resolved via localStorage mapping.
-        const isGitHubSlug =
-          /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(urlSlug) &&
-          !urlSlug.includes("\\") &&
-          !urlSlug.includes(":");
-
-        let resolvedPath: string;
-
-        if (isGitHubSlug) {
-          // Check if we already have a localStorage mapping for this GitHub slug
-          const cached = localStorage.getItem(`gitcanvas:slug:${urlSlug}`);
-          if (cached) {
-            resolvedPath = cached;
-          } else {
-            try {
-              const resolveRes = await fetch("/api/repo/resolve-slug", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ slug: urlSlug }),
-              });
-              if (resolveRes.ok) {
-                const resolveData = await resolveRes.json();
-                if (resolveData?.path) {
-                  resolvedPath = resolveData.path;
-                  localStorage.setItem(`gitcanvas:slug:${urlSlug}`, resolvedPath);
+        },
+        resolveRepoPath: async (slug) => {
+          try {
+            const { resolveInitialRepoPath } = await import("./lib/initial-route-hydration");
+            return await resolveInitialRepoPath(slug, {
+              onCloneStart: (cloneSlug) => {
+                const landing = document.getElementById("landingOverlay");
+                if (landing) landing.style.display = "none";
+                const loadingEl = document.getElementById("loadingProgress");
+                if (loadingEl) {
+                  loadingEl.style.display = "flex";
+                  const msgEl = loadingEl.querySelector(".loading-message");
+                  if (msgEl) {
+                    msgEl.textContent = `Cloning ${cloneSlug} from GitHub...`;
+                  }
                 }
-              }
-            } catch {
-              // Fall through to clone path below
-            }
+              },
+            });
+          } catch (err: any) {
+            console.error(`[gitmaps] Failed to hydrate initial route:`, err);
+            const { showToast } = await import("./lib/utils");
+            showToast(`Failed to load route: ${err.message}`, "error");
+            return null;
           }
-
-          if (!resolvedPath) {
-            // Clone from GitHub and use the local clone path
-            const landing = document.getElementById("landingOverlay");
-            if (landing) landing.style.display = "none";
-
-            // Show loading state
-            const loadingEl = document.getElementById("loadingProgress");
-            if (loadingEl) {
-              loadingEl.style.display = "flex";
-              const msgEl = loadingEl.querySelector(".loading-message");
-              if (msgEl)
-                msgEl.textContent = `Cloning ${urlSlug} from GitHub...`;
-            }
-
-            try {
-              const cloneRes = await fetch("/api/repo/clone", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  url: `https://github.com/${urlSlug}.git`,
-                }),
-              });
-              if (!cloneRes.ok) {
-                const err = await cloneRes
-                  .json()
-                  .catch(() => ({ error: "Clone failed" }));
-                throw new Error(err.error || "Clone failed");
-              }
-              const cloneData = await cloneRes.json();
-              resolvedPath = cloneData.path;
-
-              // Store slug→path mapping so future visits are instant
-              localStorage.setItem(`gitcanvas:slug:${urlSlug}`, resolvedPath);
-            } catch (err: any) {
-              console.error(`[gitmaps] Failed to clone ${urlSlug}:`, err);
-              const { showToast } = await import("./lib/utils");
-              showToast(`Failed to clone ${urlSlug}: ${err.message}`, "error");
-              // Fall through — show landing
-              return;
-            }
-          }
-        } else {
-          // Resolve slug to full path (check localStorage mapping)
-          resolvedPath =
-            localStorage.getItem(`gitcanvas:slug:${urlSlug}`) || urlSlug;
-        }
-
-        // Hide landing immediately since we have a repo
-        const landing = document.getElementById("landingOverlay");
-        if (landing) landing.style.display = "none";
-
-        const sel = document.getElementById("repoSelect") as HTMLSelectElement;
-        if (sel) sel.value = resolvedPath;
-
-        // Init layers based on repo
-        ctx.actor.send({ type: "LOAD_REPO", path: resolvedPath });
-        ctx.snap().context.repoPath = resolvedPath;
-        await loadSavedPositions(ctx); // reload positions for this repo
-        if (disposed) return;
-        await applySharedLayout(ctx);
-        initLayers(ctx);
-        renderLayersUI(ctx);
-        restoreViewport(ctx);
-        updateCanvasTransform(ctx);
-        updateZoomUI(ctx);
-
-        if (!disposed) {
-          handoffRepoLoad(ctx, resolvedPath);
-          updateFavoriteStar(resolvedPath);
-        }
-      } else {
-        // No URL slug — always show the landing placeholder page.
-        // Never auto-load the previous repo on the root route.
-        showLandingPlaceholder();
-      }
+        },
+        bootstrapRepoUi: async (resolvedPath) => {
+          syncRepoSelection(resolvedPath);
+          ctx.actor.send({ type: "LOAD_REPO", path: resolvedPath });
+          ctx.snap().context.repoPath = resolvedPath;
+          await loadSavedPositions(ctx);
+          if (disposed) return;
+          await applySharedLayout(ctx);
+          initLayers(ctx);
+          renderLayersUI(ctx);
+          restoreViewport(ctx);
+          updateCanvasTransform(ctx);
+          updateZoomUI(ctx);
+        },
+        updateFavoriteStar,
+      });
 
       // Listen for popstate (back/forward navigation with path-based routing)
       window.addEventListener("popstate", () => {
