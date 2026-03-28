@@ -84,9 +84,17 @@ export async function resolveInitialRepoPath(
   return cloneData.path;
 }
 
-export function showInitialRouteCloneStart(slug: string) {
+export function hideInitialRouteLanding() {
   const landing = document.getElementById('landingOverlay');
   if (landing) landing.style.display = 'none';
+}
+
+export function migrateLegacyHashRoute(hashSlug: string) {
+  window.history.replaceState(null, '', '/' + encodeURIComponent(hashSlug));
+}
+
+export function showInitialRouteCloneStart(slug: string) {
+  hideInitialRouteLanding();
 
   const loadingEl = document.getElementById('loadingProgress');
   if (loadingEl) {

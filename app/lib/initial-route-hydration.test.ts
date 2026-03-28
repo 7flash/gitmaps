@@ -3,8 +3,10 @@ import {
   bootstrapInitialRouteUi,
   getInitialRouteParts,
   handleInitialRouteError,
+  hideInitialRouteLanding,
   hydrateInitialRouteRepo,
   isGithubOwnerRepoSlug,
+  migrateLegacyHashRoute,
   resolveInitialRepoPath,
   showInitialRouteCloneStart,
 } from './initial-route-hydration';
@@ -86,6 +88,30 @@ describe('initial route hydration helper', () => {
       expect(localStorage.getItem('gitcanvas:slug:7flash/gitmaps')).toBe('C:/Code/gitmaps');
     } finally {
       fetchHandle.restore();
+      handle.cleanup();
+    }
+  });
+
+  test('hides the landing overlay for route hydration', () => {
+    const handle = setupDomTest({
+      html: '<div id="landingOverlay" style="display:block"></div>',
+    });
+
+    try {
+      hideInitialRouteLanding();
+      expect((document.getElementById('landingOverlay') as HTMLElement).style.display).toBe('none');
+    } finally {
+      handle.cleanup();
+    }
+  });
+
+  test('migrates legacy hash routes into encoded path routes', () => {
+    const handle = setupDomTest({ url: 'http://localhost:3335/#7flash/jsx-ai' });
+
+    try {
+      migrateLegacyHashRoute('7flash/jsx-ai');
+      expect(window.location.pathname).toBe('/7flash%2Fjsx-ai');
+    } finally {
       handle.cleanup();
     }
   });

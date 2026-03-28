@@ -27,7 +27,9 @@ import { setupPillInteraction } from "./lib/viewport-culling";
 import {
   bootstrapInitialRouteUi,
   handleInitialRouteError,
+  hideInitialRouteLanding,
   hydrateInitialRouteRepo,
+  migrateLegacyHashRoute,
   resolveInitialRepoPath,
   showInitialRouteCloneStart,
 } from "./lib/initial-route-hydration";
