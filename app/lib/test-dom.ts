@@ -28,13 +28,24 @@ export function setupDomTest(options: SetupDomTestOptions = {}): DomTestHandle {
     document: window.document,
     navigator: window.navigator,
     localStorage: window.localStorage,
+    Element: window.Element,
     HTMLElement: window.HTMLElement,
     HTMLButtonElement: window.HTMLButtonElement,
+    HTMLInputElement: window.HTMLInputElement,
+    HTMLSelectElement: window.HTMLSelectElement,
+    HTMLTextAreaElement: window.HTMLTextAreaElement,
     SVGElement: window.SVGElement,
+    DocumentFragment: window.DocumentFragment,
     Node: window.Node,
+    Text: window.Text,
+    DOMRect: window.DOMRect,
     Event: window.Event,
+    CustomEvent: window.CustomEvent,
     MouseEvent: window.MouseEvent,
     KeyboardEvent: window.KeyboardEvent,
+    MutationObserver: window.MutationObserver,
+    ResizeObserver: window.ResizeObserver,
+    getComputedStyle: window.getComputedStyle.bind(window),
   });
 
   if (raf) {
@@ -64,6 +75,30 @@ export function setupDomTest(options: SetupDomTestOptions = {}): DomTestHandle {
     try {
       delete (globalThis as any).requestAnimationFrame;
       delete (globalThis as any).cancelAnimationFrame;
+    } catch {}
+    try {
+      delete (globalThis as any).window;
+      delete (globalThis as any).document;
+      delete (globalThis as any).navigator;
+      delete (globalThis as any).localStorage;
+      delete (globalThis as any).Element;
+      delete (globalThis as any).HTMLElement;
+      delete (globalThis as any).HTMLButtonElement;
+      delete (globalThis as any).HTMLInputElement;
+      delete (globalThis as any).HTMLSelectElement;
+      delete (globalThis as any).HTMLTextAreaElement;
+      delete (globalThis as any).SVGElement;
+      delete (globalThis as any).DocumentFragment;
+      delete (globalThis as any).Node;
+      delete (globalThis as any).Text;
+      delete (globalThis as any).DOMRect;
+      delete (globalThis as any).Event;
+      delete (globalThis as any).CustomEvent;
+      delete (globalThis as any).MouseEvent;
+      delete (globalThis as any).KeyboardEvent;
+      delete (globalThis as any).MutationObserver;
+      delete (globalThis as any).ResizeObserver;
+      delete (globalThis as any).getComputedStyle;
     } catch {}
   };
 

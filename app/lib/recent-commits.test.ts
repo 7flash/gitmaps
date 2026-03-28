@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { Window } from 'happy-dom';
 import { addRecentRepo, getRecentRepos, renderRecentCommitsUI } from './recent-commits';
+import { setCanvasContext } from './context';
 import { setupDomTest } from './test-dom';
 
 describe('recent commits sidebar', () => {
@@ -23,6 +24,7 @@ describe('recent commits sidebar', () => {
   });
 
   afterEach(() => {
+    setCanvasContext(null);
     cleanup?.();
   });
 
@@ -68,5 +70,52 @@ describe('recent commits sidebar', () => {
     const text = document.getElementById('recentCommitsList')?.textContent || '';
     expect(text).toContain('gitmaps');
     expect(text).toContain('12 commits');
+  });
+
+  test('clicking a recent repo starts the repo reload flow for that path', async () => {
+    const ctx = {
+      actor: { send: mock(() => undefined) },
+      snap: () => ({ context: { repoPath: '', zoom: 1, offsetX: 0, offsetY: 0, commits: [] }, value: { view: 'allfiles' } }),
+      fileCards: new Map(),
+      deferredCards: new Map(),
+      changedFilePaths: new Set(),
+      positions: new Map(),
+      hiddenFiles: new Set(),
+      allFilesData: [],
+      commitFilesData: [],
+      canvas: document.createElement('div'),
+      canvasViewport: document.createElement('div'),
+      svgOverlay: null,
+      loadingOverlay: null,
+    } as any;
+    setCanvasContext(ctx);
+
+    const fetchMock = mock(async (input: string) => {
+      expect(input).toBe('/api/repo/load');
+      return new Response('boom', { status: 500 });
+    });
+    const originalFetch = globalThis.fetch;
+    (globalThis as any).fetch = fetchMock;
+
+    addRecentRepo('C:/Code/gitmaps', 12);
+
+    const item = document.querySelector('[data-path="C:/Code/gitmaps"]') as HTMLButtonElement;
+    expect(item).toBeTruthy();
+
+    try {
+      item.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+
+    expect(ctx.actor.send).toHaveBeenCalledWith({ type: 'LOAD_REPO', path: 'C:/Code/gitmaps' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain('C:/Code/gitmaps');
   });
 });

@@ -6,6 +6,8 @@
  * Every module gets read/write access to the same mutable state.
  */
 
+let currentCanvasContext: CanvasContext | null = null;
+
 export interface CanvasContext {
     /** XState actor */
     actor: any;
@@ -94,4 +96,15 @@ export function createCanvasContext(actor: any): CanvasContext {
         deferredCards: new Map(),
         controlMode: (localStorage.getItem('gitcanvas:controlMode') as any) || 'advanced',
     };
+
+    currentCanvasContext = ctx;
+    return ctx;
+}
+
+export function setCanvasContext(ctx: CanvasContext | null): void {
+    currentCanvasContext = ctx;
+}
+
+export function getCanvasContext(): CanvasContext | null {
+    return currentCanvasContext;
 }

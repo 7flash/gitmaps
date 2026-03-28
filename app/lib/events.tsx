@@ -1276,7 +1276,7 @@ const LANG_COLORS: Record<string, string> = {
 };
 
 // ─── GitHub Import Modal Handler ────────────────────────
-function setupGithubImport(ctx: CanvasContext) {
+export function setupGithubImport(ctx: CanvasContext) {
     const modal = document.getElementById('githubModal');
     const openBtn = document.getElementById('githubImportBtn');
     const closeBtn = document.getElementById('githubModalClose');
