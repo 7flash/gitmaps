@@ -79,6 +79,7 @@ This path:
 - loads one local repo through the prompt path
 - verifies canonical slug route hydration
 - verifies file count / commit count / runtime repo path
+- now uses the same shared assembly helper infrastructure as repo-switch smoke
 
 ### Single repo-load examples
 
@@ -188,7 +189,7 @@ Use this as the default preflight check before running the heavier browser-tools
 
 ## Browser smoke self-check
 
-Validate that the extracted browser-tools smoke pieces still assemble into a runnable script:
+Validate that the extracted browser-tools smoke pieces still assemble into runnable scripts:
 
 ```bash
 bun run smoke:browser-tools:self-check
@@ -196,8 +197,8 @@ bun run smoke:browser-tools:self-check
 
 What it checks:
 - backend expectations can still be loaded for the configured repos
-- placeholders in `scripts/lib/browser-smoke-flow.js` are fully replaced
-- the assembled browser script still parses successfully
+- placeholders in `scripts/lib/browser-smoke-flow.js` and `scripts/lib/browser-repo-load-smoke-flow.js` are fully replaced
+- the assembled repo-switch and repo-load browser scripts both parse successfully
 
 This is a fast structural check for refactors. It does not start Chrome or execute the full browser smoke flow.
 
@@ -213,7 +214,7 @@ What it checks:
 - required shell/python/js helper files exist
 - `bash -n` passes for shell wrappers/helpers
 - `python -m py_compile` passes for the expectations helper
-- `node --check` passes for the browser smoke JS template
+- `node --check` passes for the browser smoke JS template files
 
 This is the earliest-failing check and is useful before the self-check or full browser run.
 
@@ -225,7 +226,7 @@ The browser-tools smoke path is split into reusable helpers under `scripts/lib/`
 - `scripts/lib/browser-smoke-expectations.py` — backend-derived expected slug / commit-count / file-count lookup
 - `scripts/lib/browser-smoke-flow.js` — in-browser repo-switch assertions
 - `scripts/lib/browser-repo-load-smoke-flow.js` — in-browser single repo-load assertions
-- `scripts/lib/browser-smoke-assemble.sh` — shared assembly helpers used by the wrapper and self-check
+- `scripts/lib/browser-smoke-assemble.sh` — shared assembly helpers used by repo-switch smoke, repo-load smoke, and the self-check
 - `scripts/browser-smoke-local.sh` — repo-switch wrapper that wires everything together
 - `scripts/browser-repo-load-smoke.sh` — focused single repo-load wrapper
 - `scripts/browser-smoke-self-check.sh` — lightweight structural validation for the extracted browser-tools smoke pieces
@@ -254,7 +255,7 @@ The browser-tools smoke path is split into reusable helpers under `scripts/lib/`
   "ok": true,
   "loaded": {
     "repoValue": "C:/Code/gitmaps",
-    "fileCount": "235",
+    "fileCount": "237",
     "commitCount": "100",
     "pathname": "/7flash/gitmaps"
   },
@@ -262,7 +263,7 @@ The browser-tools smoke path is split into reusable helpers under `scripts/lib/`
     "path": "C:/Code/gitmaps",
     "slug": "7flash/gitmaps",
     "commitCount": 100,
-    "fileCount": 235
+    "fileCount": 237
   }
 }
 ```
@@ -274,7 +275,7 @@ The browser-tools smoke path is split into reusable helpers under `scripts/lib/`
   "ok": true,
   "first": {
     "repoValue": "C:/Code/gitmaps",
-    "fileCount": "235",
+    "fileCount": "237",
     "commitCount": "100",
     "pathname": "/7flash/gitmaps"
   },
@@ -293,7 +294,8 @@ The browser-tools smoke path is split into reusable helpers under `scripts/lib/`
 {
   "ok": true,
   "assembled": true,
-  "syntax": "ok"
+  "repoSwitchSyntax": "ok",
+  "repoLoadSyntax": "ok"
 }
 ```
 
