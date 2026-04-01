@@ -69,4 +69,5 @@ const websocket = {
 serve(createAppRouter({
     appDir,
     globalCss: path.join(appDir, 'globals.css'),
-}), { port: parseInt(process.env.PORT || process.env.BUN_PORT || "3335"), websocket });
+    hotReload: false,
+}), { port: parseInt(process.env.PORT || process.env.BUN_PORT || "3335"), websocket, hotReload: false });
