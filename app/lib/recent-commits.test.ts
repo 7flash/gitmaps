@@ -866,4 +866,82 @@ describe('recent commits sidebar', () => {
       (mock as any).restore?.();
     }
   });
+
+  test('removing the final recent repo after rerenders leaves Pull bound only to the active repo state', async () => {
+    const loadRepositoryMock = mock(async () => undefined);
+    const originalRepoModule = require('./repo');
+    mock.module('./repo', () => ({
+      ...originalRepoModule,
+      loadRepository: loadRepositoryMock,
+    }));
+
+    let currentRepoPath = 'C:/Code/gitmaps';
+    const onRepoReady = mock((path: string) => {
+      currentRepoPath = path;
+    });
+    const ctx = {
+      onRepoReady,
+      actor: { send: mock(() => undefined) },
+      snap: () => ({
+        context: { repoPath: currentRepoPath, zoom: 1, offsetX: 0, offsetY: 0, commits: [] },
+        value: { view: 'allfiles' },
+      }),
+      fileCards: new Map(),
+      deferredCards: new Map(),
+      changedFilePaths: new Set(),
+      positions: new Map(),
+      hiddenFiles: new Set(),
+      allFilesData: [],
+      commitFilesData: [],
+      canvas: document.createElement('div'),
+      canvasViewport: document.createElement('div'),
+      svgOverlay: null,
+      loadingOverlay: null,
+    } as any;
+    setCanvasContext(ctx);
+
+    const repoSelect = document.getElementById('repoSelect') as HTMLSelectElement;
+    const pullBtn = document.getElementById('pullBtn') as HTMLButtonElement;
+    repoSelect.value = '';
+
+    renderRecentCommitsUI();
+    addRecentRepo('C:/Code/gitmaps', 12);
+    renderRecentCommitsUI();
+
+    const recentItem = document.querySelector('[data-path="C:/Code/gitmaps"]') as HTMLButtonElement;
+    expect(recentItem).toBeTruthy();
+
+    recentItem.click();
+    await Promise.resolve();
+
+    expect(onRepoReady).toHaveBeenCalledTimes(1);
+    expect(onRepoReady).toHaveBeenCalledWith('C:/Code/gitmaps');
+    expect(currentRepoPath).toBe('C:/Code/gitmaps');
+    expect(repoSelect.value).toBe('C:/Code/gitmaps');
+
+    removeRecentRepo('C:/Code/gitmaps');
+    renderRecentCommitsUI();
+
+    try {
+      expect(document.querySelector('[data-path]')).toBeNull();
+      expect(getRecentRepos()).toEqual([]);
+      expect((document.getElementById('recentCommits') as HTMLDivElement).style.display).toBe('none');
+      expect(pullBtn.dataset.bound).toBe('true');
+      expect(currentRepoPath).toBe('C:/Code/gitmaps');
+
+      pullBtn.click();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(loadRepositoryMock).toHaveBeenCalledTimes(1);
+      expect(loadRepositoryMock).toHaveBeenCalledWith(ctx, 'C:/Code/gitmaps');
+      expect(loadRepositoryMock.mock.calls.map((call: any[]) => call[1])).not.toContain('C:/Code/jsx-ai');
+      expect(pullBtn.disabled).toBeFalse();
+      expect((pullBtn.textContent || '').trim()).toBe('Pull');
+      expect(document.querySelector('.toast.success')?.textContent || '').toContain('Pulled latest commits');
+      expect(ctx.actor.send).not.toHaveBeenCalled();
+    } finally {
+      (mock as any).restore?.();
+    }
+  });
 });
