@@ -49,6 +49,13 @@ function _refreshRepoDropdown() {
     populateRepoSelect(repoSel, getRecentRepos(), { hashPath: '' });
 }
 
+function isTypingTarget(target: EventTarget | null): boolean {
+    const el = target instanceof HTMLElement ? target : null;
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    return !!el.closest('input, textarea, select, [contenteditable], .cm-editor, .cm-content');
+}
+
 // ─── Canvas interaction (pan/zoom/select) ───────────────
 export function setupCanvasInteraction(ctx: CanvasContext) {
     if (!ctx.canvasViewport) return;
@@ -735,15 +742,15 @@ export function setupEventListeners(ctx: CanvasContext) {
         window.addEventListener('keydown', (e) => {
             // Space-bar canvas panning
             if (e.code === 'Space' && !e.repeat) {
-                if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+                if (isTypingTarget(e.target)) return;
                 e.preventDefault();
                 ctx.spaceHeld = true;
                 ctx.canvasViewport.classList.add('space-panning');
                 return;
             }
 
-            // Don't interfere with input fields for all other shortcuts
-            if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+            // Don't interfere with editors / form controls for all other shortcuts
+            if (isTypingTarget(e.target)) return;
 
             if (e.key === 'Escape') {
                 closePreview();

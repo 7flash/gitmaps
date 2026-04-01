@@ -1,6 +1,6 @@
 {
   "name": "gitmaps",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "bin": {
     "gitmaps": "cli.ts"
@@ -17,7 +17,6 @@
     "dev": "bun run server.ts",
     "start": "bun run server.ts",
     "test": "bun test app/api/repo/load/route.test.ts app/lib/route-catchall.test.ts app/lib/status-bar.test.ts app/lib/xydraw.test.ts app/lib/transclusion-smoke.test.ts app/lib/repo-select.test.ts packages/galaxydraw/perf.test.ts",
-    "smoke:browser": "bun scripts/browser-smoke-local.ts",
     "smoke:browser": "bun scripts/browser-smoke-local.ts",
     "smoke:browser-tools": "bash scripts/browser-smoke-local.sh",
     "smoke:browser-tools:load": "bash scripts/browser-repo-load-smoke.sh",

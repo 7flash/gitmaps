@@ -51,6 +51,7 @@
 - [x] ~~**File preview: 120-line limit**~~ — ✅ DONE. Preview popup now renders with `isExpanded=true` to show ALL lines, not just the first 120.
 
 ## 🔴 Priority: Fix
+- [x] ~~**CodeMirror spacebar swallowed by canvas pan shortcut**~~ — ✅ DONE. Global `events.tsx` keyboard handling now ignores CodeMirror/contenteditable/form targets, so pressing Space in the modal editor inserts normally instead of toggling canvas space-pan mode.
 - [x] ~~**File preview: popup visibility**~~ — ✅ DONE. Root cause: cards in pill mode have `display:none`, cloning them produced zero-size popup. Added `display:block` to cloned card.
 - [x] ~~**File preview: scrollable content**~~ — ✅ DONE. Popup stays stationary (no cursor-chasing), wheel events forwarded from viewport to popup when preview is visible.
 - [x] ~~**Changed files panel empty**~~ — ✅ DONE. Fixed JSX Fragment rendering issue breaking `jsx-dom` render behavior, and wired up `ctx` injection correctly.
