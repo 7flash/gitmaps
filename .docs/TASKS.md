@@ -171,7 +171,8 @@
 - [x] ~~**PDF multi-page navigation**~~ — ✅ DONE. PDF card previews now show previous/next page controls with page indicators, fetch PDF page-count metadata when available, and fall back to optimistic navigation when metadata tools are unavailable.
 - [x] ~~**Low-zoom cards should still show content context**~~ — ✅ DONE. Replaced the old filename-only pill feel with content-aware low-zoom cards that render wrapped text excerpts, scale text to stay readable as zoom decreases, and anchor the excerpt to the saved scroll position so refreshes preserve useful context.
 - [x] ~~**Low-zoom canvas/text renderer**~~ — ✅ DONE. Moved low-zoom content previews off heavy DOM text blocks onto a per-card canvas renderer that draws title/path/excerpt with soft wrapping and fade-out, while still anchoring excerpts to saved scroll position.
-- [ ] **Low-zoom canvas renderer perf benchmark** — Measure the new canvas-based low-zoom path on giant repos and compare visible-card counts / FPS against the old DOM preview version.
+- [x] ~~**Low-zoom canvas renderer perf benchmark**~~ — ✅ DONE. Added `scripts/low-zoom-preview-bench.ts` plus `bun run bench:low-zoom` to compare low-zoom layout-only work, old DOM preview creation, and current canvas preview drawing. Current synthetic baseline at 600 visible cards / zoom 0.14: layout-only `8.864ms`, old DOM preview create `14.045ms`, canvas preview draw `11.009ms`.
+- [ ] **Low-zoom browser perf smoke** — Measure the new low-zoom path in a real browser on a giant repo and capture FPS/DOM-count screenshots so the synthetic benchmark has a browser-side counterpart.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
@@ -199,6 +200,7 @@
 ## 📝 Architecture Notes
 - **Dev server**: `bgrun --name gitmaps` on port 3335
 - **Docker smoke**: `bun run smoke:docker-image` builds the production image and verifies runtime PDF/healthcheck tooling exists.
+- **Low-zoom benchmark**: `bun run bench:low-zoom` compares synthetic low-zoom layout/draw cost for the old DOM preview path vs the current canvas renderer.
 - **Client orchestrator**: `app/page.client.tsx` → imports modules from `app/lib/`
 - **State**: XState machine in `app/state/machine.js`
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)

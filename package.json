@@ -24,6 +24,7 @@
     "smoke:browser-tools:self-check": "bash scripts/browser-smoke-self-check.sh",
     "smoke:browser-tools:check": "bash scripts/browser-smoke-check.sh",
     "smoke:docker-image": "bash scripts/docker-image-smoke.sh",
+    "bench:low-zoom": "bun scripts/low-zoom-preview-bench.ts",
     "prepublishOnly": "echo 'Publishing gitmaps to npm'"
   },
   "keywords": [
