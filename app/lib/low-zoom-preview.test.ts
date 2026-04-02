@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { getLowZoomPreviewText, getLowZoomScale } from './low-zoom-preview';
+import { estimatePreviewCharsPerLine, estimatePreviewLineCapacity, getLowZoomPreviewText, getLowZoomScale, wrapPreviewText } from './low-zoom-preview';
 
 describe('low zoom preview helpers', () => {
   test('anchors preview text to approximate saved scroll position', () => {
@@ -23,5 +23,16 @@ describe('low zoom preview helpers', () => {
     const far = getLowZoomScale(0.1);
     expect(far.titleFont).toBeGreaterThan(near.titleFont);
     expect(far.bodyFont).toBeGreaterThan(near.bodyFont);
+  });
+
+  test('wraps preview text into bounded lines with ellipsis', () => {
+    const lines = wrapPreviewText('alpha beta gamma delta epsilon zeta eta theta', 10, 3);
+    expect(lines.length).toBeLessThanOrEqual(3);
+    expect(lines[lines.length - 1]?.endsWith('…')).toBe(true);
+  });
+
+  test('preview capacity estimates stay positive', () => {
+    expect(estimatePreviewCharsPerLine(580, 0.25)).toBeGreaterThan(8);
+    expect(estimatePreviewLineCapacity(700, 0.25)).toBeGreaterThanOrEqual(2);
   });
 });
