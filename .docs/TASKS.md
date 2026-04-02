@@ -170,7 +170,8 @@
 - [x] ~~**PDF rendering on canvas cards**~~ — ✅ DONE. PDF files now render as image thumbnails on canvas cards via `/api/repo/pdf-thumb` endpoint using `pdftoppm` (poppler-utils) or ImageMagick with graceful fallback. Cards show the first page as a preview image with lazy loading.
 - [x] ~~**PDF multi-page navigation**~~ — ✅ DONE. PDF card previews now show previous/next page controls with page indicators, fetch PDF page-count metadata when available, and fall back to optimistic navigation when metadata tools are unavailable.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
-- [ ] **Install poppler-utils in Dockerfile** — Add `pdftoppm` to the production Docker image so PDF thumbnails work in deployed environments.
+- [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
+- [ ] **Docker image smoke check** — Add a lightweight container smoke test that verifies `curl`, `pdftoppm`, and `pdfinfo` exist in the production image.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.

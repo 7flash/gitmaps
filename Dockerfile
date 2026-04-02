@@ -27,9 +27,12 @@ FROM oven/bun:1-slim
 
 WORKDIR /app
 
-# Install git (required at runtime for repository operations)
+# Install runtime tools:
+# - git: repository operations
+# - poppler-utils: pdftoppm/pdfinfo for PDF preview thumbnails + metadata
+# - curl: container healthcheck
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git ca-certificates && \
+    apt-get install -y --no-install-recommends git ca-certificates poppler-utils curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy from builder
