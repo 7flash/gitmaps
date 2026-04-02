@@ -137,8 +137,8 @@ export function getPreviewScrollMetrics(file: any, height: number, zoom: number,
 export function collectPreviewDiffMarkers(file: any, totalLines: number) {
   const markers: Array<{ ratio: number; color: string; height?: number }> = [];
   const safeTotal = Math.max(1, totalLines);
-  const added = file?.addedLines instanceof Set ? Array.from(file.addedLines) : [];
-  const deletedBefore = file?.deletedBeforeLine instanceof Map ? Array.from(file.deletedBeforeLine.keys()) : [];
+  let added = file?.addedLines instanceof Set ? Array.from(file.addedLines) : [];
+  let deletedBefore = file?.deletedBeforeLine instanceof Map ? Array.from(file.deletedBeforeLine.keys()) : [];
 
   if (file?.status === 'added') {
     markers.push({ ratio: 0, color: '#22c55e', height: 1 });
@@ -147,6 +147,38 @@ export function collectPreviewDiffMarkers(file: any, totalLines: number) {
   if (file?.status === 'deleted') {
     markers.push({ ratio: 0, color: '#ef4444', height: 1 });
     return markers;
+  }
+
+  if ((added.length === 0 && deletedBefore.length === 0) && Array.isArray(file?.hunks)) {
+    const derivedAdded: number[] = [];
+    const derivedDeleted: number[] = [];
+    for (const hunk of file.hunks) {
+      let newLine = hunk?.newStart || 1;
+      let sawPendingDelete = false;
+      for (const line of hunk?.lines || []) {
+        if (line?.type === 'add') {
+          derivedAdded.push(newLine);
+          if (sawPendingDelete) {
+            derivedDeleted.push(newLine);
+            sawPendingDelete = false;
+          }
+          newLine += 1;
+        } else if (line?.type === 'del') {
+          sawPendingDelete = true;
+        } else {
+          if (sawPendingDelete) {
+            derivedDeleted.push(newLine);
+            sawPendingDelete = false;
+          }
+          newLine += 1;
+        }
+      }
+      if (sawPendingDelete) {
+        derivedDeleted.push(newLine);
+      }
+    }
+    added = derivedAdded;
+    deletedBefore = derivedDeleted;
   }
 
   for (const line of added) {
@@ -247,31 +279,6 @@ export function renderLowZoomPreviewCanvas(
     ctx.fillText(line, leftInset, y);
   });
 
-  const trackX = width - scrollbarWidth - 5;
-  const markerX = trackX - markerLaneWidth - 4;
-  const trackY = scrollMetrics.trackPadding;
-  const trackHeight = scrollMetrics.trackHeight;
-
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  roundRect(ctx, markerX, trackY, markerLaneWidth, trackHeight, 3);
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  roundRect(ctx, trackX, trackY, scrollbarWidth, trackHeight, scrollbarWidth / 2);
-  ctx.fill();
-
-  const markers = collectPreviewDiffMarkers(file, scrollMetrics.totalLines);
-  for (const marker of markers) {
-    const markerHeight = marker.height === 1 ? trackHeight : 5;
-    const y = marker.height === 1 ? trackY : trackY + marker.ratio * Math.max(0, trackHeight - markerHeight);
-    ctx.fillStyle = marker.color;
-    roundRect(ctx, markerX, Math.max(trackY, y), markerLaneWidth, markerHeight, 2);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = 'rgba(196,181,253,0.96)';
-  roundRect(ctx, trackX, scrollMetrics.thumbY, scrollbarWidth, scrollMetrics.thumbHeight, scrollbarWidth / 2);
-  ctx.fill();
 }
 
 function trimToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {

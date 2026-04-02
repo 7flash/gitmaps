@@ -76,6 +76,25 @@ describe('low zoom preview helpers', () => {
     expect(deleted[0]?.height).toBe(1);
   });
 
+  test('derives diff markers from hunks when line maps are absent', () => {
+    const markers = collectPreviewDiffMarkers({
+      hunks: [
+        {
+          newStart: 8,
+          lines: [
+            { type: 'ctx', content: 'a' },
+            { type: 'del', content: 'old-1' },
+            { type: 'del', content: 'old-2' },
+            { type: 'add', content: 'new-1' },
+            { type: 'ctx', content: 'b' },
+          ],
+        },
+      ],
+    }, 20);
+    expect(markers.some((m) => m.color === '#22c55e')).toBe(true);
+    expect(markers.some((m) => m.color === '#ef4444')).toBe(true);
+  });
+
   test('title typography is larger than body typography for readability', () => {
     const scale = getLowZoomScale(0.18);
     expect(scale.titleFont).toBeGreaterThan(scale.bodyFont);
