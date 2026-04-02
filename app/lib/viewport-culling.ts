@@ -23,7 +23,7 @@
  */
 import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
-import { estimatePreviewMaxScroll, getLowZoomScale, renderLowZoomPreviewCanvas } from './low-zoom-preview';
+import { collectPreviewDiffMarkers, estimatePreviewMaxScroll, getLowZoomScale, getPreviewScrollMetrics, renderLowZoomPreviewCanvas } from './low-zoom-preview';
 import { materializeViewport } from './xydraw-bridge';
 
 // ── Culling state ──────────────────────────────────────────
@@ -204,6 +204,11 @@ function createPillCard(ctx: CanvasContext, file: any, path: string, x: number, 
     canvas.style.cssText = 'display:block;width:100%;height:100%;pointer-events:none;';
     pill.appendChild(canvas);
 
+    const diffOverlay = document.createElement('div');
+    diffOverlay.className = 'file-pill-diff-overlay';
+    diffOverlay.style.cssText = 'position:absolute;top:10px;right:15px;bottom:10px;width:12px;pointer-events:none;z-index:2;';
+    pill.appendChild(diffOverlay);
+
     (pill as any)._fileData = file;
     updatePillCardLayout(ctx, pill, zoom, isChanged);
 
@@ -223,8 +228,10 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
     const scale = getLowZoomScale(zoom);
     const path = pill.dataset.path || '';
     const canvas = pill.querySelector('.file-pill-canvas') as HTMLCanvasElement | null;
+    const diffOverlay = pill.querySelector('.file-pill-diff-overlay') as HTMLElement | null;
     const file = (pill as any)._fileData || ctx.allFilesData?.find(f => f.path === path) || ctx.commitFilesData?.find(f => f.path === path) || null;
     const changed = isChanged ?? pill.dataset.changed === 'true';
+    const scrollTop = getSavedScrollTop(ctx, path);
     pill.dataset.zoomBucket = zoom.toFixed(3);
     pill.style.borderRadius = `${Math.max(6, scale.radius)}px`;
     if (!canvas) return;
@@ -235,10 +242,49 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
         width: w,
         height: h,
         zoom,
-        scrollTop: getSavedScrollTop(ctx, path),
+        scrollTop,
         accentColor: getPillColor(path, changed),
         isChanged: changed,
     });
+
+    if (diffOverlay) {
+        const metrics = getPreviewScrollMetrics(file, h, zoom, scrollTop);
+        const markers = collectPreviewDiffMarkers(file, metrics.totalLines);
+        diffOverlay.innerHTML = '';
+        diffOverlay.style.top = `${metrics.trackPadding}px`;
+        diffOverlay.style.bottom = `${metrics.trackPadding}px`;
+        diffOverlay.style.right = '15px';
+        diffOverlay.style.width = '12px';
+        diffOverlay.style.pointerEvents = 'auto';
+
+        for (const marker of markers) {
+            const btn = document.createElement('button');
+            const markerHeight = marker.height === 1 ? metrics.trackHeight : 8;
+            const y = marker.height === 1 ? 0 : marker.ratio * Math.max(0, metrics.trackHeight - markerHeight);
+            btn.type = 'button';
+            btn.className = 'file-pill-diff-marker';
+            btn.title = marker.color === '#22c55e' ? 'Jump to added lines' : 'Jump to deleted lines';
+            btn.style.cssText = `position:absolute;left:0;width:12px;height:${markerHeight}px;top:${y}px;border:none;border-radius:3px;background:${marker.color};box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 0 10px ${marker.color}66;cursor:pointer;padding:0;pointer-events:auto;`;
+            btn.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const maxScroll = estimatePreviewMaxScroll(file, h, zoom);
+                const next = marker.height === 1 ? 0 : Math.max(0, Math.min(maxScroll, marker.ratio * maxScroll));
+                const key = `scroll:${path}`;
+                const existing = ctx.positions.get(key) || {};
+                ctx.positions.set(key, { ...existing, x: next, y: existing.y || 0 });
+                try {
+                    const { debounceSaveScroll } = require('./cards');
+                    debounceSaveScroll(ctx, path, next);
+                } catch { }
+                updatePillCardLayout(ctx, pill, zoom, changed);
+            });
+            diffOverlay.appendChild(btn);
+        }
+    }
 }
 
 /**
