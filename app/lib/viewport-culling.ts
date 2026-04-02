@@ -56,9 +56,10 @@ let _currentLodMode: 'full' | 'pill' = 'full';
 let _detailMode: 'auto' | 'preview' = (() => {
     try {
         const stored = localStorage.getItem(LOW_ZOOM_MODE_STORAGE_KEY);
-        return stored === 'preview' ? 'preview' : 'auto';
+        if (stored === 'auto' || stored === 'preview') return stored;
+        return 'preview';
     } catch {
-        return 'auto';
+        return 'preview';
     }
 })();
 
