@@ -740,9 +740,11 @@ export function setupEventListeners(ctx: CanvasContext) {
         });
 
         // Settings modal
-        document.getElementById('openSettings')?.addEventListener('click', () => {
+        const openSettings = () => {
             import('./settings-modal').then(({ openSettingsModal }) => openSettingsModal(ctx));
-        });
+        };
+        document.getElementById('openSettings')?.addEventListener('click', openSettings);
+        document.getElementById('openSettingsFloating')?.addEventListener('click', openSettings);
 
         // Global search
         document.getElementById('openGlobalSearch')?.addEventListener('click', () => {
