@@ -69,6 +69,13 @@ describe('low zoom preview helpers', () => {
     expect(markers.some((m) => m.color === '#ef4444')).toBe(true);
   });
 
+  test('whole-file added/deleted states create full-height rail markers', () => {
+    const added = collectPreviewDiffMarkers({ status: 'added' }, 20);
+    const deleted = collectPreviewDiffMarkers({ status: 'deleted' }, 20);
+    expect(added[0]?.height).toBe(1);
+    expect(deleted[0]?.height).toBe(1);
+  });
+
   test('title typography is larger than body typography for readability', () => {
     const scale = getLowZoomScale(0.18);
     expect(scale.titleFont).toBeGreaterThan(scale.bodyFont);

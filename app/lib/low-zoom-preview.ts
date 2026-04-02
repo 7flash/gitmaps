@@ -135,10 +135,19 @@ export function getPreviewScrollMetrics(file: any, height: number, zoom: number,
 }
 
 export function collectPreviewDiffMarkers(file: any, totalLines: number) {
-  const markers: Array<{ ratio: number; color: string }> = [];
+  const markers: Array<{ ratio: number; color: string; height?: number }> = [];
   const safeTotal = Math.max(1, totalLines);
   const added = file?.addedLines instanceof Set ? Array.from(file.addedLines) : [];
   const deletedBefore = file?.deletedBeforeLine instanceof Map ? Array.from(file.deletedBeforeLine.keys()) : [];
+
+  if (file?.status === 'added') {
+    markers.push({ ratio: 0, color: '#22c55e', height: 1 });
+    return markers;
+  }
+  if (file?.status === 'deleted') {
+    markers.push({ ratio: 0, color: '#ef4444', height: 1 });
+    return markers;
+  }
 
   for (const line of added) {
     markers.push({ ratio: Math.max(0, Math.min(1, (line - 1) / safeTotal)), color: '#22c55e' });
@@ -185,9 +194,9 @@ export function renderLowZoomPreviewCanvas(
   ctx.fill();
 
   const accentWidth = Math.max(6, width * 0.012);
-  const scrollbarWidth = 6;
-  const markerLaneWidth = 4;
-  const rightRailWidth = scrollbarWidth + markerLaneWidth + 8;
+  const scrollbarWidth = 7;
+  const markerLaneWidth = 8;
+  const rightRailWidth = scrollbarWidth + markerLaneWidth + 12;
   ctx.fillStyle = accentColor;
   ctx.fillRect(0, 0, accentWidth, height);
 
@@ -238,23 +247,29 @@ export function renderLowZoomPreviewCanvas(
     ctx.fillText(line, leftInset, y);
   });
 
-  const trackX = width - scrollbarWidth - 4;
-  const markerX = trackX - markerLaneWidth - 3;
+  const trackX = width - scrollbarWidth - 5;
+  const markerX = trackX - markerLaneWidth - 4;
   const trackY = scrollMetrics.trackPadding;
   const trackHeight = scrollMetrics.trackHeight;
 
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  roundRect(ctx, markerX, trackY, markerLaneWidth, trackHeight, 3);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
   roundRect(ctx, trackX, trackY, scrollbarWidth, trackHeight, scrollbarWidth / 2);
   ctx.fill();
 
   const markers = collectPreviewDiffMarkers(file, scrollMetrics.totalLines);
   for (const marker of markers) {
-    const y = trackY + marker.ratio * trackHeight;
+    const markerHeight = marker.height === 1 ? trackHeight : 5;
+    const y = marker.height === 1 ? trackY : trackY + marker.ratio * Math.max(0, trackHeight - markerHeight);
     ctx.fillStyle = marker.color;
-    ctx.fillRect(markerX, Math.max(trackY, y), markerLaneWidth, 3);
+    roundRect(ctx, markerX, Math.max(trackY, y), markerLaneWidth, markerHeight, 2);
+    ctx.fill();
   }
 
-  ctx.fillStyle = 'rgba(196,181,253,0.9)';
+  ctx.fillStyle = 'rgba(196,181,253,0.96)';
   roundRect(ctx, trackX, scrollMetrics.thumbY, scrollbarWidth, scrollMetrics.thumbHeight, scrollbarWidth / 2);
   ctx.fill();
 }
