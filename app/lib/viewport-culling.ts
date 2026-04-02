@@ -170,6 +170,12 @@ function getSavedScrollTop(ctx: CanvasContext, path: string): number {
     return saved?.x || 0;
 }
 
+function resolvePreviewFile(ctx: CanvasContext, path: string, fallback?: any) {
+    const commitFile = ctx.commitFilesData?.find(f => f.path === path) || null;
+    const allFile = ctx.allFilesData?.find(f => f.path === path) || null;
+    return commitFile || fallback || allFile || null;
+}
+
 /**
  * Create a lightweight pill placeholder for a file.
  * ~3 DOM nodes vs ~100+ for a full card = massive perf win at low zoom.
@@ -206,8 +212,13 @@ function createPillCard(ctx: CanvasContext, file: any, path: string, x: number, 
 
     const diffOverlay = document.createElement('div');
     diffOverlay.className = 'file-pill-diff-overlay';
-    diffOverlay.style.cssText = 'position:absolute;top:10px;right:15px;bottom:10px;width:12px;pointer-events:none;z-index:2;';
+    diffOverlay.style.cssText = 'position:absolute;top:10px;right:26px;bottom:10px;width:12px;pointer-events:none;z-index:2;';
     pill.appendChild(diffOverlay);
+
+    const scrollOverlay = document.createElement('div');
+    scrollOverlay.className = 'file-pill-scroll-overlay';
+    scrollOverlay.style.cssText = 'position:absolute;top:10px;right:15px;bottom:10px;width:9px;pointer-events:auto;z-index:3;';
+    pill.appendChild(scrollOverlay);
 
     (pill as any)._fileData = file;
     updatePillCardLayout(ctx, pill, zoom, isChanged);
@@ -229,7 +240,8 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
     const path = pill.dataset.path || '';
     const canvas = pill.querySelector('.file-pill-canvas') as HTMLCanvasElement | null;
     const diffOverlay = pill.querySelector('.file-pill-diff-overlay') as HTMLElement | null;
-    const file = (pill as any)._fileData || ctx.allFilesData?.find(f => f.path === path) || ctx.commitFilesData?.find(f => f.path === path) || null;
+    const scrollOverlay = pill.querySelector('.file-pill-scroll-overlay') as HTMLElement | null;
+    const file = resolvePreviewFile(ctx, path, (pill as any)._fileData);
     const changed = isChanged ?? pill.dataset.changed === 'true';
     const scrollTop = getSavedScrollTop(ctx, path);
     pill.dataset.zoomBucket = zoom.toFixed(3);
@@ -247,25 +259,27 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
         isChanged: changed,
     });
 
+    const metrics = getPreviewScrollMetrics(file, h, zoom, scrollTop);
+
     if (diffOverlay) {
-        const metrics = getPreviewScrollMetrics(file, h, zoom, scrollTop);
         const markers = collectPreviewDiffMarkers(file, metrics.totalLines);
         diffOverlay.innerHTML = '';
         diffOverlay.style.top = `${metrics.trackPadding}px`;
         diffOverlay.style.bottom = `${metrics.trackPadding}px`;
-        diffOverlay.style.right = '15px';
+        diffOverlay.style.right = '26px';
         diffOverlay.style.width = '12px';
         diffOverlay.style.pointerEvents = 'auto';
 
         for (const marker of markers) {
             const btn = document.createElement('button');
-            const markerHeight = marker.height === 1 ? metrics.trackHeight : 8;
+            const markerHeight = marker.height === 1 ? metrics.trackHeight : 10;
             const y = marker.height === 1 ? 0 : marker.ratio * Math.max(0, metrics.trackHeight - markerHeight);
             btn.type = 'button';
             btn.className = 'file-pill-diff-marker';
             btn.title = marker.color === '#22c55e' ? 'Jump to added lines' : 'Jump to deleted lines';
-            btn.style.cssText = `position:absolute;left:0;width:12px;height:${markerHeight}px;top:${y}px;border:none;border-radius:3px;background:${marker.color};box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 0 10px ${marker.color}66;cursor:pointer;padding:0;pointer-events:auto;`;
+            btn.style.cssText = `position:absolute;left:0;width:12px;height:${markerHeight}px;top:${y}px;border:none;border-radius:3px;background:${marker.color};box-shadow:0 0 0 1px rgba(255,255,255,0.28),0 0 10px ${marker.color}88;cursor:pointer;padding:0;pointer-events:auto;opacity:1;`;
             btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
             });
             btn.addEventListener('click', (e) => {
@@ -284,6 +298,71 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
             });
             diffOverlay.appendChild(btn);
         }
+    }
+
+    if (scrollOverlay) {
+        scrollOverlay.innerHTML = '';
+        scrollOverlay.style.top = `${metrics.trackPadding}px`;
+        scrollOverlay.style.bottom = `${metrics.trackPadding}px`;
+
+        const track = document.createElement('button');
+        track.type = 'button';
+        track.className = 'file-pill-scroll-track';
+        track.title = 'Scroll preview';
+        track.style.cssText = `position:absolute;inset:0;border:none;border-radius:999px;background:rgba(255,255,255,0.08);padding:0;cursor:pointer;`;
+        track.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const rect = track.getBoundingClientRect();
+            const thumbHeight = Math.max(18, metrics.thumbHeight);
+            const localY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+            const thumbCenter = localY - thumbHeight / 2;
+            const ratio = rect.height > thumbHeight ? Math.max(0, Math.min(1, thumbCenter / (rect.height - thumbHeight))) : 0;
+            const next = ratio * metrics.maxScroll;
+            const key = `scroll:${path}`;
+            const existing = ctx.positions.get(key) || {};
+            ctx.positions.set(key, { ...existing, x: next, y: existing.y || 0 });
+            try {
+                const { debounceSaveScroll } = require('./cards');
+                debounceSaveScroll(ctx, path, next);
+            } catch { }
+            updatePillCardLayout(ctx, pill, zoom, changed);
+        });
+        scrollOverlay.appendChild(track);
+
+        const thumb = document.createElement('div');
+        thumb.className = 'file-pill-scroll-thumb';
+        thumb.style.cssText = `position:absolute;left:0;width:9px;height:${metrics.thumbHeight}px;top:${Math.max(0, metrics.thumbY - metrics.trackPadding)}px;border-radius:999px;background:rgba(196,181,253,0.98);box-shadow:0 0 0 1px rgba(255,255,255,0.24),0 4px 12px rgba(0,0,0,0.35);cursor:grab;`;
+        thumb.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const startY = e.clientY;
+            const startScroll = scrollTop;
+            const dragTravel = Math.max(1, metrics.trackHeight - metrics.thumbHeight);
+            const maxScroll = Math.max(0, metrics.maxScroll);
+
+            const onMove = (moveEvent: MouseEvent) => {
+                moveEvent.preventDefault();
+                const deltaY = moveEvent.clientY - startY;
+                const next = maxScroll > 0 ? Math.max(0, Math.min(maxScroll, startScroll + (deltaY / dragTravel) * maxScroll)) : 0;
+                const key = `scroll:${path}`;
+                const existing = ctx.positions.get(key) || {};
+                ctx.positions.set(key, { ...existing, x: next, y: existing.y || 0 });
+                updatePillCardLayout(ctx, pill, zoom, changed);
+            };
+            const onUp = () => {
+                const finalScroll = getSavedScrollTop(ctx, path);
+                try {
+                    const { debounceSaveScroll } = require('./cards');
+                    debounceSaveScroll(ctx, path, finalScroll);
+                } catch { }
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+            };
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+        });
+        scrollOverlay.appendChild(thumb);
     }
 }
 
@@ -528,7 +607,7 @@ export function performViewportCulling(ctx: CanvasContext) {
                 );
 
                 if (inView) {
-                    const file = ctx.allFilesData?.find(f => f.path === path) || ctx.commitFilesData?.find(f => f.path === path) || null;
+                    const file = resolvePreviewFile(ctx, path);
                     const pill = createPillCard(ctx, file, path, x, y, w, h, isChanged, zoom, true);
                     if (isChanged) pill.dataset.changed = 'true';
                     ctx.canvas.appendChild(pill);
@@ -707,7 +786,7 @@ export function setupPillInteraction(ctx: CanvasContext) {
         const path = pill.dataset.path || '';
         if (!path) return;
 
-        const file = (pill as any)._fileData || ctx.allFilesData?.find(f => f.path === path) || ctx.commitFilesData?.find(f => f.path === path) || null;
+        const file = resolvePreviewFile(ctx, path, (pill as any)._fileData);
         const zoom = ctx.snap().context.zoom || 1;
         const height = parseFloat(pill.style.height) || 700;
         const current = getSavedScrollTop(ctx, path);
