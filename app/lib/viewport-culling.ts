@@ -826,6 +826,25 @@ export function setupPillInteraction(ctx: CanvasContext) {
         window.addEventListener('mouseup', onPillUp);
     });
 
+    ctx.canvas.addEventListener('contextmenu', (e: MouseEvent) => {
+        const pill = (e.target as HTMLElement).closest('.file-pill') as HTMLElement;
+        if (!pill) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const pillPath = pill.dataset.path || '';
+        if (pillPath) {
+            const selected = ctx.snap().context.selectedCards || [];
+            if (!selected.includes(pillPath)) {
+                ctx.actor.send({ type: 'SELECT_CARD', path: pillPath, shift: false });
+                updatePillSelectionHighlights(ctx);
+            }
+            import('./cards').then(({ showCardContextMenu }) => {
+                showCardContextMenu(ctx, pill, e.clientX, e.clientY);
+            });
+        }
+    });
+
     // Native dblclick to open editor modal (consistent with card dblclick)
     ctx.canvas.addEventListener('dblclick', (e: MouseEvent) => {
         const pill = (e.target as HTMLElement).closest('.file-pill') as HTMLElement;
@@ -834,7 +853,7 @@ export function setupPillInteraction(ctx: CanvasContext) {
         e.preventDefault();
         const pillPath = pill.dataset.path || '';
         if (pillPath) {
-            const file = ctx.allFilesData?.find(f => f.path === pillPath) ||
+            const file = resolvePreviewFile(ctx, pillPath) ||
                 { path: pillPath, name: pillPath.split('/').pop(), lines: 0 };
             import('./file-modal').then(({ openFileModal }) => openFileModal(ctx, file));
         }
