@@ -169,6 +169,9 @@
 - [x] ~~**Binary-heavy repo loading stalls at 85%**~~ — ✅ DONE. Root cause: tree endpoint read all non-binary files synchronously with no size limit, blocking the stream on large repos. Fix: skip reading content for files >2MB, get binary file sizes via `Bun.file()`, and increase client fetch timeout from 60s to 300s.
 - [x] ~~**PDF rendering on canvas cards**~~ — ✅ DONE. PDF files now render as image thumbnails on canvas cards via `/api/repo/pdf-thumb` endpoint using `pdftoppm` (poppler-utils) or ImageMagick with graceful fallback. Cards show the first page as a preview image with lazy loading.
 - [x] ~~**PDF multi-page navigation**~~ — ✅ DONE. PDF card previews now show previous/next page controls with page indicators, fetch PDF page-count metadata when available, and fall back to optimistic navigation when metadata tools are unavailable.
+- [x] ~~**Low-zoom cards should still show content context**~~ — ✅ DONE. Replaced the old filename-only pill feel with content-aware low-zoom cards that render wrapped text excerpts, scale text to stay readable as zoom decreases, and anchor the excerpt to the saved scroll position so refreshes preserve useful context.
+- [ ] **Low-zoom canvas/text renderer** — Move low-zoom preview layout off DOM and into canvas/WebGL if the new content-aware cards become too heavy in giant repos.
+- [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
 - [x] ~~**Docker image smoke check**~~ — ✅ DONE. Added `scripts/docker-image-smoke.sh` plus `bun run smoke:docker-image` to build the production image and verify `curl`, `pdftoppm`, and `pdfinfo` exist in the runtime container.
@@ -200,5 +203,6 @@
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)
 - **Landing page**: `app/page.tsx` (server-rendered), styles in `app/globals.css`
 - **Rendering**: Viewport culling + line-limiting for large files, VISIBLE_LINE_LIMIT=120
+- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout helpers live in `app/lib/low-zoom-preview.ts`.
 - **URL routing**: Path-based (`/slug`) with `[slug]/page.tsx` dynamic route. Legacy `#slug` auto-migrates.
 - **Storage**: All client state in localStorage (positions, connections, layers, hidden files)

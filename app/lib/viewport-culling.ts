@@ -23,6 +23,7 @@
  */
 import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
+import { getLowZoomPreviewText, getLowZoomScale } from './low-zoom-preview';
 import { materializeViewport } from './xydraw-bridge';
 
 // ── Culling state ──────────────────────────────────────────
@@ -89,7 +90,7 @@ export function getPinnedCards(): Set<string> {
     return _pinnedCards;
 }
 
-// ── Status colors for pill cards
+// ── Status colors for low-zoom cards
 const PILL_COLORS: Record<string, string> = {
     'ts': '#3178c6',
     'tsx': '#3178c6',
@@ -118,25 +119,31 @@ function getPillColor(path: string, isChanged: boolean): string {
     return PILL_COLORS[ext] || '#6b7280'; // Default gray
 }
 
+function getSavedScrollTop(ctx: CanvasContext, path: string): number {
+    const saved = ctx.positions.get(`scroll:${path}`);
+    return saved?.x || 0;
+}
+
 /**
  * Create a lightweight pill placeholder for a file.
  * ~3 DOM nodes vs ~100+ for a full card = massive perf win at low zoom.
  * Uses vertical text to fit file names in compact card footprint.
  */
-function createPillCard(path: string, x: number, y: number, w: number, h: number, isChanged: boolean, animate = false): HTMLElement {
+function createPillCard(ctx: CanvasContext, file: any, path: string, x: number, y: number, w: number, h: number, isChanged: boolean, zoom: number, animate = false): HTMLElement {
     const pill = document.createElement('div');
     pill.className = 'file-pill';
     pill.dataset.path = path;
+    pill.dataset.previewMode = 'content';
     pill.style.cssText = `
         position: absolute;
         left: ${x}px;
         top: ${y}px;
         width: ${w}px;
         height: ${h}px;
-        background: ${getPillColor(path, isChanged)};
+        background: linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(2,6,23,0.96) 100%);
         border-radius: 6px;
-        opacity: ${animate ? '0' : '0.9'};
-        contain: layout style;
+        opacity: ${animate ? '0' : '0.94'};
+        contain: layout style paint;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         border: 1px solid rgba(255,255,255,0.12);
         overflow: hidden;
@@ -146,45 +153,109 @@ function createPillCard(path: string, x: number, y: number, w: number, h: number
         transform: ${animate ? 'scale(0.92)' : 'scale(1)'};
     `;
 
+    const accent = document.createElement('div');
+    accent.className = 'file-pill-accent';
+    accent.style.cssText = `
+        position:absolute;
+        top:0;
+        left:0;
+        width:${Math.max(10, w * 0.02)}px;
+        height:100%;
+        background:${getPillColor(path, isChanged)};
+        opacity:0.95;
+        pointer-events:none;
+    `;
+    pill.appendChild(accent);
+
+    const inner = document.createElement('div');
+    inner.className = 'file-pill-inner';
+    inner.style.cssText = 'position:absolute; inset:0; transform-origin:top left; pointer-events:none;';
+    pill.appendChild(inner);
+
+    const title = document.createElement('div');
+    title.className = 'file-pill-title';
+    title.textContent = path.split('/').pop() || path;
+    inner.appendChild(title);
+
+    const sub = document.createElement('div');
+    sub.className = 'file-pill-subtitle';
+    sub.textContent = path.includes('/') ? path.split('/').slice(0, -1).join('/') : 'root';
+    inner.appendChild(sub);
+
+    const preview = document.createElement('div');
+    preview.className = 'file-pill-preview';
+    preview.textContent = getLowZoomPreviewText(file, getSavedScrollTop(ctx, path)) || 'Preview unavailable';
+    inner.appendChild(preview);
+
+    updatePillCardLayout(pill, zoom);
+
     // Animate pill entrance
     if (animate) {
         requestAnimationFrame(() => {
-            pill.style.opacity = '0.9';
+            pill.style.opacity = '0.94';
             pill.style.transform = 'scale(1)';
         });
     }
 
-    // File name label — show parent dir for common ambiguous filenames
-    const parts = path.split('/');
-    const filename = parts.pop() || path;
-    const AMBIGUOUS = ['route.ts', 'route.tsx', 'page.tsx', 'page.ts', 'index.ts', 'index.tsx', 'index.js', 'layout.tsx', 'middleware.ts'];
-    const name = AMBIGUOUS.includes(filename) && parts.length > 0
-        ? `${parts[parts.length - 1]}/${filename}`
-        : filename;
-    const label = document.createElement('span');
-    label.className = 'file-pill-label';
-    label.textContent = name;
-    label.style.cssText = `
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(-90deg);
-        white-space: nowrap;
-        font-size: 48px;
-        font-weight: 700;
-        color: #fff;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: ${h - 40}px;
-        line-height: 1;
-        letter-spacing: 2px;
-        font-family: 'JetBrains Mono', monospace;
-        text-shadow: 0 2px 8px rgba(0,0,0,0.7);
-        pointer-events: none;
-    `;
-    pill.appendChild(label);
-
     return pill;
+}
+
+function updatePillCardLayout(pill: HTMLElement, zoom: number) {
+    const x = parseFloat(pill.style.left) || 0;
+    const y = parseFloat(pill.style.top) || 0;
+    const w = parseFloat(pill.style.width) || 580;
+    const h = parseFloat(pill.style.height) || 700;
+    const scale = getLowZoomScale(zoom);
+    pill.dataset.zoomBucket = zoom.toFixed(3);
+    pill.style.borderRadius = `${Math.max(6, scale.radius)}px`;
+
+    const inner = pill.querySelector('.file-pill-inner') as HTMLElement | null;
+    const title = pill.querySelector('.file-pill-title') as HTMLElement | null;
+    const sub = pill.querySelector('.file-pill-subtitle') as HTMLElement | null;
+    const preview = pill.querySelector('.file-pill-preview') as HTMLElement | null;
+    if (!inner || !title || !sub || !preview) return;
+
+    inner.style.padding = `${scale.padding}px ${scale.padding}px ${scale.padding}px ${scale.padding + Math.max(14, w * 0.02)}px`;
+    inner.style.display = 'flex';
+    inner.style.flexDirection = 'column';
+    inner.style.gap = `${scale.gap}px`;
+
+    title.style.cssText = `
+        color:#f8fafc;
+        font-family:'JetBrains Mono', monospace;
+        font-size:${scale.titleFont}px;
+        font-weight:700;
+        line-height:1.05;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        text-shadow:0 2px 8px rgba(0,0,0,0.45);
+    `;
+
+    sub.style.cssText = `
+        color:rgba(226,232,240,0.72);
+        font-family:'JetBrains Mono', monospace;
+        font-size:${Math.max(scale.bodyFont * 0.78, 8 / Math.max(zoom, 0.08))}px;
+        line-height:1.05;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    `;
+
+    preview.style.cssText = `
+        color:rgba(226,232,240,0.92);
+        font-family:'JetBrains Mono', monospace;
+        font-size:${scale.bodyFont}px;
+        line-height:${scale.bodyLineHeight}px;
+        white-space:pre-wrap;
+        overflow-wrap:anywhere;
+        word-break:break-word;
+        overflow:hidden;
+        flex:1 1 auto;
+        text-shadow:0 1px 4px rgba(0,0,0,0.3);
+        mask-image:linear-gradient(to bottom, black 0%, black 84%, transparent 100%);
+        -webkit-mask-image:linear-gradient(to bottom, black 0%, black 84%, transparent 100%);
+    `;
 }
 
 /**
@@ -399,9 +470,11 @@ export function performViewportCulling(ctx: CanvasContext) {
             );
 
             if (inView && !pillCards.has(path)) {
-                const pill = createPillCard(path, x, y, cardW, cardH, !!isChanged, true);
+                const pill = createPillCard(ctx, file, path, x, y, cardW, cardH, !!isChanged, zoom, true);
                 ctx.canvas.appendChild(pill);
                 pillCards.set(path, pill);
+            } else if (inView && pillCards.has(path)) {
+                updatePillCardLayout(pillCards.get(path)!, zoom);
             } else if (!inView && pillCards.has(path)) {
                 removePillForPath(path);
             }
@@ -424,10 +497,13 @@ export function performViewportCulling(ctx: CanvasContext) {
                 );
 
                 if (inView) {
-                    const pill = createPillCard(path, x, y, w, h, isChanged, true);
+                    const file = ctx.allFilesData?.find(f => f.path === path) || ctx.commitFilesData?.find(f => f.path === path) || null;
+                    const pill = createPillCard(ctx, file, path, x, y, w, h, isChanged, zoom, true);
                     ctx.canvas.appendChild(pill);
                     pillCards.set(path, pill);
                 }
+            } else {
+                updatePillCardLayout(pillCards.get(path)!, zoom);
             }
         }
 
