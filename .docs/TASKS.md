@@ -171,7 +171,8 @@
 - [x] ~~**PDF multi-page navigation**~~ — ✅ DONE. PDF card previews now show previous/next page controls with page indicators, fetch PDF page-count metadata when available, and fall back to optimistic navigation when metadata tools are unavailable.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
-- [ ] **Docker image smoke check** — Add a lightweight container smoke test that verifies `curl`, `pdftoppm`, and `pdfinfo` exist in the production image.
+- [x] ~~**Docker image smoke check**~~ — ✅ DONE. Added `scripts/docker-image-smoke.sh` plus `bun run smoke:docker-image` to build the production image and verify `curl`, `pdftoppm`, and `pdfinfo` exist in the runtime container.
+- [ ] **Docker image healthcheck smoke** — Extend the container smoke path to also start the app and verify the Docker healthcheck passes, not just tool presence.
 
 ## 🔴 Priority: Performance
 - [x] ~~**Canvas/WebGL text rendering**~~ — ✅ DONE. Developed `CanvasTextRenderer` to bypass DOM spans for file cards > 10,000 lines. The renderer uses virtualization to achieve stable 60 FPS panning even during large diff highlights, preserving styles and background layouts.
@@ -193,6 +194,7 @@
 
 ## 📝 Architecture Notes
 - **Dev server**: `bgrun --name gitmaps` on port 3335
+- **Docker smoke**: `bun run smoke:docker-image` builds the production image and verifies runtime PDF/healthcheck tooling exists.
 - **Client orchestrator**: `app/page.client.tsx` → imports modules from `app/lib/`
 - **State**: XState machine in `app/state/machine.js`
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)

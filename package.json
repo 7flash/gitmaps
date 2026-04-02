@@ -23,6 +23,7 @@
     "smoke:browser-tools:guard": "bash scripts/browser-smoke-guard.sh",
     "smoke:browser-tools:self-check": "bash scripts/browser-smoke-self-check.sh",
     "smoke:browser-tools:check": "bash scripts/browser-smoke-check.sh",
+    "smoke:docker-image": "bash scripts/docker-image-smoke.sh",
     "prepublishOnly": "echo 'Publishing gitmaps to npm'"
   },
   "keywords": [
