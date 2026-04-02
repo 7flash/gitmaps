@@ -877,8 +877,8 @@ export default function RootLayout({ children }: { children: any }) {
             {/* Sticky Zoom Controls — floating pill, bottom-right */}
             <div id="detailModeSwitch" className="detail-mode-switch" title="Toggle preview-focused detail mode">
               <button id="toggleDetailMode" type="button" className="detail-mode-btn">
-                <span className="detail-mode-label">Preview mode</span>
-                <span id="detailModeState" className="detail-mode-state">Auto</span>
+                <span className="detail-mode-label">Renderer</span>
+                <span id="detailModeState" className="detail-mode-state">Preview</span>
               </button>
             </div>
 

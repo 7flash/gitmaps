@@ -173,13 +173,13 @@
 - [x] ~~**Low-zoom canvas/text renderer**~~ — ✅ DONE. Moved low-zoom content previews off heavy DOM text blocks onto a per-card canvas renderer that draws title/path/excerpt with soft wrapping and fade-out, while still anchoring excerpts to saved scroll position.
 - [x] ~~**Low-zoom canvas renderer perf benchmark**~~ — ✅ DONE. Added `scripts/low-zoom-preview-bench.ts` plus `bun run bench:low-zoom` to compare low-zoom layout-only work, old DOM preview creation, and current canvas preview drawing. Current synthetic baseline at 600 visible cards / zoom 0.14: layout-only `8.864ms`, old DOM preview create `14.045ms`, canvas preview draw `11.009ms`.
 - [x] ~~**Low-zoom browser perf smoke**~~ — ✅ DONE. Added `scripts/browser-low-zoom-perf-smoke.sh` plus `bun run smoke:browser-tools:low-zoom` to load a repo in a real browser, toggle the perf overlay, zoom out until low-zoom cards appear, assert the low-zoom cards are canvas-backed, and report browser-side perf metrics / screenshots.
-- [x] ~~**Preview-focused detail mode switch**~~ — ✅ DONE. Added a fixed top-right switch that toggles between normal auto detail behavior and forcing the new preview-mode cards at every zoom level, so the low-zoom renderer can be used as the primary exploration mode.
+- [x] ~~**Preview-focused detail mode switch**~~ — ✅ DONE. Added a fixed top-right switch that now toggles between `Preview` and `Classic` renderers instead of preview vs zoom-based auto behavior.
 - [x] ~~**Low-zoom filename readability**~~ — ✅ DONE. Increased title typography, allowed two-line filename wrapping in the canvas preview header, and tightened subtitle/path layout so file names are readable in the new preview-focused mode.
 - [ ] **Low-zoom browser perf baseline capture** — Run the new browser perf smoke on one genuinely large repo and record a screenshot + observed FPS/DOM/card counts in `.docs/BROWSER_SMOKE.md`.
-- [x] ~~**Preview mode as default**~~ — ✅ ATTEMPT REVERTED. Forcing preview mode at normal zoom made loaded repos appear broken because only preview cards rendered in-view while normal full cards stayed hidden. GitMaps is back to `Auto` by default, with the top-right switch preserved for explicit preview-mode use.
+- [x] ~~**Preview mode as default**~~ — ✅ DONE. Preview mode is now the default renderer; users can explicitly switch to `Classic` via the top-right control if they want the old full-card behavior.
 - [x] ~~**Preview scaling should favor filename fit + line density**~~ — ✅ DONE. Rebalanced preview-mode typography/layout so the most zoomed-out view uses smaller on-screen text to fit much more of each filename, while higher zoom levels dedicate far more vertical space to content and target ~20 visible lines in large preview cards.
-- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains the top-right switch enables preview-focused detail mode without making it the global default.
-- [ ] **Preview mode as default (retry only after browser baseline)** — Reconsider making preview mode default only after browser-side baseline captures prove the normal-zoom experience still reads as “loaded” and usable.
+- [x] ~~**Preview mode should not switch renderer on zoom-in**~~ — ✅ DONE. Preview mode now stays in the preview renderer at every zoom level; it no longer flips back into the classic full-card renderer when zooming in.
+- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains the top-right switch swaps between `Preview` and `Classic` renderers.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
@@ -214,6 +214,6 @@
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)
 - **Landing page**: `app/page.tsx` (server-rendered), styles in `app/globals.css`
 - **Rendering**: Viewport culling + line-limiting for large files, VISIBLE_LINE_LIMIT=120
-- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, and the fixed top-right switch can force preview mode without making it the global default.
+- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, and the fixed top-right switch swaps between persistent `Preview` and `Classic` renderers.
 - **URL routing**: Path-based (`/slug`) with `[slug]/page.tsx` dynamic route. Legacy `#slug` auto-migrates.
 - **Storage**: All client state in localStorage (positions, connections, layers, hidden files)

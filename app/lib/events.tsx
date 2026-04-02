@@ -458,9 +458,9 @@ export function setupEventListeners(ctx: CanvasContext) {
                 const mode = getDetailMode();
                 detailModeToggle.classList.toggle('active', mode === 'preview');
                 detailModeToggle.setAttribute('title', mode === 'preview'
-                    ? 'Preview mode forced on — click to restore auto detail switching'
-                    : 'Auto detail switching — click to keep preview mode on at every zoom');
-                if (stateEl) stateEl.textContent = mode === 'preview' ? 'Preview' : 'Auto';
+                    ? 'Preview mode — stays in the preview renderer at every zoom. Click to switch to classic cards.'
+                    : 'Classic mode — old full-card renderer. Click to switch back to preview mode.');
+                if (stateEl) stateEl.textContent = mode === 'preview' ? 'Preview' : 'Classic';
             };
             updateDetailModeUi();
             detailModeToggle.addEventListener('click', () => {
@@ -468,8 +468,8 @@ export function setupEventListeners(ctx: CanvasContext) {
                 updateDetailModeUi();
                 rerenderCurrentView(ctx);
                 showToast(next === 'preview'
-                    ? 'Preview mode forced on'
-                    : 'Auto detail switching restored', 'info');
+                    ? 'Preview mode enabled'
+                    : 'Classic mode enabled', 'info');
             });
         }
 

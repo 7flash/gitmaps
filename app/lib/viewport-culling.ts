@@ -53,12 +53,12 @@ export function markTransformActive() {
 
 // Track current LOD mode so we can detect transitions
 let _currentLodMode: 'full' | 'pill' = 'full';
-let _detailMode: 'auto' | 'preview' = (() => {
+let _detailMode: 'classic' | 'preview' = (() => {
     try {
         const stored = localStorage.getItem(LOW_ZOOM_MODE_STORAGE_KEY);
-        return stored === 'preview' ? 'preview' : 'auto';
+        return stored === 'classic' ? 'classic' : 'preview';
     } catch {
-        return 'auto';
+        return 'preview';
     }
 })();
 
@@ -99,19 +99,19 @@ export function getPinnedCards(): Set<string> {
     return _pinnedCards;
 }
 
-export function getDetailMode(): 'auto' | 'preview' {
+export function getDetailMode(): 'classic' | 'preview' {
     return _detailMode;
 }
 
-export function setDetailMode(mode: 'auto' | 'preview') {
+export function setDetailMode(mode: 'classic' | 'preview') {
     _detailMode = mode;
     try {
         localStorage.setItem(LOW_ZOOM_MODE_STORAGE_KEY, mode);
     } catch { }
 }
 
-export function toggleDetailMode(): 'auto' | 'preview' {
-    const next = _detailMode === 'preview' ? 'auto' : 'preview';
+export function toggleDetailMode(): 'classic' | 'preview' {
+    const next = _detailMode === 'preview' ? 'classic' : 'preview';
     setDetailMode(next);
     return next;
 }
@@ -323,7 +323,7 @@ export function performViewportCulling(ctx: CanvasContext) {
     // Phase 4c: also materialize deferred CardManager cards
     // Reuse zoom from worldRect (already snapped) — avoids redundant ctx.snap()
     const zoom = worldRect.zoom;
-    const isLowZoom = _detailMode === 'preview' || zoom <= LOD_ZOOM_THRESHOLD;
+    const isLowZoom = _detailMode === 'preview';
 
     // Important: never materialize full cards while in low-zoom pill mode.
     // Otherwise CardManager keeps mounting heavyweight cards right when the
