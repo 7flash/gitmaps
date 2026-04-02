@@ -50,32 +50,32 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
 
     return (
         <>
-            <button className="ctx-item" onClick={() => onAction('copy-path')}>📋 Copy path</button>
-            <button className="ctx-item" onClick={() => onAction('select')}>☑️ Select</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('copy-path')}>📋 Copy path</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('select')}>☑️ Select</button>
             {ancestors.length > 0 ? (
                 <div className="ctx-item ctx-dropdown">
                     <span>📁 Select from folder ▸</span>
                     <div className="ctx-dropdown-content">
                         {ancestors.map(dir => (
-                            <button key={dir} className="ctx-item" onClick={() => onSelectFolder(dir)}>
+                            <button type="button" key={dir} className="ctx-item" onClick={() => onSelectFolder(dir)}>
                                 📂 {dir}
                             </button>
                         ))}
                     </div>
                 </div>
             ) : (
-                <button className="ctx-item" onClick={() => onSelectFolder('')}>📁 Select all (root)</button>
+                <button type="button" className="ctx-item" onClick={() => onSelectFolder('')}>📁 Select all (root)</button>
             )}
-            <button className="ctx-item" onClick={() => onAction('pin')}>{pinned ? '📌 Unpin card' : '📌 Pin card'}</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('pin')}>{pinned ? '📌 Unpin card' : '📌 Pin card'}</button>
             <div className="ctx-divider"></div>
-            <button className="ctx-item" onClick={() => onAction('expand')}>📖 Open in Editor</button>
-            <button className="ctx-item" onClick={() => onAction('edit')}>✏️ Edit file</button>
-            <button className="ctx-item" onClick={() => onAction('blame')}>👤 Git blame</button>
-            <button className="ctx-item" onClick={() => onAction('connect')}>🔗 Connect to...</button>
-            <button className="ctx-item" onClick={() => onAction('fit-content')}>📏 Fit content</button>
-            <button className="ctx-item" onClick={() => onAction('fit-screen')}>📺 Fit screen</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('expand')}>📖 Open in Editor</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('edit')}>✏️ Edit file</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('blame')}>👤 Git blame</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('connect')}>🔗 Connect to...</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('fit-content')}>📏 Fit content</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('fit-screen')}>📺 Fit screen</button>
             <div className="ctx-divider"></div>
-            <button className="ctx-item" onClick={() => onAction('history')}>🕰️ File history</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('history')}>🕰️ File history</button>
             <div className="ctx-item ctx-dropdown">
                 <span>📦 Move to Layer ▸</span>
                 <div className="ctx-dropdown-content">
@@ -83,24 +83,24 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
                         <div className="ctx-item" style="opacity: 0.5; pointer-events: none">No custom layers</div>
                     ) : (
                         customLayers.map(l => (
-                            <button key={l.id} className="ctx-item" onClick={() => onActionLayer(l.id)}>
+                            <button type="button" key={l.id} className="ctx-item" onClick={() => onActionLayer(l.id)}>
                                 + {l.name}
                             </button>
                         ))
                     )}
                     <div className="ctx-divider"></div>
-                    <button className="ctx-item" onClick={() => onActionLayer('new')}>✨ Create New Layer</button>
+                    <button type="button" className="ctx-item" onClick={() => onActionLayer('new')}>✨ Create New Layer</button>
                 </div>
             </div>
             {isInActiveLayer && (
-                <button className="ctx-item" onClick={() => onAction('remove-from-layer')} style="color: #60a5fa">
+                <button type="button" className="ctx-item" onClick={() => onAction('remove-from-layer')} style="color: #60a5fa">
                     ↩ Move to Main
                 </button>
             )}
             <div className="ctx-divider"></div>
-            <button className="ctx-item" onClick={() => onAction('hide')} style="color: #f59e0b">🙈 Hide file</button>
-            <button className="ctx-item" onClick={() => onAction('rename')}>✏️ Rename / Move</button>
-            <button className="ctx-item" onClick={() => onAction('delete')} style="color: #ef4444">🗑️ Delete file</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('hide')} style="color: #f59e0b">🙈 Hide file</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('rename')}>✏️ Rename / Move</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('delete')} style="color: #ef4444">🗑️ Delete file</button>
         </>
     );
 }

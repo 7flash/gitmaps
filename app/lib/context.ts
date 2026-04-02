@@ -94,7 +94,7 @@ export function createCanvasContext(actor: any): CanvasContext {
         allFilesData: null,
         commitFilesData: null,
         deferredCards: new Map(),
-        controlMode: (localStorage.getItem('gitcanvas:controlMode') as any) || 'advanced',
+        controlMode: (localStorage.getItem('gitcanvas:controlMode') as any) || 'simple',
     };
 
     currentCanvasContext = ctx;

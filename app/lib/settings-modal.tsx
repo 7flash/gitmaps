@@ -98,13 +98,9 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                         <ToggleGroup id="settingRenderMode" value={settings.renderMode}
                             options={[{ value: 'canvas', label: 'Canvas' }, { value: 'dom', label: 'DOM' }]} />
                     </SettingsRow>
-                    <SettingsRow label="Font Size" desc="Code font size in pixels">
+                    <SettingsRow label="Font Size" desc="Code font size in full cards and editor views">
                         <Slider id="settingFontSize" valueId="fontSizeValue"
                             min={10} max={18} step={1} value={settings.fontSize} suffix="px" />
-                    </SettingsRow>
-                    <SettingsRow label="Popup Font Size" desc="Font size for hover popup previews">
-                        <Slider id="settingPopupFontSize" valueId="popupFontSizeValue"
-                            min={10} max={24} step={1} value={settings.popupFontSize} suffix="px" />
                     </SettingsRow>
                     <SettingsRow label="Card Width" desc="Character columns per card (like editors)">
                         <Slider id="settingCardWidth" valueId="cardWidthValue"
@@ -146,19 +142,19 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
 
                 {/* Preview Mode Section */}
                 <SettingsSection title="Preview Mode">
-                    <SettingsRow label="Far Zoom Title" desc="Filename size when zoomed far out">
+                    <SettingsRow label="Zoomed-out title" desc="Filename size at the farthest preview zoom">
                         <Slider id="settingPreviewFarTitlePx" valueId="previewFarTitlePxValue"
                             min={6} max={14} step={1} value={settings.previewFarTitlePx} suffix="px" />
                     </SettingsRow>
-                    <SettingsRow label="Near Zoom Title" desc="Filename size when zoomed in within preview mode">
+                    <SettingsRow label="Zoomed-in title" desc="Filename size at the closest preview zoom">
                         <Slider id="settingPreviewNearTitlePx" valueId="previewNearTitlePxValue"
                             min={10} max={24} step={1} value={settings.previewNearTitlePx} suffix="px" />
                     </SettingsRow>
-                    <SettingsRow label="Far Zoom Lines" desc="Minimum content lines shown when zoomed far out">
+                    <SettingsRow label="Zoomed-out lines" desc="Minimum content lines shown at the farthest preview zoom">
                         <Slider id="settingPreviewFarLines" valueId="previewFarLinesValue"
                             min={1} max={8} step={1} value={settings.previewFarLines} suffix="" />
                     </SettingsRow>
-                    <SettingsRow label="Near Zoom Lines" desc="Target content lines shown when zoomed in">
+                    <SettingsRow label="Zoomed-in lines" desc="Target content lines shown at the closest preview zoom">
                         <Slider id="settingPreviewNearLines" valueId="previewNearLinesValue"
                             min={8} max={40} step={1} value={settings.previewNearLines} suffix="" />
                     </SettingsRow>
@@ -255,13 +251,6 @@ export function openSettingsModal(ctx?: any) {
         fontValue.textContent = `${fontSlider.value}px`;
         updateSettings({ fontSize: parseInt(fontSlider.value) });
         applyFontSize(parseInt(fontSlider.value));
-    });
-
-    const popupFontSlider = _modal.querySelector('#settingPopupFontSize') as HTMLInputElement;
-    const popupFontValue = _modal.querySelector('#popupFontSizeValue')!;
-    popupFontSlider?.addEventListener('input', () => {
-        popupFontValue.textContent = `${popupFontSlider.value}px`;
-        updateSettings({ popupFontSize: parseInt(popupFontSlider.value) });
     });
 
     const cardWidthSlider = _modal.querySelector('#settingCardWidth') as HTMLInputElement;

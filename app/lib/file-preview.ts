@@ -35,7 +35,7 @@ let currentCardPath: string | null = null;
 let isInitialized = false;
 let _ctx: CanvasContext | null = null;
 let isPreviewEnabled =
-  localStorage.getItem("gitmaps:previewEnabled") !== "false"; // enabled by default
+  localStorage.getItem("gitmaps:previewEnabled") === "true"; // disabled by default
 let _isHoveringPopup = false;
 
 // ─── Popup container ─────────────────────────────────────
