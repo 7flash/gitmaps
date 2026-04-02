@@ -191,7 +191,8 @@
 - [x] ~~**Auto directory/shared-prefix containers should be removable**~~ — ✅ DONE. Disabled both the auto-generated directory labels and the virtual transclusion/shared-prefix cards because they were adding noise without helping navigation.
 - [x] ~~**Remove old hover-preview subsystem wiring**~~ — ✅ DONE. Removed the last mount init/cleanup hooks for `app/lib/file-preview.ts` so the obsolete hover popup system no longer participates in startup/shutdown next to the real Preview renderer.
 - [x] ~~**Delete obsolete `app/lib/file-preview.ts` code entirely**~~ — ✅ DONE. Deleted the now-unwired hover-preview implementation after removing its mount lifecycle hooks; there are no remaining runtime references to that subsystem.
-- [ ] **Verify layer-move flicker in a live repo** — Reproduce moving a file between layers in Preview mode and trace any remaining rerender/flash path if it still occurs.
+- [x] ~~**Reduce layer-move rerender churn**~~ — ✅ DONE. Layer moves from the card context menu now batch multi-file updates and remove preview cards/pills from the current canvas in one pass, with a single minimap/culling refresh instead of one rerender cycle per file.
+- [ ] **Verify layer-move flicker in a live repo** — Reproduce moving a file between layers in Preview mode and trace any remaining rerender/flash path if it still occurs after the batched in-place update path.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.

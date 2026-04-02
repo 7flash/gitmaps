@@ -7,7 +7,7 @@ import { render } from 'melina/client';
 import type { CanvasContext } from './context';
 import { showToast } from './utils';
 import { hideSelectedFiles } from './hidden-files';
-import { layerState, createLayer, moveFileToLayer, addFileToLayer, removeFileFromLayer, getActiveLayer } from './layers';
+import { layerState, createLayer, moveFilesToLayer, moveFileToLayer, addFileToLayer, removeFileFromLayer, getActiveLayer } from './layers';
 import { isPinned, togglePinCard } from './viewport-culling';
 
 // These are imported lazily to avoid circular deps
@@ -198,11 +198,11 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
             if (!name) return;
             createLayer(ctx, name);
             const newLayerId = layerState.layers[layerState.layers.length - 1].id;
-            filesToMove.forEach(fp => moveFileToLayer(ctx, newLayerId, fp));
+            moveFilesToLayer(ctx, newLayerId, filesToMove);
             showToast(`Moved ${filesToMove.length} file(s) to "${name}"`, 'info');
         } else {
             const layer = layerState.layers.find(l => l.id === layerId);
-            filesToMove.forEach(fp => moveFileToLayer(ctx, layerId, fp));
+            moveFilesToLayer(ctx, layerId, filesToMove);
             showToast(`Moved ${filesToMove.length} file(s) to "${layer?.name || layerId}"`, 'info');
         }
     }

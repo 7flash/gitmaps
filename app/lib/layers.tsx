@@ -52,22 +52,25 @@ export function saveLayers(ctx: CanvasContext) {
     localStorage.setItem(`gitcanvas:layers:${ctx.snap().context.repoPath}`, JSON.stringify(layerState.layers));
 }
 
-function removeFileFromCurrentCanvas(ctx: CanvasContext, path: string) {
-    const card = ctx.fileCards.get(path);
-    if (card) {
-        card.remove();
-        ctx.fileCards.delete(path);
-    }
-    const pill = ctx.canvas?.querySelector(`.file-pill[data-path="${CSS.escape(path)}"]`) as HTMLElement | null;
-    if (pill) pill.remove();
-    if (ctx.deferredCards.has(path)) {
-        ctx.deferredCards.delete(path);
-    }
-    const selected = ctx.snap().context.selectedCards || [];
-    if (selected.includes(path)) {
-        ctx.actor.send({ type: 'SELECT_CARD', path, shift: true });
+function removeFilesFromCurrentCanvas(ctx: CanvasContext, paths: string[]) {
+    const selected = new Set(ctx.snap().context.selectedCards || []);
+    for (const path of paths) {
+        const card = ctx.fileCards.get(path);
+        if (card) {
+            card.remove();
+            ctx.fileCards.delete(path);
+        }
+        const pill = ctx.canvas?.querySelector(`.file-pill[data-path="${CSS.escape(path)}"]`) as HTMLElement | null;
+        if (pill) pill.remove();
+        if (ctx.deferredCards.has(path)) {
+            ctx.deferredCards.delete(path);
+        }
+        if (selected.has(path)) {
+            ctx.actor.send({ type: 'SELECT_CARD', path, shift: true });
+        }
     }
     import('./canvas').then(({ forceMinimapRebuild }) => forceMinimapRebuild(ctx)).catch(() => {});
+    import('./viewport-culling').then(({ scheduleViewportCulling }) => scheduleViewportCulling(ctx)).catch(() => {});
 }
 
 export function createLayer(ctx: CanvasContext, name: string) {
@@ -119,32 +122,36 @@ export function deleteLayer(ctx: CanvasContext, id: string) {
  * When a file is moved to a non-default layer, the default layer tracks it as "moved out"
  * so it won't show on the default canvas.
  */
-export function moveFileToLayer(ctx: CanvasContext, layerId: string, path: string) {
+export function moveFilesToLayer(ctx: CanvasContext, layerId: string, paths: string[]) {
     if (layerId === 'default') return; // Can't "move" to default — use removeFileFromLayer instead
 
     const layer = layerState.layers.find(l => l.id === layerId);
     if (!layer) return;
 
-    // Add file to target layer
-    if (!layer.files[path]) {
-        layer.files[path] = { sections: [] };
-    }
-
-    // Track in default layer that this file has been moved out
+    const uniquePaths = Array.from(new Set(paths));
     const defaultLayer = layerState.layers.find(l => l.id === 'default');
-    if (defaultLayer) {
-        if (!defaultLayer.files[path]) {
-            defaultLayer.files[path] = { sections: [] };
+
+    for (const path of uniquePaths) {
+        if (!layer.files[path]) {
+            layer.files[path] = { sections: [] };
         }
-        // Mark as moved-out by adding a special marker
-        (defaultLayer.files[path] as any).__movedTo = layerId;
+        if (defaultLayer) {
+            if (!defaultLayer.files[path]) {
+                defaultLayer.files[path] = { sections: [] };
+            }
+            (defaultLayer.files[path] as any).__movedTo = layerId;
+        }
     }
 
     saveLayers(ctx);
     renderLayersUI(ctx);
     if (layerState.activeLayerId === 'default') {
-        removeFileFromCurrentCanvas(ctx, path);
+        removeFilesFromCurrentCanvas(ctx, uniquePaths);
     }
+}
+
+export function moveFileToLayer(ctx: CanvasContext, layerId: string, path: string) {
+    moveFilesToLayer(ctx, layerId, [path]);
 }
 
 /** Backwards-compatible addFileToLayer that now delegates to moveFileToLayer */
