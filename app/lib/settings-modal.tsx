@@ -142,13 +142,9 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
 
                 {/* Preview Mode Section */}
                 <SettingsSection title="Preview Mode">
-                    <SettingsRow label="Zoomed-out title" desc="Filename size at the farthest preview zoom">
-                        <Slider id="settingPreviewFarTitlePx" valueId="previewFarTitlePxValue"
-                            min={6} max={14} step={1} value={settings.previewFarTitlePx} suffix="px" />
-                    </SettingsRow>
-                    <SettingsRow label="Zoomed-in title" desc="Filename size at the closest preview zoom">
-                        <Slider id="settingPreviewNearTitlePx" valueId="previewNearTitlePxValue"
-                            min={10} max={24} step={1} value={settings.previewNearTitlePx} suffix="px" />
+                    <SettingsRow label="Preview text size" desc="Fixed text size used by preview cards">
+                        <Slider id="settingPreviewFontPx" valueId="previewFontPxValue"
+                            min={7} max={16} step={1} value={settings.previewFontPx} suffix="px" />
                     </SettingsRow>
                     <SettingsRow label="Zoomed-out lines" desc="Minimum content lines shown at the farthest preview zoom">
                         <Slider id="settingPreviewFarLines" valueId="previewFarLinesValue"
@@ -270,19 +266,11 @@ export function openSettingsModal(ctx?: any) {
         updateSettings({ maxVisibleLines: parseInt(maxLinesSlider.value) });
     });
 
-    const previewFarTitleSlider = _modal.querySelector('#settingPreviewFarTitlePx') as HTMLInputElement;
-    const previewFarTitleValue = _modal.querySelector('#previewFarTitlePxValue')!;
-    previewFarTitleSlider?.addEventListener('input', () => {
-        previewFarTitleValue.textContent = `${previewFarTitleSlider.value}px`;
-        updateSettings({ previewFarTitlePx: parseInt(previewFarTitleSlider.value) });
-        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
-    });
-
-    const previewNearTitleSlider = _modal.querySelector('#settingPreviewNearTitlePx') as HTMLInputElement;
-    const previewNearTitleValue = _modal.querySelector('#previewNearTitlePxValue')!;
-    previewNearTitleSlider?.addEventListener('input', () => {
-        previewNearTitleValue.textContent = `${previewNearTitleSlider.value}px`;
-        updateSettings({ previewNearTitlePx: parseInt(previewNearTitleSlider.value) });
+    const previewFontSlider = _modal.querySelector('#settingPreviewFontPx') as HTMLInputElement;
+    const previewFontValue = _modal.querySelector('#previewFontPxValue')!;
+    previewFontSlider?.addEventListener('input', () => {
+        previewFontValue.textContent = `${previewFontSlider.value}px`;
+        updateSettings({ previewFontPx: parseInt(previewFontSlider.value) });
         window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
     });
 

@@ -1145,24 +1145,17 @@ body {
 
 /* ── Sticky Zoom Controls ── */
 body.repo-loading .sticky-zoom-pill,
-body.repo-loading .floating-top-controls,
+body.repo-loading .detail-mode-switch,
 body.landing-placeholder-visible .sticky-zoom-pill,
-body.landing-placeholder-visible .floating-top-controls {
+body.landing-placeholder-visible .detail-mode-switch {
   display: none;
 }
 
-.floating-top-controls {
+.detail-mode-switch {
   position: fixed;
   top: 12px;
   right: 144px;
   z-index: 10001;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.detail-mode-switch {
-  position: relative;
 }
 
 .detail-mode-btn {
@@ -1197,15 +1190,6 @@ body.landing-placeholder-visible .floating-top-controls {
 .detail-mode-btn.active {
   border-color: rgba(96, 165, 250, 0.6);
   box-shadow: 0 10px 28px rgba(59, 130, 246, 0.16);
-}
-
-.detail-mode-btn--secondary {
-  border-color: rgba(148, 163, 184, 0.28);
-  color: #e2e8f0;
-}
-
-.detail-mode-btn--secondary:hover {
-  border-color: rgba(148, 163, 184, 0.48);
 }
 
 .detail-mode-label {

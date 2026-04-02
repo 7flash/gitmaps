@@ -6,13 +6,12 @@ const PREVIEWABLE_EXTS = new Set([
 
 export function getLowZoomScale(zoom: number) {
   const clampedZoom = Math.max(0.08, Math.min(1, zoom));
-  const progress = (clampedZoom - 0.08) / (1 - 0.08);
   const settings = getSettings();
 
-  const desiredScreenTitle = settings.previewFarTitlePx + progress * (settings.previewNearTitlePx - settings.previewFarTitlePx);
-  const desiredScreenBody = 5.5 + progress * 6.5;
-  const desiredScreenPadding = 6 + progress * 8;
-  const desiredScreenGap = 4 + progress * 4;
+  const desiredScreenBody = settings.previewFontPx;
+  const desiredScreenTitle = settings.previewFontPx + 2;
+  const desiredScreenPadding = 10;
+  const desiredScreenGap = 6;
 
   return {
     titleFont: desiredScreenTitle / clampedZoom,

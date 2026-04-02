@@ -33,11 +33,11 @@ describe('low zoom preview helpers', () => {
     expect(lines.some((line) => line.tone === 'added' && line.text === 'two')).toBe(true);
   });
 
-  test('keeps zoomed-out on-screen text smaller than zoomed-in text', () => {
+  test('keeps preview text screen size stable across zoom levels', () => {
     const far = getLowZoomScale(0.1);
     const near = getLowZoomScale(1);
-    expect(far.titleFont * 0.1).toBeLessThan(near.titleFont * 1);
-    expect(far.bodyFont * 0.1).toBeLessThan(near.bodyFont * 1);
+    expect(Math.round(far.titleFont * 0.1)).toBe(Math.round(near.titleFont * 1));
+    expect(Math.round(far.bodyFont * 0.1)).toBe(Math.round(near.bodyFont * 1));
   });
 
   test('wraps preview text into bounded lines with ellipsis', () => {

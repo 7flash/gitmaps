@@ -744,7 +744,7 @@ export function setupEventListeners(ctx: CanvasContext) {
             import('./settings-modal').then(({ openSettingsModal }) => openSettingsModal(ctx));
         };
         document.getElementById('openSettings')?.addEventListener('click', openSettings);
-        document.getElementById('openSettingsFloating')?.addEventListener('click', openSettings);
+        document.getElementById('openSettingsBottom')?.addEventListener('click', openSettings);
 
         // Global search
         document.getElementById('openGlobalSearch')?.addEventListener('click', () => {
@@ -903,6 +903,24 @@ export function setupEventListeners(ctx: CanvasContext) {
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key.toLowerCase() === 'o' || e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'p')) {
                 e.preventDefault();
                 openFileSearch(ctx);
+                return;
+            }
+
+            // Ctrl+= / Ctrl+- / Ctrl+0 = preview text size
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) {
+                e.preventDefault();
+                import('./settings').then(({ getSettings, updateSettings }) => {
+                    const settings = getSettings();
+                    let next = settings.previewFontPx;
+                    if (e.key === '=' || e.key === '+') next = Math.min(16, settings.previewFontPx + 1);
+                    else if (e.key === '-') next = Math.max(7, settings.previewFontPx - 1);
+                    else next = 10;
+                    if (next !== settings.previewFontPx) {
+                        updateSettings({ previewFontPx: next });
+                        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+                        showToast(`Preview text: ${next}px`, 'info');
+                    }
+                });
                 return;
             }
 

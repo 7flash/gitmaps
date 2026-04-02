@@ -31,10 +31,8 @@ export interface GitCanvasSettings {
     heatmapEnabled: boolean;
     /** Heatmap time range in days */
     heatmapDays: number;
-    /** Preview mode far-zoom title size (screen px) */
-    previewFarTitlePx: number;
-    /** Preview mode near-zoom title size (screen px) */
-    previewNearTitlePx: number;
+    /** Preview mode fixed text size (screen px) */
+    previewFontPx: number;
     /** Preview mode far-zoom minimum visible lines */
     previewFarLines: number;
     /** Preview mode near-zoom target visible lines */
@@ -54,8 +52,7 @@ const DEFAULTS: GitCanvasSettings = {
     popupFontSize: 14,
     heatmapEnabled: false,
     heatmapDays: 90,
-    previewFarTitlePx: 8,
-    previewNearTitlePx: 16,
+    previewFontPx: 10,
     previewFarLines: 3,
     previewNearLines: 20,
 };
@@ -69,6 +66,11 @@ export function getSettings(): GitCanvasSettings {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const parsed = JSON.parse(raw);
+            if (parsed.previewFontPx == null) {
+                const far = typeof parsed.previewFarTitlePx === 'number' ? parsed.previewFarTitlePx : DEFAULTS.previewFontPx;
+                const near = typeof parsed.previewNearTitlePx === 'number' ? parsed.previewNearTitlePx : DEFAULTS.previewFontPx;
+                parsed.previewFontPx = Math.round((far + near) / 2);
+            }
             _settings = { ...DEFAULTS, ...parsed };
         } else {
             _settings = { ...DEFAULTS };

@@ -52,6 +52,24 @@ export function saveLayers(ctx: CanvasContext) {
     localStorage.setItem(`gitcanvas:layers:${ctx.snap().context.repoPath}`, JSON.stringify(layerState.layers));
 }
 
+function removeFileFromCurrentCanvas(ctx: CanvasContext, path: string) {
+    const card = ctx.fileCards.get(path);
+    if (card) {
+        card.remove();
+        ctx.fileCards.delete(path);
+    }
+    const pill = ctx.canvas?.querySelector(`.file-pill[data-path="${CSS.escape(path)}"]`) as HTMLElement | null;
+    if (pill) pill.remove();
+    if (ctx.deferredCards.has(path)) {
+        ctx.deferredCards.delete(path);
+    }
+    const selected = ctx.snap().context.selectedCards || [];
+    if (selected.includes(path)) {
+        ctx.actor.send({ type: 'SELECT_CARD', path, shift: true });
+    }
+    import('./canvas').then(({ forceMinimapRebuild }) => forceMinimapRebuild(ctx)).catch(() => {});
+}
+
 export function createLayer(ctx: CanvasContext, name: string) {
     const newLayer: LayerData = {
         id: `layer_${Date.now()}`,
@@ -124,9 +142,8 @@ export function moveFileToLayer(ctx: CanvasContext, layerId: string, path: strin
 
     saveLayers(ctx);
     renderLayersUI(ctx);
-    // Re-render current layer to hide the moved file
     if (layerState.activeLayerId === 'default') {
-        applyLayer(ctx);
+        removeFileFromCurrentCanvas(ctx, path);
     }
 }
 
@@ -150,6 +167,10 @@ export function removeFileFromLayer(ctx: CanvasContext, layerId: string, path: s
         saveLayers(ctx);
         renderLayersUI(ctx);
         if (layer.id === layerState.activeLayerId) applyLayer(ctx);
+        else if (layerState.activeLayerId === 'default') {
+            // File becomes visible in Main again without a full rerender on the active custom layer path.
+            applyLayer(ctx);
+        }
     }
 }
 
