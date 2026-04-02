@@ -27,7 +27,7 @@ import { createLayer, getActiveLayer, addSectionToLayer } from './layers';
 import { updateCanvasTransform, updateZoomUI, updateMinimap, fitAllFiles, setupMinimapClick } from './canvas';
 import { zoomTowardScreen, panByDelta, screenToWorld, getCardManager } from './xydraw-bridge';
 import { hideSelectedFiles, showHiddenFilesModal as showHiddenModal } from './hidden-files';
-import { updatePillSelectionHighlights } from './viewport-culling';
+import { getDetailMode, toggleDetailMode, updatePillSelectionHighlights } from './viewport-culling';
 import { clearSelectionHighlights, updateSelectionHighlights, updateArrangeToolbar, arrangeRow, arrangeColumn, arrangeGrid, toggleCardExpand, fitScreenSize, changeCardsFontSize } from './cards';
 import { loadRepository, rerenderCurrentView, selectCommit } from './repo';
 import { handoffRepoLoad, syncRepoSelection } from './repo-handoff';
@@ -448,6 +448,28 @@ export function setupEventListeners(ctx: CanvasContext) {
 
                 // Re-render currently visible cards
                 rerenderCurrentView(ctx);
+            });
+        }
+
+        const detailModeToggle = document.getElementById('toggleDetailMode');
+        if (detailModeToggle) {
+            const stateEl = document.getElementById('detailModeState');
+            const updateDetailModeUi = () => {
+                const mode = getDetailMode();
+                detailModeToggle.classList.toggle('active', mode === 'preview');
+                detailModeToggle.setAttribute('title', mode === 'preview'
+                    ? 'Preview mode forced on — click to restore auto detail switching'
+                    : 'Auto detail switching — click to keep preview mode on at every zoom');
+                if (stateEl) stateEl.textContent = mode === 'preview' ? 'Preview' : 'Auto';
+            };
+            updateDetailModeUi();
+            detailModeToggle.addEventListener('click', () => {
+                const next = toggleDetailMode();
+                updateDetailModeUi();
+                rerenderCurrentView(ctx);
+                showToast(next === 'preview'
+                    ? 'Preview mode forced on'
+                    : 'Auto detail switching restored', 'info');
             });
         }
 

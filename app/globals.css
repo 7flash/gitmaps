@@ -1145,8 +1145,62 @@ body {
 
 /* ── Sticky Zoom Controls ── */
 body.repo-loading .sticky-zoom-pill,
-body.landing-placeholder-visible .sticky-zoom-pill {
+body.repo-loading .detail-mode-switch,
+body.landing-placeholder-visible .sticky-zoom-pill,
+body.landing-placeholder-visible .detail-mode-switch {
   display: none;
+}
+
+.detail-mode-switch {
+  position: fixed;
+  top: 12px;
+  right: 144px;
+  z-index: 10001;
+}
+
+.detail-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(124, 58, 237, 0.24);
+  border-radius: 10px;
+  color: #d8ccff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.12s ease;
+}
+
+.detail-mode-btn:hover {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(124, 58, 237, 0.45);
+}
+
+.detail-mode-btn:active {
+  transform: scale(0.98);
+}
+
+.detail-mode-btn.active {
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 10px 28px rgba(59, 130, 246, 0.16);
+}
+
+.detail-mode-label {
+  opacity: 0.72;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.detail-mode-state {
+  color: #f8fafc;
+  font-weight: 700;
 }
 
 .sticky-zoom-pill {

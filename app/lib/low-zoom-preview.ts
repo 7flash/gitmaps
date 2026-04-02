@@ -5,15 +5,16 @@ const PREVIEWABLE_EXTS = new Set([
 export function getLowZoomScale(zoom: number) {
   const clampedZoom = Math.max(0.08, Math.min(0.25, zoom));
   const progress = (0.25 - clampedZoom) / (0.25 - 0.08);
-  const desiredScreenTitle = 10 + progress * 4;
-  const desiredScreenBody = 8 + progress * 4;
+  const desiredScreenTitle = 14 + progress * 6;
+  const desiredScreenBody = 9 + progress * 4;
   return {
     titleFont: desiredScreenTitle / clampedZoom,
+    titleLineHeight: (desiredScreenTitle * 1.08) / clampedZoom,
     bodyFont: desiredScreenBody / clampedZoom,
     bodyLineHeight: (desiredScreenBody * 1.45) / clampedZoom,
-    padding: (10 + progress * 4) / clampedZoom,
-    gap: (6 + progress * 3) / clampedZoom,
-    radius: 8 / clampedZoom,
+    padding: (12 + progress * 6) / clampedZoom,
+    gap: (7 + progress * 3) / clampedZoom,
+    radius: 10 / clampedZoom,
   };
 }
 
@@ -82,8 +83,15 @@ function ellipsizeWrappedLines(lines: string[], maxLines: number) {
 
 export function estimatePreviewLineCapacity(height: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
-  const available = Math.max(scale.bodyLineHeight, height - scale.padding * 2 - scale.titleFont - scale.bodyFont - scale.gap * 3);
+  const available = Math.max(scale.bodyLineHeight, height - scale.padding * 2 - scale.titleLineHeight * 2 - scale.bodyFont - scale.gap * 4);
   return Math.max(2, Math.floor(available / scale.bodyLineHeight));
+}
+
+export function estimateTitleCharsPerLine(width: number, zoom: number): number {
+  const scale = getLowZoomScale(zoom);
+  const available = Math.max(80, width - scale.padding * 2 - Math.max(14, width * 0.02));
+  const avgCharWidth = Math.max(7, scale.titleFont * 0.58);
+  return Math.max(8, Math.floor(available / avgCharWidth));
 }
 
 export function estimatePreviewCharsPerLine(width: number, zoom: number): number {
@@ -138,15 +146,19 @@ export function renderLowZoomPreviewCanvas(
   ctx.font = `700 ${scale.titleFont}px "JetBrains Mono", monospace`;
   ctx.fillStyle = '#f8fafc';
   const title = path.split('/').pop() || path;
-  ctx.fillText(trimToWidth(ctx, title, maxTextWidth), leftInset, topInset);
+  const titleLines = wrapPreviewText(title, estimateTitleCharsPerLine(width, zoom), 2);
+  titleLines.forEach((line, index) => {
+    ctx.fillText(trimToWidth(ctx, line, maxTextWidth), leftInset, topInset + index * scale.titleLineHeight);
+  });
 
-  const subtitleY = topInset + scale.titleFont + scale.gap;
-  ctx.font = `${Math.max(scale.bodyFont * 0.78, 8 / Math.max(zoom, 0.08))}px "JetBrains Mono", monospace`;
+  const subtitleY = topInset + titleLines.length * scale.titleLineHeight + scale.gap * 0.8;
+  ctx.font = `${Math.max(scale.bodyFont * 0.8, 9 / Math.max(zoom, 0.08))}px "JetBrains Mono", monospace`;
   ctx.fillStyle = 'rgba(226,232,240,0.72)';
-  const subtitle = path.includes('/') ? path.split('/').slice(0, -1).join('/') : 'root';
+  const pathParts = path.split('/');
+  const subtitle = pathParts.length > 1 ? pathParts.slice(Math.max(0, pathParts.length - 3), -1).join(' / ') : 'root';
   ctx.fillText(trimToWidth(ctx, subtitle, maxTextWidth), leftInset, subtitleY);
 
-  const previewY = subtitleY + Math.max(scale.bodyFont * 0.78, 8 / Math.max(zoom, 0.08)) + scale.gap * 1.5;
+  const previewY = subtitleY + Math.max(scale.bodyFont * 0.8, 9 / Math.max(zoom, 0.08)) + scale.gap * 1.35;
   const rawPreview = getLowZoomPreviewText(file, scrollTop) || 'Preview unavailable';
   const wrapped = wrapPreviewText(
     rawPreview,

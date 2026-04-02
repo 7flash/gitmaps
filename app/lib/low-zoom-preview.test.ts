@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { estimatePreviewCharsPerLine, estimatePreviewLineCapacity, getLowZoomPreviewText, getLowZoomScale, wrapPreviewText } from './low-zoom-preview';
+import { estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, wrapPreviewText } from './low-zoom-preview';
 
 describe('low zoom preview helpers', () => {
   test('anchors preview text to approximate saved scroll position', () => {
@@ -33,6 +33,13 @@ describe('low zoom preview helpers', () => {
 
   test('preview capacity estimates stay positive', () => {
     expect(estimatePreviewCharsPerLine(580, 0.25)).toBeGreaterThan(8);
+    expect(estimateTitleCharsPerLine(580, 0.25)).toBeGreaterThan(8);
     expect(estimatePreviewLineCapacity(700, 0.25)).toBeGreaterThanOrEqual(2);
+  });
+
+  test('title typography is larger than body typography for readability', () => {
+    const scale = getLowZoomScale(0.18);
+    expect(scale.titleFont).toBeGreaterThan(scale.bodyFont);
+    expect(scale.titleLineHeight).toBeGreaterThan(scale.bodyLineHeight * 0.7);
   });
 });

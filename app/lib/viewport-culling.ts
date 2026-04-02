@@ -36,6 +36,7 @@ const VIEWPORT_MARGIN = 500;
 
 // LOD threshold: below this zoom level, use lightweight pill placeholders
 const LOD_ZOOM_THRESHOLD = 0.25;
+const LOW_ZOOM_MODE_STORAGE_KEY = 'gitmaps:detailMode';
 
 // Maximum deferred cards to materialize per animation frame
 // Prevents frame drops when zooming out then back in on huge repos
@@ -52,6 +53,14 @@ export function markTransformActive() {
 
 // Track current LOD mode so we can detect transitions
 let _currentLodMode: 'full' | 'pill' = 'full';
+let _detailMode: 'auto' | 'preview' = (() => {
+    try {
+        const stored = localStorage.getItem(LOW_ZOOM_MODE_STORAGE_KEY);
+        return stored === 'preview' ? 'preview' : 'auto';
+    } catch {
+        return 'auto';
+    }
+})();
 
 // Track pill elements for cleanup
 const pillCards = new Map<string, HTMLElement>();
@@ -88,6 +97,27 @@ export function isPinned(path: string): boolean {
 /** Get all pinned card paths */
 export function getPinnedCards(): Set<string> {
     return _pinnedCards;
+}
+
+export function getDetailMode(): 'auto' | 'preview' {
+    return _detailMode;
+}
+
+export function setDetailMode(mode: 'auto' | 'preview') {
+    _detailMode = mode;
+    try {
+        localStorage.setItem(LOW_ZOOM_MODE_STORAGE_KEY, mode);
+    } catch { }
+}
+
+export function toggleDetailMode(): 'auto' | 'preview' {
+    const next = _detailMode === 'preview' ? 'auto' : 'preview';
+    setDetailMode(next);
+    return next;
+}
+
+export function isPreviewModeForced() {
+    return _detailMode === 'preview';
 }
 
 // ── Status colors for low-zoom cards
@@ -293,7 +323,7 @@ export function performViewportCulling(ctx: CanvasContext) {
     // Phase 4c: also materialize deferred CardManager cards
     // Reuse zoom from worldRect (already snapped) — avoids redundant ctx.snap()
     const zoom = worldRect.zoom;
-    const isLowZoom = zoom <= LOD_ZOOM_THRESHOLD;
+    const isLowZoom = _detailMode === 'preview' || zoom <= LOD_ZOOM_THRESHOLD;
 
     // Important: never materialize full cards while in low-zoom pill mode.
     // Otherwise CardManager keeps mounting heavyweight cards right when the
