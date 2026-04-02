@@ -146,14 +146,6 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                         <Slider id="settingPreviewFontPx" valueId="previewFontPxValue"
                             min={7} max={16} step={1} value={settings.previewFontPx} suffix="px" />
                     </SettingsRow>
-                    <SettingsRow label="Zoomed-out lines" desc="Minimum content lines shown at the farthest preview zoom">
-                        <Slider id="settingPreviewFarLines" valueId="previewFarLinesValue"
-                            min={1} max={8} step={1} value={settings.previewFarLines} suffix="" />
-                    </SettingsRow>
-                    <SettingsRow label="Zoomed-in lines" desc="Target content lines shown at the closest preview zoom">
-                        <Slider id="settingPreviewNearLines" valueId="previewNearLinesValue"
-                            min={8} max={40} step={1} value={settings.previewNearLines} suffix="" />
-                    </SettingsRow>
                 </SettingsSection>
 
                 {/* Advanced Section */}
@@ -271,22 +263,6 @@ export function openSettingsModal(ctx?: any) {
     previewFontSlider?.addEventListener('input', () => {
         previewFontValue.textContent = `${previewFontSlider.value}px`;
         updateSettings({ previewFontPx: parseInt(previewFontSlider.value) });
-        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
-    });
-
-    const previewFarLinesSlider = _modal.querySelector('#settingPreviewFarLines') as HTMLInputElement;
-    const previewFarLinesValue = _modal.querySelector('#previewFarLinesValue')!;
-    previewFarLinesSlider?.addEventListener('input', () => {
-        previewFarLinesValue.textContent = previewFarLinesSlider.value;
-        updateSettings({ previewFarLines: parseInt(previewFarLinesSlider.value) });
-        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
-    });
-
-    const previewNearLinesSlider = _modal.querySelector('#settingPreviewNearLines') as HTMLInputElement;
-    const previewNearLinesValue = _modal.querySelector('#previewNearLinesValue')!;
-    previewNearLinesSlider?.addEventListener('input', () => {
-        previewNearLinesValue.textContent = previewNearLinesSlider.value;
-        updateSettings({ previewNearLines: parseInt(previewNearLinesSlider.value) });
         window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
     });
 

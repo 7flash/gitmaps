@@ -451,15 +451,14 @@ export function setupEventListeners(ctx: CanvasContext) {
             });
         }
 
-        const detailModeToggle = document.getElementById('toggleDetailMode');
+        const detailModeToggle = document.getElementById('toggleDetailModeBottom');
         if (detailModeToggle) {
-            const stateEl = document.getElementById('detailModeState');
+            const stateEl = document.getElementById('detailModeStateBottom');
             const updateDetailModeUi = () => {
                 const mode = getDetailMode();
-                detailModeToggle.classList.toggle('active', mode === 'preview');
                 detailModeToggle.setAttribute('title', mode === 'preview'
-                    ? 'Preview mode — stays in the preview renderer at every zoom. Click to switch to classic cards.'
-                    : 'Classic mode — old full-card renderer. Click to switch back to preview mode.');
+                    ? 'Preview mode — click to switch to Classic.'
+                    : 'Classic mode — click to switch to Preview.');
                 if (stateEl) stateEl.textContent = mode === 'preview' ? 'Preview' : 'Classic';
             };
             updateDetailModeUi();

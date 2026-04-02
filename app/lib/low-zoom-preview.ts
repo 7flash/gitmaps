@@ -153,15 +153,12 @@ function ellipsizeWrappedLines(lines: string[], maxLines: number) {
 
 export function estimatePreviewLineCapacity(height: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
-  const settings = getSettings();
   const titleLines = zoom >= 0.35 ? 2 : 1;
   const available = Math.max(
     scale.bodyLineHeight * 2,
     height - scale.padding * 2 - scale.titleLineHeight * titleLines - scale.bodyFont - scale.gap * 3,
   );
-  const progress = (Math.max(0.08, Math.min(1, zoom)) - 0.08) / (1 - 0.08);
-  const targetLines = settings.previewFarLines + progress * (settings.previewNearLines - settings.previewFarLines);
-  return Math.max(Math.round(targetLines), Math.floor(available / scale.bodyLineHeight));
+  return Math.max(2, Math.floor(available / scale.bodyLineHeight));
 }
 
 export function estimateTitleCharsPerLine(width: number, zoom: number): number {

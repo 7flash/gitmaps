@@ -17,7 +17,7 @@ import {
 import { performViewportCulling } from "./viewport-culling";
 import { getPositionKey, loadSavedPositions } from "./positions";
 import { updateHiddenUI } from "./hidden-files";
-import { processVirtualFileSet } from "./virtual-files";
+import { clearVirtualCards } from "./virtual-files";
 import {
   showLoadingProgress,
   updateLoadingProgress,
@@ -233,10 +233,8 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
         }
       }
 
-      // Generate virtual transclusion cards only after the final commit/file render settles.
-      setTimeout(() => {
-        if (!isStale()) processVirtualFiles(ctx);
-      }, 120);
+      // Virtual transclusion / shared-prefix cards disabled.
+      clearVirtualCards(ctx);
 
       updateLoadingProgress(ctx, "Done!", 100);
       hideLoadingProgress(ctx);
@@ -1295,25 +1293,12 @@ export function populateChangedFilesPanel(ctx: CanvasContext, files: any[]) {
  * Called after files are loaded to detect compression opportunities
  */
 export async function processVirtualFiles(ctx: CanvasContext): Promise<void> {
+  clearVirtualCards(ctx);
   const files = ctx.allFilesData || [];
-  if (files.length === 0) return;
-
-  try {
-    const created = await processVirtualFileSet(ctx, files);
-    (window as any).__virtualStats = {
-      fileCount: files.length,
-      created,
-      virtualCards: document.querySelectorAll('.virtual-card').length,
-    };
-    if (created > 0) {
-      console.log(`[virtual-files] Created ${created} transclusion cards`);
-    }
-  } catch (err) {
-    (window as any).__virtualStats = {
-      fileCount: files.length,
-      created: 0,
-      error: err?.message || String(err),
-    };
-    console.warn(`[virtual-files] Failed to process transclusion cards:`, err);
-  }
+  (window as any).__virtualStats = {
+    fileCount: files.length,
+    created: 0,
+    disabled: true,
+    virtualCards: 0,
+  };
 }

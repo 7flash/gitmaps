@@ -875,13 +875,6 @@ export default function RootLayout({ children }: { children: any }) {
             </div>
 
             {/* Sticky Zoom Controls — floating pill, bottom-right */}
-            <div id="detailModeSwitch" className="detail-mode-switch" title="Toggle preview-focused detail mode">
-              <button id="toggleDetailMode" type="button" className="detail-mode-btn">
-                <span className="detail-mode-label">Renderer</span>
-                <span id="detailModeState" className="detail-mode-state">Preview</span>
-              </button>
-            </div>
-
             <div id="stickyZoomControls" className="sticky-zoom-pill">
               <button id="stickyZoomOut" className="sz-btn" title="Zoom out">
                 <svg
@@ -938,6 +931,11 @@ export default function RootLayout({ children }: { children: any }) {
                 </svg>
               </button>
               <div className="sz-divider" />
+              <button id="toggleDetailModeBottom" className="sz-btn sz-fit" title="Toggle renderer">
+                <span id="detailModeStateBottom" className="sz-value detail-mode-inline-state">
+                  Preview
+                </span>
+              </button>
               <button id="openSettingsBottom" className="sz-btn sz-fit" title="Open settings">
                 <svg
                   viewBox="0 0 24 24"
