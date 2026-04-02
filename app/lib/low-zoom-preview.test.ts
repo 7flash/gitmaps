@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewScrollMetrics, wrapPreviewText } from './low-zoom-preview';
+import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewRenderableLines, getPreviewScrollMetrics, wrapPreviewText } from './low-zoom-preview';
 
 describe('low zoom preview helpers', () => {
   test('anchors preview text to approximate saved scroll position', () => {
@@ -19,6 +19,18 @@ describe('low zoom preview helpers', () => {
   test('skips binary or unsupported files', () => {
     expect(getLowZoomPreviewText({ path: 'image.png', ext: 'png', content: 'abc' }, 0)).toBe('');
     expect(getLowZoomPreviewText({ path: 'bin.dat', ext: 'dat', isBinary: true, content: 'abc' }, 0)).toBe('');
+  });
+
+  test('preview renderable lines preserve added and deleted diff context', () => {
+    const lines = getPreviewRenderableLines({
+      path: 'src/example.ts',
+      ext: 'ts',
+      content: ['one', 'two', 'three'].join('\n'),
+      addedLines: new Set([2]),
+      deletedBeforeLine: new Map([[2, ['old-two']]]),
+    }, 0);
+    expect(lines.some((line) => line.tone === 'deleted' && line.text.includes('old-two'))).toBe(true);
+    expect(lines.some((line) => line.tone === 'added' && line.text === 'two')).toBe(true);
   });
 
   test('keeps zoomed-out on-screen text smaller than zoomed-in text', () => {

@@ -25,17 +25,81 @@ export function getLowZoomScale(zoom: number) {
   };
 }
 
-export function getLowZoomPreviewText(file: any, scrollTop: number): string {
-  if (!file || file.isBinary || !file.content) return '';
+type PreviewRenderableLine = {
+  text: string;
+  tone: 'normal' | 'added' | 'deleted';
+  sourceLine?: number;
+};
+
+function getPreviewDiffMaps(file: any) {
+  const addedLines = new Set<number>(file?.addedLines instanceof Set ? Array.from(file.addedLines) : []);
+  const deletedBeforeLine = new Map<number, string[]>(file?.deletedBeforeLine instanceof Map ? Array.from(file.deletedBeforeLine.entries()) : []);
+
+  if ((addedLines.size === 0 && deletedBeforeLine.size === 0) && Array.isArray(file?.hunks)) {
+    for (const hunk of file.hunks) {
+      let newLine = hunk?.newStart || 1;
+      let pendingDeleted: string[] = [];
+      for (const line of hunk?.lines || []) {
+        if (line?.type === 'add') {
+          addedLines.add(newLine);
+          if (pendingDeleted.length > 0) {
+            const existing = deletedBeforeLine.get(newLine) || [];
+            deletedBeforeLine.set(newLine, existing.concat(pendingDeleted));
+            pendingDeleted = [];
+          }
+          newLine += 1;
+        } else if (line?.type === 'del') {
+          pendingDeleted.push(String(line?.content || ''));
+        } else {
+          if (pendingDeleted.length > 0) {
+            const existing = deletedBeforeLine.get(newLine) || [];
+            deletedBeforeLine.set(newLine, existing.concat(pendingDeleted));
+            pendingDeleted = [];
+          }
+          newLine += 1;
+        }
+      }
+      if (pendingDeleted.length > 0) {
+        const existing = deletedBeforeLine.get(newLine) || [];
+        deletedBeforeLine.set(newLine, existing.concat(pendingDeleted));
+      }
+    }
+  }
+
+  return { addedLines, deletedBeforeLine };
+}
+
+export function getPreviewRenderableLines(file: any, scrollTop: number): PreviewRenderableLine[] {
+  if (!file || file.isBinary || !file.content) return [];
 
   const ext = (file.ext || file.path?.split('.').pop() || '').toLowerCase();
-  if (!PREVIEWABLE_EXTS.has(ext)) return '';
+  if (!PREVIEWABLE_EXTS.has(ext)) return [];
 
   const normalized = String(file.content).replace(/\t/g, '  ');
   const lines = normalized.split('\n');
   const approxLineHeight = 20;
   const startLine = Math.max(0, Math.floor(scrollTop / approxLineHeight));
-  return lines.slice(startLine).join('\n').trim();
+  const { addedLines, deletedBeforeLine } = getPreviewDiffMaps(file);
+  const out: PreviewRenderableLine[] = [];
+
+  for (let i = startLine; i < lines.length; i += 1) {
+    const lineNum = i + 1;
+    const deleted = deletedBeforeLine.get(lineNum) || [];
+    for (const deletedLine of deleted) {
+      out.push({ text: `- ${String(deletedLine).replace(/\t/g, '  ')}`, tone: 'deleted', sourceLine: lineNum });
+    }
+    out.push({
+      text: lines[i],
+      tone: file?.status === 'added' || addedLines.has(lineNum) ? 'added' : file?.status === 'deleted' ? 'deleted' : 'normal',
+      sourceLine: lineNum,
+    });
+  }
+
+  return out;
+}
+
+export function getLowZoomPreviewText(file: any, scrollTop: number): string {
+  return getPreviewRenderableLines(file, scrollTop).map((line) => line.text).join('\n').trim();
 }
 
 export function wrapPreviewText(text: string, maxCharsPerLine: number, maxLines: number): string[] {
@@ -137,8 +201,7 @@ export function getPreviewScrollMetrics(file: any, height: number, zoom: number,
 export function collectPreviewDiffMarkers(file: any, totalLines: number) {
   const markers: Array<{ ratio: number; color: string; height?: number }> = [];
   const safeTotal = Math.max(1, totalLines);
-  let added = file?.addedLines instanceof Set ? Array.from(file.addedLines) : [];
-  let deletedBefore = file?.deletedBeforeLine instanceof Map ? Array.from(file.deletedBeforeLine.keys()) : [];
+  const { addedLines, deletedBeforeLine } = getPreviewDiffMaps(file);
 
   if (file?.status === 'added') {
     markers.push({ ratio: 0, color: '#22c55e', height: 1 });
@@ -149,42 +212,10 @@ export function collectPreviewDiffMarkers(file: any, totalLines: number) {
     return markers;
   }
 
-  if ((added.length === 0 && deletedBefore.length === 0) && Array.isArray(file?.hunks)) {
-    const derivedAdded: number[] = [];
-    const derivedDeleted: number[] = [];
-    for (const hunk of file.hunks) {
-      let newLine = hunk?.newStart || 1;
-      let sawPendingDelete = false;
-      for (const line of hunk?.lines || []) {
-        if (line?.type === 'add') {
-          derivedAdded.push(newLine);
-          if (sawPendingDelete) {
-            derivedDeleted.push(newLine);
-            sawPendingDelete = false;
-          }
-          newLine += 1;
-        } else if (line?.type === 'del') {
-          sawPendingDelete = true;
-        } else {
-          if (sawPendingDelete) {
-            derivedDeleted.push(newLine);
-            sawPendingDelete = false;
-          }
-          newLine += 1;
-        }
-      }
-      if (sawPendingDelete) {
-        derivedDeleted.push(newLine);
-      }
-    }
-    added = derivedAdded;
-    deletedBefore = derivedDeleted;
-  }
-
-  for (const line of added) {
+  for (const line of addedLines) {
     markers.push({ ratio: Math.max(0, Math.min(1, (line - 1) / safeTotal)), color: '#22c55e' });
   }
-  for (const line of deletedBefore) {
+  for (const line of deletedBeforeLine.keys()) {
     markers.push({ ratio: Math.max(0, Math.min(1, (line - 1) / safeTotal)), color: '#ef4444' });
   }
   return markers;
@@ -255,28 +286,50 @@ export function renderLowZoomPreviewCanvas(
   ctx.fillText(trimToWidth(ctx, subtitle, maxTextWidth), leftInset, subtitleY);
 
   const previewY = subtitleY + subtitleFont + scale.gap;
-  const rawPreview = getLowZoomPreviewText(file, scrollTop) || 'Preview unavailable';
-  const wrapped = wrapPreviewText(
-    rawPreview,
-    estimatePreviewCharsPerLine(width, zoom),
-    estimatePreviewLineCapacity(height, zoom),
-  );
+  const previewLines = getPreviewRenderableLines(file, scrollTop);
+  const maxCharsPerLine = estimatePreviewCharsPerLine(width, zoom);
+  const maxVisibleLines = estimatePreviewLineCapacity(height, zoom);
+  const wrapped: Array<{ text: string; tone: 'normal' | 'added' | 'deleted' }> = [];
+
+  for (const line of previewLines) {
+    const parts = wrapPreviewText(line.text, maxCharsPerLine, Math.max(1, maxVisibleLines - wrapped.length));
+    for (const part of parts) {
+      wrapped.push({ text: part, tone: line.tone });
+      if (wrapped.length >= maxVisibleLines) break;
+    }
+    if (wrapped.length >= maxVisibleLines) break;
+  }
+
+  if (wrapped.length === 0) {
+    wrapped.push({ text: 'Preview unavailable', tone: 'normal' });
+  }
 
   ctx.font = `${scale.bodyFont}px "JetBrains Mono", monospace`;
-  ctx.fillStyle = 'rgba(226,232,240,0.92)';
 
   const fadeStart = Math.max(previewY, height - scale.bodyLineHeight * 2.2);
   const bodyHeight = Math.max(scale.bodyLineHeight * 2, height - previewY - scale.padding);
-  const mask = ctx.createLinearGradient(0, previewY, 0, previewY + bodyHeight);
-  mask.addColorStop(0, 'rgba(226,232,240,0.92)');
-  mask.addColorStop(Math.max(0, (fadeStart - previewY) / Math.max(1, bodyHeight)), 'rgba(226,232,240,0.92)');
-  mask.addColorStop(1, 'rgba(226,232,240,0)');
-  ctx.fillStyle = mask;
+  const fadeRatio = Math.max(0, (fadeStart - previewY) / Math.max(1, bodyHeight));
 
   wrapped.forEach((line, index) => {
     const y = previewY + index * scale.bodyLineHeight;
     if (y > height - scale.padding) return;
-    ctx.fillText(line, leftInset, y);
+
+    const t = Math.max(0, Math.min(1, (y - previewY) / Math.max(1, bodyHeight)));
+    const alpha = t <= fadeRatio ? 1 : Math.max(0, 1 - ((t - fadeRatio) / Math.max(0.0001, 1 - fadeRatio)));
+
+    if (line.tone === 'added') {
+      ctx.fillStyle = `rgba(34,197,94,${0.12 * alpha})`;
+      ctx.fillRect(leftInset - 4, y, maxTextWidth + 4, scale.bodyLineHeight - 1);
+      ctx.fillStyle = `rgba(134,239,172,${0.98 * alpha})`;
+    } else if (line.tone === 'deleted') {
+      ctx.fillStyle = `rgba(239,68,68,${0.1 * alpha})`;
+      ctx.fillRect(leftInset - 4, y, maxTextWidth + 4, scale.bodyLineHeight - 1);
+      ctx.fillStyle = `rgba(252,165,165,${0.96 * alpha})`;
+    } else {
+      ctx.fillStyle = `rgba(226,232,240,${0.92 * alpha})`;
+    }
+
+    ctx.fillText(trimToWidth(ctx, line.text, maxTextWidth), leftInset, y);
   });
 
 }
