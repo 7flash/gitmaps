@@ -15,10 +15,12 @@ source "$LIB_DIR/browser-smoke-assemble.sh"
 FIRST_EXPECTATIONS=$(read_repo_expectations "$REPO_PATH")
 SECOND_EXPECTATIONS=$(read_repo_expectations "$SECOND_REPO_PATH")
 REPO_LOAD_EXPECTATIONS=$(read_repo_expectations "$REPO_PATH")
+LOW_ZOOM_EXPECTATIONS=$(read_repo_expectations "$REPO_PATH")
 SWITCH_SMOKE_SCRIPT=$(build_browser_smoke_script "$FIRST_EXPECTATIONS" "$SECOND_EXPECTATIONS" "$((TIMEOUT_SECONDS * 1000))")
 REPO_LOAD_SMOKE_SCRIPT=$(build_browser_repo_load_smoke_script "$REPO_LOAD_EXPECTATIONS" "$((TIMEOUT_SECONDS * 1000))")
+LOW_ZOOM_SMOKE_SCRIPT=$(build_browser_low_zoom_perf_smoke_script "$LOW_ZOOM_EXPECTATIONS" "$((TIMEOUT_SECONDS * 1000))")
 
-for script in "$SWITCH_SMOKE_SCRIPT" "$REPO_LOAD_SMOKE_SCRIPT"; do
+for script in "$SWITCH_SMOKE_SCRIPT" "$REPO_LOAD_SMOKE_SCRIPT" "$LOW_ZOOM_SMOKE_SCRIPT"; do
   if printf '%s' "$script" | grep -q '__FIRST_EXPECTATIONS__\|__SECOND_EXPECTATIONS__\|__EXPECTED_REPO__\|__TIMEOUT_MS__'; then
     echo 'Smoke script template placeholders were not fully replaced' >&2
     exit 1
@@ -40,13 +42,20 @@ if ! printf '%s' "$REPO_LOAD_SMOKE_SCRIPT" | grep -q "const expected ="; then
   exit 1
 fi
 
-node - <<'NODE' "$SWITCH_SMOKE_SCRIPT" "$REPO_LOAD_SMOKE_SCRIPT"
+if ! printf '%s' "$LOW_ZOOM_SMOKE_SCRIPT" | grep -q "const expected ="; then
+  echo 'Low-zoom perf smoke assembly missing expected repo payload' >&2
+  exit 1
+fi
+
+node - <<'NODE' "$SWITCH_SMOKE_SCRIPT" "$REPO_LOAD_SMOKE_SCRIPT" "$LOW_ZOOM_SMOKE_SCRIPT"
 const switchScript = process.argv[2];
 const repoLoadScript = process.argv[3];
+const lowZoomScript = process.argv[4];
 try {
   new Function(`return ${switchScript}`);
   new Function(`return ${repoLoadScript}`);
-  console.log(JSON.stringify({ ok: true, assembled: true, repoSwitchSyntax: 'ok', repoLoadSyntax: 'ok' }));
+  new Function(`return ${lowZoomScript}`);
+  console.log(JSON.stringify({ ok: true, assembled: true, repoSwitchSyntax: 'ok', repoLoadSyntax: 'ok', lowZoomPerfSyntax: 'ok' }));
 } catch (error) {
   console.error('Assembled smoke script failed syntax check');
   console.error(error?.stack || String(error));

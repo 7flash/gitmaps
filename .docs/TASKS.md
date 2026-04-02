@@ -172,7 +172,8 @@
 - [x] ~~**Low-zoom cards should still show content context**~~ — ✅ DONE. Replaced the old filename-only pill feel with content-aware low-zoom cards that render wrapped text excerpts, scale text to stay readable as zoom decreases, and anchor the excerpt to the saved scroll position so refreshes preserve useful context.
 - [x] ~~**Low-zoom canvas/text renderer**~~ — ✅ DONE. Moved low-zoom content previews off heavy DOM text blocks onto a per-card canvas renderer that draws title/path/excerpt with soft wrapping and fade-out, while still anchoring excerpts to saved scroll position.
 - [x] ~~**Low-zoom canvas renderer perf benchmark**~~ — ✅ DONE. Added `scripts/low-zoom-preview-bench.ts` plus `bun run bench:low-zoom` to compare low-zoom layout-only work, old DOM preview creation, and current canvas preview drawing. Current synthetic baseline at 600 visible cards / zoom 0.14: layout-only `8.864ms`, old DOM preview create `14.045ms`, canvas preview draw `11.009ms`.
-- [ ] **Low-zoom browser perf smoke** — Measure the new low-zoom path in a real browser on a giant repo and capture FPS/DOM-count screenshots so the synthetic benchmark has a browser-side counterpart.
+- [x] ~~**Low-zoom browser perf smoke**~~ — ✅ DONE. Added `scripts/browser-low-zoom-perf-smoke.sh` plus `bun run smoke:browser-tools:low-zoom` to load a repo in a real browser, toggle the perf overlay, zoom out until low-zoom cards appear, assert the low-zoom cards are canvas-backed, and report browser-side perf metrics / screenshots.
+- [ ] **Low-zoom browser perf baseline capture** — Run the new browser perf smoke on one genuinely large repo and record a screenshot + observed FPS/DOM/card counts in `.docs/BROWSER_SMOKE.md`.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
@@ -201,6 +202,7 @@
 - **Dev server**: `bgrun --name gitmaps` on port 3335
 - **Docker smoke**: `bun run smoke:docker-image` builds the production image and verifies runtime PDF/healthcheck tooling exists.
 - **Low-zoom benchmark**: `bun run bench:low-zoom` compares synthetic low-zoom layout/draw cost for the old DOM preview path vs the current canvas renderer.
+- **Low-zoom browser smoke**: `bun run smoke:browser-tools:low-zoom` validates low-zoom canvas cards and perf overlay metrics in a real browser session.
 - **Client orchestrator**: `app/page.client.tsx` → imports modules from `app/lib/`
 - **State**: XState machine in `app/state/machine.js`
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)

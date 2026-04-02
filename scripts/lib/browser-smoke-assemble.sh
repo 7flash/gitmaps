@@ -25,3 +25,13 @@ build_browser_repo_load_smoke_script() {
   js_template=${js_template//__TIMEOUT_MS__/$timeout_ms}
   printf '%s' "$js_template"
 }
+
+build_browser_low_zoom_perf_smoke_script() {
+  local expected_repo="$1"
+  local timeout_ms="$2"
+  local js_template
+  js_template=$(<"$LIB_DIR/browser-low-zoom-perf-flow.js")
+  js_template=${js_template//__EXPECTED_REPO__/$expected_repo}
+  js_template=${js_template//__TIMEOUT_MS__/$timeout_ms}
+  printf '%s' "$js_template"
+}

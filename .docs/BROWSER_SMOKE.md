@@ -16,13 +16,19 @@ bun run smoke:browser-tools:check
 bun run smoke:browser-tools:load
 ```
 
-3. **Full browser-tools smoke** — run this when you want the real browser session plus repo switching assertions:
+3. **Low-zoom perf smoke** — run this when you changed low-zoom rendering / LOD behavior and want a real browser check that low-zoom canvas cards appear, the perf overlay populates, and screenshots can be captured:
+
+```bash
+bun run smoke:browser-tools:low-zoom
+```
+
+4. **Full browser-tools smoke** — run this when you want the real browser session plus repo switching assertions:
 
 ```bash
 bun run smoke:browser-tools
 ```
 
-4. **Puppeteer smoke** — use this when you want the simpler non-browser-tools fallback path:
+5. **Puppeteer smoke** — use this when you want the simpler non-browser-tools fallback path:
 
 ```bash
 bun run smoke:browser
@@ -32,6 +38,7 @@ bun run smoke:browser
 
 - changed helper files only → `bun run smoke:browser-tools:check`
 - changed single-repo load/bootstrap behavior → `bun run smoke:browser-tools:load`
+- changed low-zoom rendering / LOD behavior → `bun run smoke:browser-tools:low-zoom`
 - changed browser-tools switching behavior / broader route assertions → `bun run smoke:browser-tools`
 - want a simple end-to-end fallback → `bun run smoke:browser`
 
@@ -99,6 +106,50 @@ Load a different repo:
 
 ```bash
 bash scripts/browser-repo-load-smoke.sh http://localhost:3335/ C:/Code/jsx-ai
+```
+
+## Browser-tools low-zoom perf smoke
+
+Use the dedicated low-zoom browser-tools helper when you want a real browser check for low-zoom content rendering and perf overlay metrics:
+
+```bash
+bun run smoke:browser-tools:low-zoom
+```
+
+This path:
+- opens the app in browser-tools Chrome
+- loads one local repo through the prompt path
+- toggles the perf overlay via `Shift+P`
+- zooms out until low-zoom cards appear
+- asserts low-zoom cards are canvas-backed
+- captures perf overlay metrics (`FPS`, `DOM`, `Cards`, render budget) in the JSON result
+
+### Low-zoom perf examples
+
+Default repo:
+
+```bash
+bun run smoke:browser-tools:low-zoom
+```
+
+Explicit URL + repo:
+
+```bash
+bash scripts/browser-low-zoom-perf-smoke.sh http://localhost:3335/ C:/Code/gitmaps
+```
+
+Use a larger repo for a more meaningful perf run:
+
+```bash
+bash scripts/browser-low-zoom-perf-smoke.sh http://localhost:3335/ C:/Code/epstein-files
+```
+
+Save a success screenshot for low-zoom perf smoke:
+
+```bash
+SCREENSHOT_ON_SUCCESS=1 \
+SCREENSHOT_PATH=C:/Code/gitmaps/.docs/browser-low-zoom.png \
+  bun run smoke:browser-tools:low-zoom
 ```
 
 ## Browser-tools shell flow

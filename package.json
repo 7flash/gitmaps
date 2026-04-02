@@ -20,6 +20,7 @@
     "smoke:browser": "bun scripts/browser-smoke-local.ts",
     "smoke:browser-tools": "bash scripts/browser-smoke-local.sh",
     "smoke:browser-tools:load": "bash scripts/browser-repo-load-smoke.sh",
+    "smoke:browser-tools:low-zoom": "bash scripts/browser-low-zoom-perf-smoke.sh",
     "smoke:browser-tools:guard": "bash scripts/browser-smoke-guard.sh",
     "smoke:browser-tools:self-check": "bash scripts/browser-smoke-self-check.sh",
     "smoke:browser-tools:check": "bash scripts/browser-smoke-check.sh",
