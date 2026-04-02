@@ -183,7 +183,8 @@
 - [x] ~~**Preview mode scroll should reach the whole file**~~ — ✅ DONE. Removed the hidden 60-line preview truncation so preview-card scrolling can traverse the entire file instead of stopping after the initial excerpt window.
 - [x] ~~**Preview mode should show scroll/thumb + diff markers**~~ — ✅ DONE. Preview cards now draw a right-side scrollbar thumb plus added/deleted diff markers inside the canvas preview so scroll position and change locations remain visible.
 - [x] ~~**Preview mode tuning should be configurable**~~ — ✅ DONE. Added a new Preview Mode section in Settings for far/near title size and far/near visible line targets, with live updates for mounted preview cards.
-- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains the top-right switch swaps between `Preview` and `Classic` renderers, mouse wheel scrolls preview content, and the right rail shows scroll/diff context.
+- [x] ~~**Preview mode onboarding copy**~~ — ✅ DONE. Added a one-time preview-mode hint toast that explains wheel scrolling, the right rail scroll/diff context, and the top-right switch back to Classic mode.
+- [ ] **Preview mode switch affordance polish** — Make the top-right Preview/Classic switch more visually prominent now that it is the main renderer toggle.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.

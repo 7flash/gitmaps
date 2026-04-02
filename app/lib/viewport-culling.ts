@@ -37,6 +37,7 @@ const VIEWPORT_MARGIN = 500;
 // LOD threshold: below this zoom level, use lightweight pill placeholders
 const LOD_ZOOM_THRESHOLD = 0.25;
 const LOW_ZOOM_MODE_STORAGE_KEY = 'gitmaps:detailMode';
+const PREVIEW_HINT_SHOWN_KEY = 'gitmaps:previewModeHintShown';
 
 // Maximum deferred cards to materialize per animation frame
 // Prevents frame drops when zooming out then back in on huge repos
@@ -118,6 +119,21 @@ export function toggleDetailMode(): 'classic' | 'preview' {
 
 export function isPreviewModeForced() {
     return _detailMode === 'preview';
+}
+
+function maybeShowPreviewModeHint() {
+    if (_detailMode !== 'preview') return;
+    try {
+        if (localStorage.getItem(PREVIEW_HINT_SHOWN_KEY) === 'true') return;
+        localStorage.setItem(PREVIEW_HINT_SHOWN_KEY, 'true');
+    } catch { }
+
+    setTimeout(() => {
+        try {
+            const { showToast } = require('./utils');
+            showToast('Preview mode: wheel scrolls card content · right rail shows scroll + diff markers · top-right switch returns to Classic', 'info');
+        } catch { }
+    }, 120);
 }
 
 // ── Status colors for low-zoom cards
@@ -441,6 +457,7 @@ export function performViewportCulling(ctx: CanvasContext) {
                 if (isChanged) pill.dataset.changed = 'true';
                 ctx.canvas.appendChild(pill);
                 pillCards.set(path, pill);
+                maybeShowPreviewModeHint();
             } else if (inView && pillCards.has(path)) {
                 updatePillCardLayout(ctx, pillCards.get(path)!, zoom, !!isChanged);
             } else if (!inView && pillCards.has(path)) {
@@ -470,6 +487,7 @@ export function performViewportCulling(ctx: CanvasContext) {
                     if (isChanged) pill.dataset.changed = 'true';
                     ctx.canvas.appendChild(pill);
                     pillCards.set(path, pill);
+                    maybeShowPreviewModeHint();
                 }
             } else {
                 updatePillCardLayout(ctx, pillCards.get(path)!, zoom, card.dataset.changed === 'true');
