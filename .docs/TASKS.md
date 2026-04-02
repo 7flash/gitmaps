@@ -176,8 +176,9 @@
 - [x] ~~**Preview-focused detail mode switch**~~ — ✅ DONE. Added a fixed top-right switch that toggles between normal auto detail behavior and forcing the new preview-mode cards at every zoom level, so the low-zoom renderer can be used as the primary exploration mode.
 - [x] ~~**Low-zoom filename readability**~~ — ✅ DONE. Increased title typography, allowed two-line filename wrapping in the canvas preview header, and tightened subtitle/path layout so file names are readable in the new preview-focused mode.
 - [ ] **Low-zoom browser perf baseline capture** — Run the new browser perf smoke on one genuinely large repo and record a screenshot + observed FPS/DOM/card counts in `.docs/BROWSER_SMOKE.md`.
-- [x] ~~**Preview mode as default**~~ — ✅ DONE. The preview-focused detail mode is now the default when no prior preference is stored; the top-right switch still lets users opt back into auto detail switching.
-- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains preview mode is now the default and the top-right switch restores auto detail behavior.
+- [x] ~~**Preview mode as default**~~ — ✅ ATTEMPT REVERTED. Forcing preview mode at normal zoom made loaded repos appear broken because only preview cards rendered in-view while normal full cards stayed hidden. GitMaps is back to `Auto` by default, with the top-right switch preserved for explicit preview-mode use.
+- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains the top-right switch enables preview-focused detail mode without making it the global default.
+- [ ] **Preview mode as default (retry only after browser baseline)** — Reconsider making preview mode default only after browser-side baseline captures prove the normal-zoom experience still reads as “loaded” and usable.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
@@ -212,6 +213,6 @@
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)
 - **Landing page**: `app/page.tsx` (server-rendered), styles in `app/globals.css`
 - **Rendering**: Viewport culling + line-limiting for large files, VISIBLE_LINE_LIMIT=120
-- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, and preview mode is now the default unless a user has explicitly stored `auto` via the fixed top-right switch.
+- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, and the fixed top-right switch can force preview mode without making it the global default.
 - **URL routing**: Path-based (`/slug`) with `[slug]/page.tsx` dynamic route. Legacy `#slug` auto-migrates.
 - **Storage**: All client state in localStorage (positions, connections, layers, hidden files)
