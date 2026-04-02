@@ -38,7 +38,6 @@ export async function initializeMountUi(
     setupEvents?: (ctx: CanvasContext) => void;
     setupPills?: (ctx: CanvasContext) => void;
     setupPerf?: (ctx: CanvasContext) => void;
-    initPreview?: (viewport: HTMLElement, ctx: CanvasContext) => void | Promise<void>;
     initBranches?: (ctx: CanvasContext) => void;
     initCommands?: (ctx: CanvasContext) => void;
     initShortcuts?: () => void;
@@ -61,10 +60,6 @@ export async function initializeMountUi(
   const setupEvents = options.setupEvents || setupEventListeners;
   const setupPills = options.setupPills || setupPillInteraction;
   const setupPerf = options.setupPerf || setupPerfOverlay;
-  const initPreview = options.initPreview || (async (viewport: HTMLElement, ctx: CanvasContext) => {
-    const mod = await import('./file-preview');
-    mod.initFilePreview(viewport, ctx);
-  });
   const initBranches = options.initBranches || initBranchCompare;
   const initCommands = options.initCommands || initCommandPalette;
   const initShortcuts = options.initShortcuts || initShortcutsPanel;
@@ -87,7 +82,6 @@ export async function initializeMountUi(
   setupEvents(ctx);
   setupPills(ctx);
   setupPerf(ctx);
-  if (ctx.canvasViewport) await initPreview(ctx.canvasViewport, ctx);
   initBranches(ctx);
   initCommands(ctx);
   initShortcuts();
