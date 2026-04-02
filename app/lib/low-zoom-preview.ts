@@ -3,17 +3,21 @@ const PREVIEWABLE_EXTS = new Set([
 ]);
 
 export function getLowZoomScale(zoom: number) {
-  const clampedZoom = Math.max(0.08, Math.min(0.25, zoom));
-  const progress = (0.25 - clampedZoom) / (0.25 - 0.08);
-  const desiredScreenTitle = 14 + progress * 6;
-  const desiredScreenBody = 9 + progress * 4;
+  const clampedZoom = Math.max(0.08, Math.min(1, zoom));
+  const progress = (clampedZoom - 0.08) / (1 - 0.08);
+
+  const desiredScreenTitle = 8 + progress * 8;
+  const desiredScreenBody = 5.5 + progress * 6.5;
+  const desiredScreenPadding = 6 + progress * 8;
+  const desiredScreenGap = 4 + progress * 4;
+
   return {
     titleFont: desiredScreenTitle / clampedZoom,
     titleLineHeight: (desiredScreenTitle * 1.08) / clampedZoom,
     bodyFont: desiredScreenBody / clampedZoom,
-    bodyLineHeight: (desiredScreenBody * 1.45) / clampedZoom,
-    padding: (12 + progress * 6) / clampedZoom,
-    gap: (7 + progress * 3) / clampedZoom,
+    bodyLineHeight: (desiredScreenBody * 1.35) / clampedZoom,
+    padding: desiredScreenPadding / clampedZoom,
+    gap: desiredScreenGap / clampedZoom,
     radius: 10 / clampedZoom,
   };
 }
@@ -83,22 +87,26 @@ function ellipsizeWrappedLines(lines: string[], maxLines: number) {
 
 export function estimatePreviewLineCapacity(height: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
-  const available = Math.max(scale.bodyLineHeight, height - scale.padding * 2 - scale.titleLineHeight * 2 - scale.bodyFont - scale.gap * 4);
-  return Math.max(2, Math.floor(available / scale.bodyLineHeight));
+  const titleLines = zoom >= 0.35 ? 2 : 1;
+  const available = Math.max(
+    scale.bodyLineHeight * 2,
+    height - scale.padding * 2 - scale.titleLineHeight * titleLines - scale.bodyFont - scale.gap * 3,
+  );
+  return Math.max(zoom >= 0.6 ? 20 : zoom >= 0.35 ? 12 : 3, Math.floor(available / scale.bodyLineHeight));
 }
 
 export function estimateTitleCharsPerLine(width: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
-  const available = Math.max(80, width - scale.padding * 2 - Math.max(14, width * 0.02));
-  const avgCharWidth = Math.max(7, scale.titleFont * 0.58);
-  return Math.max(8, Math.floor(available / avgCharWidth));
+  const available = Math.max(120, width - scale.padding * 2 - Math.max(12, width * 0.018));
+  const avgCharWidth = Math.max(5.5, scale.titleFont * 0.56);
+  return Math.max(12, Math.floor(available / avgCharWidth));
 }
 
 export function estimatePreviewCharsPerLine(width: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
-  const available = Math.max(60, width - scale.padding * 2 - Math.max(14, width * 0.02));
-  const avgCharWidth = Math.max(6, scale.bodyFont * 0.6);
-  return Math.max(8, Math.floor(available / avgCharWidth));
+  const available = Math.max(100, width - scale.padding * 2 - Math.max(12, width * 0.018));
+  const avgCharWidth = Math.max(5, scale.bodyFont * 0.58);
+  return Math.max(10, Math.floor(available / avgCharWidth));
 }
 
 export function renderLowZoomPreviewCanvas(
@@ -135,10 +143,11 @@ export function renderLowZoomPreviewCanvas(
   roundRect(ctx, 0, 0, width, height, Math.max(6, scale.radius));
   ctx.fill();
 
+  const accentWidth = Math.max(6, width * 0.012);
   ctx.fillStyle = accentColor;
-  ctx.fillRect(0, 0, Math.max(10, width * 0.02), height);
+  ctx.fillRect(0, 0, accentWidth, height);
 
-  const leftInset = scale.padding + Math.max(14, width * 0.02);
+  const leftInset = scale.padding + accentWidth + scale.gap * 0.8;
   const topInset = scale.padding;
   const maxTextWidth = Math.max(40, width - leftInset - scale.padding);
 
@@ -146,19 +155,21 @@ export function renderLowZoomPreviewCanvas(
   ctx.font = `700 ${scale.titleFont}px "JetBrains Mono", monospace`;
   ctx.fillStyle = '#f8fafc';
   const title = path.split('/').pop() || path;
-  const titleLines = wrapPreviewText(title, estimateTitleCharsPerLine(width, zoom), 2);
+  const maxTitleLines = zoom >= 0.35 ? 2 : 1;
+  const titleLines = wrapPreviewText(title, estimateTitleCharsPerLine(width, zoom), maxTitleLines);
   titleLines.forEach((line, index) => {
     ctx.fillText(trimToWidth(ctx, line, maxTextWidth), leftInset, topInset + index * scale.titleLineHeight);
   });
 
-  const subtitleY = topInset + titleLines.length * scale.titleLineHeight + scale.gap * 0.8;
-  ctx.font = `${Math.max(scale.bodyFont * 0.8, 9 / Math.max(zoom, 0.08))}px "JetBrains Mono", monospace`;
+  const subtitleY = topInset + titleLines.length * scale.titleLineHeight + scale.gap * 0.65;
+  const subtitleFont = Math.max(scale.bodyFont * 0.82, 6 / Math.max(zoom, 0.08));
+  ctx.font = `${subtitleFont}px "JetBrains Mono", monospace`;
   ctx.fillStyle = 'rgba(226,232,240,0.72)';
   const pathParts = path.split('/');
-  const subtitle = pathParts.length > 1 ? pathParts.slice(Math.max(0, pathParts.length - 3), -1).join(' / ') : 'root';
+  const subtitle = pathParts.length > 1 ? pathParts.slice(Math.max(0, pathParts.length - 2), -1).join(' / ') : 'root';
   ctx.fillText(trimToWidth(ctx, subtitle, maxTextWidth), leftInset, subtitleY);
 
-  const previewY = subtitleY + Math.max(scale.bodyFont * 0.8, 9 / Math.max(zoom, 0.08)) + scale.gap * 1.35;
+  const previewY = subtitleY + subtitleFont + scale.gap;
   const rawPreview = getLowZoomPreviewText(file, scrollTop) || 'Preview unavailable';
   const wrapped = wrapPreviewText(
     rawPreview,

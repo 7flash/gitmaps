@@ -18,11 +18,11 @@ describe('low zoom preview helpers', () => {
     expect(getLowZoomPreviewText({ path: 'bin.dat', ext: 'dat', isBinary: true, content: 'abc' }, 0)).toBe('');
   });
 
-  test('increases world-space font size as zoom goes down', () => {
-    const near = getLowZoomScale(0.25);
+  test('keeps zoomed-out on-screen text smaller than zoomed-in text', () => {
     const far = getLowZoomScale(0.1);
-    expect(far.titleFont).toBeGreaterThan(near.titleFont);
-    expect(far.bodyFont).toBeGreaterThan(near.bodyFont);
+    const near = getLowZoomScale(1);
+    expect(far.titleFont * 0.1).toBeLessThan(near.titleFont * 1);
+    expect(far.bodyFont * 0.1).toBeLessThan(near.bodyFont * 1);
   });
 
   test('wraps preview text into bounded lines with ellipsis', () => {
@@ -34,7 +34,12 @@ describe('low zoom preview helpers', () => {
   test('preview capacity estimates stay positive', () => {
     expect(estimatePreviewCharsPerLine(580, 0.25)).toBeGreaterThan(8);
     expect(estimateTitleCharsPerLine(580, 0.25)).toBeGreaterThan(8);
-    expect(estimatePreviewLineCapacity(700, 0.25)).toBeGreaterThanOrEqual(2);
+    expect(estimatePreviewLineCapacity(700, 0.25)).toBeGreaterThanOrEqual(3);
+  });
+
+  test('higher zoom yields substantially more visible preview lines', () => {
+    expect(estimatePreviewLineCapacity(700, 1)).toBeGreaterThanOrEqual(20);
+    expect(estimatePreviewLineCapacity(700, 0.1)).toBeLessThan(estimatePreviewLineCapacity(700, 1));
   });
 
   test('title typography is larger than body typography for readability', () => {
