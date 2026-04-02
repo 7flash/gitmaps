@@ -35,7 +35,7 @@ export function getLowZoomPreviewText(file: any, scrollTop: number): string {
   const lines = normalized.split('\n');
   const approxLineHeight = 20;
   const startLine = Math.max(0, Math.floor(scrollTop / approxLineHeight));
-  return lines.slice(startLine, startLine + 60).join('\n').trim();
+  return lines.slice(startLine).join('\n').trim();
 }
 
 export function wrapPreviewText(text: string, maxCharsPerLine: number, maxLines: number): string[] {

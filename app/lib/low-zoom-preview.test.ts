@@ -6,11 +6,14 @@ describe('low zoom preview helpers', () => {
     const file = {
       path: 'src/example.ts',
       ext: 'ts',
-      content: Array.from({ length: 12 }, (_, i) => `line-${i + 1}`).join('\n'),
+      content: Array.from({ length: 80 }, (_, i) => `line-${i + 1}`).join('\n'),
     };
 
-    expect(getLowZoomPreviewText(file, 0).startsWith('line-1')).toBe(true);
-    expect(getLowZoomPreviewText(file, 40).startsWith('line-3')).toBe(true);
+    const top = getLowZoomPreviewText(file, 0);
+    const scrolled = getLowZoomPreviewText(file, 40);
+    expect(top.startsWith('line-1')).toBe(true);
+    expect(scrolled.startsWith('line-3')).toBe(true);
+    expect(scrolled.includes('line-80')).toBe(true);
   });
 
   test('skips binary or unsupported files', () => {
