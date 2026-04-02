@@ -168,7 +168,8 @@
 - [x] ~~**Fresh-session slug route fails for already-known repos**~~ — ✅ DONE. Added `/api/repo/resolve-slug` that scans cloned repos for matching remote slugs, and client now tries resolution before falling through to clone.
 - [x] ~~**Binary-heavy repo loading stalls at 85%**~~ — ✅ DONE. Root cause: tree endpoint read all non-binary files synchronously with no size limit, blocking the stream on large repos. Fix: skip reading content for files >2MB, get binary file sizes via `Bun.file()`, and increase client fetch timeout from 60s to 300s.
 - [x] ~~**PDF rendering on canvas cards**~~ — ✅ DONE. PDF files now render as image thumbnails on canvas cards via `/api/repo/pdf-thumb` endpoint using `pdftoppm` (poppler-utils) or ImageMagick with graceful fallback. Cards show the first page as a preview image with lazy loading.
-- [ ] **PDF multi-page navigation** — Add page controls to PDF card previews so users can browse beyond the first page.
+- [x] ~~**PDF multi-page navigation**~~ — ✅ DONE. PDF card previews now show previous/next page controls with page indicators, fetch PDF page-count metadata when available, and fall back to optimistic navigation when metadata tools are unavailable.
+- [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [ ] **Install poppler-utils in Dockerfile** — Add `pdftoppm` to the production Docker image so PDF thumbnails work in deployed environments.
 
 ## 🔴 Priority: Performance

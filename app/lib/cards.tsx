@@ -965,6 +965,116 @@ export function _buildFileContentHTML(
   return `<div class="file-content-preview"><pre><code>${code}</code></pre>${truncNote}</div>`;
 }
 
+function buildPdfThumbUrl(repoPath: string, filePath: string, page: number) {
+  return `/api/repo/pdf-thumb?path=${encodeURIComponent(repoPath)}&file=${encodeURIComponent(filePath)}&page=${page}`;
+}
+
+function buildPdfPreviewHTML(repoPath: string, file: any) {
+  const thumbUrl = buildPdfThumbUrl(repoPath, file.path, 0);
+  return `<div class="file-content-preview file-image-preview pdf-preview" data-file="${escapeHtml(file.path)}" data-page="0" data-page-count="" style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-card);overflow:hidden;position:relative;">
+            <img class="pdf-preview-image" src="${thumbUrl}"
+                 alt="${escapeHtml(file.name)}"
+                 style="max-width:100%;max-height:100%;object-fit:contain;"
+                 loading="lazy"
+                 onerror="this.parentElement.innerHTML='<pre><code><span class=\\'error-notice\\'>PDF preview unavailable</span></code></pre>'" />
+            <div class="pdf-preview-toolbar" style="position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 8px;background:rgba(10,10,15,0.72);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.08);border-radius:10px;z-index:2;">
+              <button class="pdf-page-prev" type="button" style="min-width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:var(--text-primary);cursor:pointer;" disabled>‹</button>
+              <span class="pdf-page-indicator" style="font-size:11px;color:var(--text-primary);min-width:72px;text-align:center;">Page 1</span>
+              <button class="pdf-page-next" type="button" style="min-width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:var(--text-primary);cursor:pointer;">›</button>
+            </div>
+        </div>`;
+}
+
+async function setupPdfPreviewControls(ctx: CanvasContext, card: HTMLElement, file: any) {
+  const repoPath = ctx.snap().context.repoPath || "";
+  if (!repoPath) return;
+
+  const preview = card.querySelector('.pdf-preview') as HTMLElement | null;
+  const img = card.querySelector('.pdf-preview-image') as HTMLImageElement | null;
+  const prevBtn = card.querySelector('.pdf-page-prev') as HTMLButtonElement | null;
+  const nextBtn = card.querySelector('.pdf-page-next') as HTMLButtonElement | null;
+  const indicator = card.querySelector('.pdf-page-indicator') as HTMLElement | null;
+  if (!preview || !img || !prevBtn || !nextBtn || !indicator) return;
+
+  let page = 0;
+  let pageCount: number | null = null;
+  let lastGoodPage = 0;
+  let loading = false;
+
+  const updateUi = () => {
+    preview.dataset.page = String(page);
+    preview.dataset.pageCount = pageCount == null ? '' : String(pageCount);
+    indicator.textContent = pageCount && pageCount > 0 ? `Page ${page + 1} / ${pageCount}` : `Page ${page + 1}`;
+    prevBtn.disabled = loading || page <= 0;
+    nextBtn.disabled = loading || (pageCount != null && page >= pageCount - 1);
+    prevBtn.style.opacity = prevBtn.disabled ? '0.45' : '1';
+    nextBtn.style.opacity = nextBtn.disabled ? '0.45' : '1';
+    prevBtn.style.cursor = prevBtn.disabled ? 'default' : 'pointer';
+    nextBtn.style.cursor = nextBtn.disabled ? 'default' : 'pointer';
+  };
+
+  const loadPage = (nextPage: number) => {
+    if (loading || nextPage < 0) return;
+    if (pageCount != null && nextPage >= pageCount) return;
+
+    loading = true;
+    page = nextPage;
+    updateUi();
+
+    const nextSrc = buildPdfThumbUrl(repoPath, file.path, nextPage);
+    const rollbackPage = lastGoodPage;
+
+    img.onload = () => {
+      lastGoodPage = nextPage;
+      loading = false;
+      img.onload = null;
+      img.onerror = null;
+      updateUi();
+    };
+    img.onerror = () => {
+      loading = false;
+      if (pageCount == null && nextPage > rollbackPage) {
+        pageCount = nextPage;
+      }
+      page = rollbackPage;
+      img.onload = () => {
+        lastGoodPage = rollbackPage;
+        img.onload = null;
+        img.onerror = null;
+        updateUi();
+      };
+      img.onerror = null;
+      img.src = buildPdfThumbUrl(repoPath, file.path, rollbackPage);
+      updateUi();
+    };
+    img.src = nextSrc;
+  };
+
+  prevBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    loadPage(page - 1);
+  });
+  nextBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    loadPage(page + 1);
+  });
+
+  updateUi();
+
+  try {
+    const res = await fetch(`/api/repo/pdf-meta?path=${encodeURIComponent(repoPath)}&file=${encodeURIComponent(file.path)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Number.isFinite(data?.pageCount) && data.pageCount > 0) {
+        pageCount = data.pageCount;
+        updateUi();
+      }
+    }
+  } catch {
+    // Metadata is optional — controls still work with optimistic next/prev.
+  }
+}
+
 // ─── Create all-file card (working tree) ────────────────
 export function createAllFileCard(
   ctx: CanvasContext,
@@ -1026,13 +1136,7 @@ export function createAllFileCard(
                  loading="lazy" />
         </div>`;
   } else if (isPdf) {
-    contentHTML = `<div class="file-content-preview file-image-preview" style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-card);overflow:hidden;">
-            <img src="/api/repo/pdf-thumb?path=${encodeURIComponent(ctx.snap().context.repoPath || "")}&file=${encodeURIComponent(file.path)}" 
-                 alt="${escapeHtml(file.name)}" 
-                 style="max-width:100%;max-height:100%;object-fit:contain;" 
-                 loading="lazy"
-                 onerror="this.parentElement.innerHTML='<pre><code><span class=\\'error-notice\\'>PDF preview unavailable</span></code></pre>'" />
-        </div>`;
+    contentHTML = buildPdfPreviewHTML(ctx.snap().context.repoPath || "", file);
   } else if (file.isBinary) {
     contentHTML = `<div class="file-content-preview"><pre><code><span class="error-notice">Binary file</span></code></pre></div>`;
   } else if (file.content) {
@@ -1206,6 +1310,10 @@ export function createAllFileCard(
       updateSelectionHighlights(ctx);
       updateArrangeToolbar(ctx);
     });
+  }
+
+  if (isPdf) {
+    setupPdfPreviewControls(ctx, card, file);
   }
 
   if (canvasOptions) {
