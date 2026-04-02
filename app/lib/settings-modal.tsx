@@ -144,6 +144,26 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                     </SettingsRow>
                 </SettingsSection>
 
+                {/* Preview Mode Section */}
+                <SettingsSection title="Preview Mode">
+                    <SettingsRow label="Far Zoom Title" desc="Filename size when zoomed far out">
+                        <Slider id="settingPreviewFarTitlePx" valueId="previewFarTitlePxValue"
+                            min={6} max={14} step={1} value={settings.previewFarTitlePx} suffix="px" />
+                    </SettingsRow>
+                    <SettingsRow label="Near Zoom Title" desc="Filename size when zoomed in within preview mode">
+                        <Slider id="settingPreviewNearTitlePx" valueId="previewNearTitlePxValue"
+                            min={10} max={24} step={1} value={settings.previewNearTitlePx} suffix="px" />
+                    </SettingsRow>
+                    <SettingsRow label="Far Zoom Lines" desc="Minimum content lines shown when zoomed far out">
+                        <Slider id="settingPreviewFarLines" valueId="previewFarLinesValue"
+                            min={1} max={8} step={1} value={settings.previewFarLines} suffix="" />
+                    </SettingsRow>
+                    <SettingsRow label="Near Zoom Lines" desc="Target content lines shown when zoomed in">
+                        <Slider id="settingPreviewNearLines" valueId="previewNearLinesValue"
+                            min={8} max={40} step={1} value={settings.previewNearLines} suffix="" />
+                    </SettingsRow>
+                </SettingsSection>
+
                 {/* Advanced Section */}
                 <SettingsSection title="Advanced">
                     <SettingsRow label="Max Visible Lines" desc="Lines shown per card before virtual scroll">
@@ -259,6 +279,38 @@ export function openSettingsModal(ctx?: any) {
     maxLinesSlider?.addEventListener('input', () => {
         maxLinesValue.textContent = maxLinesSlider.value;
         updateSettings({ maxVisibleLines: parseInt(maxLinesSlider.value) });
+    });
+
+    const previewFarTitleSlider = _modal.querySelector('#settingPreviewFarTitlePx') as HTMLInputElement;
+    const previewFarTitleValue = _modal.querySelector('#previewFarTitlePxValue')!;
+    previewFarTitleSlider?.addEventListener('input', () => {
+        previewFarTitleValue.textContent = `${previewFarTitleSlider.value}px`;
+        updateSettings({ previewFarTitlePx: parseInt(previewFarTitleSlider.value) });
+        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+    });
+
+    const previewNearTitleSlider = _modal.querySelector('#settingPreviewNearTitlePx') as HTMLInputElement;
+    const previewNearTitleValue = _modal.querySelector('#previewNearTitlePxValue')!;
+    previewNearTitleSlider?.addEventListener('input', () => {
+        previewNearTitleValue.textContent = `${previewNearTitleSlider.value}px`;
+        updateSettings({ previewNearTitlePx: parseInt(previewNearTitleSlider.value) });
+        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+    });
+
+    const previewFarLinesSlider = _modal.querySelector('#settingPreviewFarLines') as HTMLInputElement;
+    const previewFarLinesValue = _modal.querySelector('#previewFarLinesValue')!;
+    previewFarLinesSlider?.addEventListener('input', () => {
+        previewFarLinesValue.textContent = previewFarLinesSlider.value;
+        updateSettings({ previewFarLines: parseInt(previewFarLinesSlider.value) });
+        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+    });
+
+    const previewNearLinesSlider = _modal.querySelector('#settingPreviewNearLines') as HTMLInputElement;
+    const previewNearLinesValue = _modal.querySelector('#previewNearLinesValue')!;
+    previewNearLinesSlider?.addEventListener('input', () => {
+        previewNearLinesValue.textContent = previewNearLinesSlider.value;
+        updateSettings({ previewNearLines: parseInt(previewNearLinesSlider.value) });
+        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
     });
 
     // Wire switches

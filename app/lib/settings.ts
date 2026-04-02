@@ -31,6 +31,14 @@ export interface GitCanvasSettings {
     heatmapEnabled: boolean;
     /** Heatmap time range in days */
     heatmapDays: number;
+    /** Preview mode far-zoom title size (screen px) */
+    previewFarTitlePx: number;
+    /** Preview mode near-zoom title size (screen px) */
+    previewNearTitlePx: number;
+    /** Preview mode far-zoom minimum visible lines */
+    previewFarLines: number;
+    /** Preview mode near-zoom target visible lines */
+    previewNearLines: number;
 }
 
 const DEFAULTS: GitCanvasSettings = {
@@ -46,6 +54,10 @@ const DEFAULTS: GitCanvasSettings = {
     popupFontSize: 14,
     heatmapEnabled: false,
     heatmapDays: 90,
+    previewFarTitlePx: 8,
+    previewNearTitlePx: 16,
+    previewFarLines: 3,
+    previewNearLines: 20,
 };
 
 let _settings: GitCanvasSettings | null = null;

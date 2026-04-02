@@ -179,7 +179,9 @@
 - [x] ~~**Preview mode as default**~~ — ✅ DONE. Preview mode is now the default renderer; users can explicitly switch to `Classic` via the top-right control if they want the old full-card behavior.
 - [x] ~~**Preview scaling should favor filename fit + line density**~~ — ✅ DONE. Rebalanced preview-mode typography/layout so the most zoomed-out view uses smaller on-screen text to fit much more of each filename, while higher zoom levels dedicate far more vertical space to content and target ~20 visible lines in large preview cards.
 - [x] ~~**Preview mode should not switch renderer on zoom-in**~~ — ✅ DONE. Preview mode now stays in the preview renderer at every zoom level; it no longer flips back into the classic full-card renderer when zooming in.
-- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains the top-right switch swaps between `Preview` and `Classic` renderers.
+- [x] ~~**Preview mode should be scrollable**~~ — ✅ DONE. Mouse wheel over preview cards now scrolls their content directly, updates the persisted per-file scroll position, and re-renders the preview card in place.
+- [x] ~~**Preview mode tuning should be configurable**~~ — ✅ DONE. Added a new Preview Mode section in Settings for far/near title size and far/near visible line targets, with live updates for mounted preview cards.
+- [ ] **Preview mode onboarding copy** — Add a small hint/toast/tooltip that explains the top-right switch swaps between `Preview` and `Classic` renderers and that mouse wheel scrolls preview card content.
 - [ ] **Pretext prototype for low-zoom wrapping** — Benchmark `@chenglou/pretext` specifically for low-zoom card excerpt layout before adopting it more broadly.
 - [ ] **PDF preview: keyboard + zoom controls** — Add optional zoom-in/zoom-out and keyboard page navigation for PDF card previews.
 - [x] ~~**Install poppler-utils in Dockerfile**~~ — ✅ DONE. Production runtime image now installs `poppler-utils` so `pdftoppm`/`pdfinfo` are available for PDF thumbnails and page-count metadata, and also installs `curl` so the existing container healthcheck actually works.
@@ -214,6 +216,6 @@
 - **Canvas**: Direct DOM manipulation for performance (no VDOM for file cards)
 - **Landing page**: `app/page.tsx` (server-rendered), styles in `app/globals.css`
 - **Rendering**: Viewport culling + line-limiting for large files, VISIBLE_LINE_LIMIT=120
-- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, and the fixed top-right switch swaps between persistent `Preview` and `Classic` renderers.
+- **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, the fixed top-right switch swaps between persistent `Preview` and `Classic` renderers, and wheel scrolling over preview cards updates persisted per-file scroll state.
 - **URL routing**: Path-based (`/slug`) with `[slug]/page.tsx` dynamic route. Legacy `#slug` auto-migrates.
 - **Storage**: All client state in localStorage (positions, connections, layers, hidden files)

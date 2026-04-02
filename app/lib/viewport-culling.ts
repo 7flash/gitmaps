@@ -23,7 +23,7 @@
  */
 import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
-import { getLowZoomScale, renderLowZoomPreviewCanvas } from './low-zoom-preview';
+import { estimatePreviewMaxScroll, getLowZoomScale, renderLowZoomPreviewCanvas } from './low-zoom-preview';
 import { materializeViewport } from './xydraw-bridge';
 
 // ── Culling state ──────────────────────────────────────────
@@ -631,6 +631,42 @@ export function setupPillInteraction(ctx: CanvasContext) {
     let pillStartX = 0, pillStartY = 0;
     let pillMoveInfos: { pill: HTMLElement; path: string; startLeft: number; startTop: number }[] = [];
     const DRAG_THRESHOLD = 5;
+
+    ctx.canvas.addEventListener('wheel', (e: WheelEvent) => {
+        const pill = (e.target as HTMLElement).closest('.file-pill') as HTMLElement;
+        if (!pill) return;
+        if (e.ctrlKey || e.metaKey) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const path = pill.dataset.path || '';
+        if (!path) return;
+
+        const file = (pill as any)._fileData || ctx.allFilesData?.find(f => f.path === path) || ctx.commitFilesData?.find(f => f.path === path) || null;
+        const zoom = ctx.snap().context.zoom || 1;
+        const height = parseFloat(pill.style.height) || 700;
+        const current = getSavedScrollTop(ctx, path);
+        const maxScroll = estimatePreviewMaxScroll(file, height, zoom);
+        const next = Math.max(0, Math.min(maxScroll, current + e.deltaY));
+        if (next === current) return;
+
+        const key = `scroll:${path}`;
+        const existing = ctx.positions.get(key) || {};
+        ctx.positions.set(key, { ...existing, x: next, y: existing.y || 0 });
+        try {
+            const { debounceSaveScroll } = require('./cards');
+            debounceSaveScroll(ctx, path, next);
+        } catch { }
+        updatePillCardLayout(ctx, pill, zoom, pill.dataset.changed === 'true');
+    }, { passive: false });
+
+    window.addEventListener('gitcanvas:preview-settings-changed', () => {
+        const zoom = ctx.snap().context.zoom || 1;
+        for (const [, pill] of pillCards) {
+            updatePillCardLayout(ctx, pill, zoom, pill.dataset.changed === 'true');
+        }
+    });
 
     ctx.canvas.addEventListener('mousedown', (e: MouseEvent) => {
         if (e.button !== 0) return;

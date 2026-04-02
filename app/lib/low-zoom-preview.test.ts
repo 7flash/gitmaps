@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, wrapPreviewText } from './low-zoom-preview';
+import { estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, wrapPreviewText } from './low-zoom-preview';
 
 describe('low zoom preview helpers', () => {
   test('anchors preview text to approximate saved scroll position', () => {
@@ -40,6 +40,13 @@ describe('low zoom preview helpers', () => {
   test('higher zoom yields substantially more visible preview lines', () => {
     expect(estimatePreviewLineCapacity(700, 1)).toBeGreaterThanOrEqual(20);
     expect(estimatePreviewLineCapacity(700, 0.1)).toBeLessThan(estimatePreviewLineCapacity(700, 1));
+  });
+
+  test('preview scroll range grows with longer files', () => {
+    const shortFile = { content: Array.from({ length: 8 }, (_, i) => `line-${i}`).join('\n') };
+    const longFile = { content: Array.from({ length: 80 }, (_, i) => `line-${i}`).join('\n') };
+    expect(estimatePreviewMaxScroll(shortFile, 700, 1)).toBeGreaterThanOrEqual(0);
+    expect(estimatePreviewMaxScroll(longFile, 700, 1)).toBeGreaterThan(estimatePreviewMaxScroll(shortFile, 700, 1));
   });
 
   test('title typography is larger than body typography for readability', () => {

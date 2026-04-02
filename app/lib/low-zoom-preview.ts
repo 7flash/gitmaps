@@ -1,3 +1,5 @@
+import { getSettings } from './settings';
+
 const PREVIEWABLE_EXTS = new Set([
   'ts', 'tsx', 'js', 'jsx', 'json', 'css', 'scss', 'html', 'md', 'py', 'rs', 'go', 'vue', 'svelte', 'toml', 'yaml', 'yml', 'sh', 'sql', 'txt'
 ]);
@@ -5,8 +7,9 @@ const PREVIEWABLE_EXTS = new Set([
 export function getLowZoomScale(zoom: number) {
   const clampedZoom = Math.max(0.08, Math.min(1, zoom));
   const progress = (clampedZoom - 0.08) / (1 - 0.08);
+  const settings = getSettings();
 
-  const desiredScreenTitle = 8 + progress * 8;
+  const desiredScreenTitle = settings.previewFarTitlePx + progress * (settings.previewNearTitlePx - settings.previewFarTitlePx);
   const desiredScreenBody = 5.5 + progress * 6.5;
   const desiredScreenPadding = 6 + progress * 8;
   const desiredScreenGap = 4 + progress * 4;
@@ -87,12 +90,15 @@ function ellipsizeWrappedLines(lines: string[], maxLines: number) {
 
 export function estimatePreviewLineCapacity(height: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
+  const settings = getSettings();
   const titleLines = zoom >= 0.35 ? 2 : 1;
   const available = Math.max(
     scale.bodyLineHeight * 2,
     height - scale.padding * 2 - scale.titleLineHeight * titleLines - scale.bodyFont - scale.gap * 3,
   );
-  return Math.max(zoom >= 0.6 ? 20 : zoom >= 0.35 ? 12 : 3, Math.floor(available / scale.bodyLineHeight));
+  const progress = (Math.max(0.08, Math.min(1, zoom)) - 0.08) / (1 - 0.08);
+  const targetLines = settings.previewFarLines + progress * (settings.previewNearLines - settings.previewFarLines);
+  return Math.max(Math.round(targetLines), Math.floor(available / scale.bodyLineHeight));
 }
 
 export function estimateTitleCharsPerLine(width: number, zoom: number): number {
@@ -107,6 +113,13 @@ export function estimatePreviewCharsPerLine(width: number, zoom: number): number
   const available = Math.max(100, width - scale.padding * 2 - Math.max(12, width * 0.018));
   const avgCharWidth = Math.max(5, scale.bodyFont * 0.58);
   return Math.max(10, Math.floor(available / avgCharWidth));
+}
+
+export function estimatePreviewMaxScroll(file: any, height: number, zoom: number): number {
+  if (!file || !file.content) return 0;
+  const totalLines = String(file.content).split('\n').length;
+  const visibleLines = estimatePreviewLineCapacity(height, zoom);
+  return Math.max(0, (totalLines - visibleLines) * 20);
 }
 
 export function renderLowZoomPreviewCanvas(
