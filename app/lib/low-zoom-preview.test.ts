@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, wrapPreviewText } from './low-zoom-preview';
+import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewScrollMetrics, wrapPreviewText } from './low-zoom-preview';
 
 describe('low zoom preview helpers', () => {
   test('anchors preview text to approximate saved scroll position', () => {
@@ -50,6 +50,23 @@ describe('low zoom preview helpers', () => {
     const longFile = { content: Array.from({ length: 80 }, (_, i) => `line-${i}`).join('\n') };
     expect(estimatePreviewMaxScroll(shortFile, 700, 1)).toBeGreaterThanOrEqual(0);
     expect(estimatePreviewMaxScroll(longFile, 700, 1)).toBeGreaterThan(estimatePreviewMaxScroll(shortFile, 700, 1));
+  });
+
+  test('scroll metrics produce a visible thumb position', () => {
+    const file = { content: Array.from({ length: 120 }, (_, i) => `line-${i}`).join('\n') };
+    const metrics = getPreviewScrollMetrics(file, 700, 1, 120);
+    expect(metrics.thumbHeight).toBeGreaterThan(0);
+    expect(metrics.thumbY).toBeGreaterThanOrEqual(metrics.trackPadding);
+  });
+
+  test('collects diff markers from added and deleted lines', () => {
+    const markers = collectPreviewDiffMarkers({
+      addedLines: new Set([2, 10]),
+      deletedBeforeLine: new Map([[5, ['gone']]]),
+    }, 20);
+    expect(markers.length).toBe(3);
+    expect(markers.some((m) => m.color === '#22c55e')).toBe(true);
+    expect(markers.some((m) => m.color === '#ef4444')).toBe(true);
   });
 
   test('title typography is larger than body typography for readability', () => {

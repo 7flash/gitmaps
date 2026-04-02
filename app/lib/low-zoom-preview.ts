@@ -122,6 +122,33 @@ export function estimatePreviewMaxScroll(file: any, height: number, zoom: number
   return Math.max(0, (totalLines - visibleLines) * 20);
 }
 
+export function getPreviewScrollMetrics(file: any, height: number, zoom: number, scrollTop: number) {
+  const totalLines = Math.max(1, String(file?.content || '').split('\n').length);
+  const visibleLines = Math.max(1, estimatePreviewLineCapacity(height, zoom));
+  const maxScroll = Math.max(0, (totalLines - visibleLines) * 20);
+  const trackPadding = 10;
+  const trackHeight = Math.max(24, height - trackPadding * 2);
+  const thumbHeight = Math.max(18, (visibleLines / totalLines) * trackHeight);
+  const thumbTravel = Math.max(0, trackHeight - thumbHeight);
+  const thumbY = trackPadding + (maxScroll > 0 ? (scrollTop / maxScroll) * thumbTravel : 0);
+  return { totalLines, visibleLines, maxScroll, trackPadding, trackHeight, thumbHeight, thumbY };
+}
+
+export function collectPreviewDiffMarkers(file: any, totalLines: number) {
+  const markers: Array<{ ratio: number; color: string }> = [];
+  const safeTotal = Math.max(1, totalLines);
+  const added = file?.addedLines instanceof Set ? Array.from(file.addedLines) : [];
+  const deletedBefore = file?.deletedBeforeLine instanceof Map ? Array.from(file.deletedBeforeLine.keys()) : [];
+
+  for (const line of added) {
+    markers.push({ ratio: Math.max(0, Math.min(1, (line - 1) / safeTotal)), color: '#22c55e' });
+  }
+  for (const line of deletedBefore) {
+    markers.push({ ratio: Math.max(0, Math.min(1, (line - 1) / safeTotal)), color: '#ef4444' });
+  }
+  return markers;
+}
+
 export function renderLowZoomPreviewCanvas(
   canvas: HTMLCanvasElement,
   params: {
@@ -140,6 +167,7 @@ export function renderLowZoomPreviewCanvas(
   const scale = getLowZoomScale(zoom);
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  const scrollMetrics = getPreviewScrollMetrics(file, height, zoom, scrollTop);
 
   canvas.width = Math.max(1, Math.floor(width * dpr));
   canvas.height = Math.max(1, Math.floor(height * dpr));
@@ -157,12 +185,15 @@ export function renderLowZoomPreviewCanvas(
   ctx.fill();
 
   const accentWidth = Math.max(6, width * 0.012);
+  const scrollbarWidth = 6;
+  const markerLaneWidth = 4;
+  const rightRailWidth = scrollbarWidth + markerLaneWidth + 8;
   ctx.fillStyle = accentColor;
   ctx.fillRect(0, 0, accentWidth, height);
 
   const leftInset = scale.padding + accentWidth + scale.gap * 0.8;
   const topInset = scale.padding;
-  const maxTextWidth = Math.max(40, width - leftInset - scale.padding);
+  const maxTextWidth = Math.max(40, width - leftInset - scale.padding - rightRailWidth);
 
   ctx.textBaseline = 'top';
   ctx.font = `700 ${scale.titleFont}px "JetBrains Mono", monospace`;
@@ -206,6 +237,26 @@ export function renderLowZoomPreviewCanvas(
     if (y > height - scale.padding) return;
     ctx.fillText(line, leftInset, y);
   });
+
+  const trackX = width - scrollbarWidth - 4;
+  const markerX = trackX - markerLaneWidth - 3;
+  const trackY = scrollMetrics.trackPadding;
+  const trackHeight = scrollMetrics.trackHeight;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  roundRect(ctx, trackX, trackY, scrollbarWidth, trackHeight, scrollbarWidth / 2);
+  ctx.fill();
+
+  const markers = collectPreviewDiffMarkers(file, scrollMetrics.totalLines);
+  for (const marker of markers) {
+    const y = trackY + marker.ratio * trackHeight;
+    ctx.fillStyle = marker.color;
+    ctx.fillRect(markerX, Math.max(trackY, y), markerLaneWidth, 3);
+  }
+
+  ctx.fillStyle = 'rgba(196,181,253,0.9)';
+  roundRect(ctx, trackX, scrollMetrics.thumbY, scrollbarWidth, scrollMetrics.thumbHeight, scrollbarWidth / 2);
+  ctx.fill();
 }
 
 function trimToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
