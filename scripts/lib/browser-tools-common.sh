@@ -12,7 +12,8 @@ normalize_path_for_bash() {
 }
 
 run_browser_eval() {
-  timeout 20 browser-eval "$1"
+  local eval_timeout="${BROWSER_EVAL_TIMEOUT:-60}"
+  timeout "$eval_timeout" browser-eval "$1"
 }
 
 run_browser_nav() {

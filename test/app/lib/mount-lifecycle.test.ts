@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { getCanvasContext } from './context';
-import { clearCanvasMount, registerCanvasMount } from './mount-lifecycle';
-import { setupDomTest } from './test-dom';
+import { getCanvasContext } from '../../../app/lib/context';
+import { clearCanvasMount, registerCanvasMount } from '../../../app/lib/mount-lifecycle';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('mount lifecycle helper', () => {
   test('registerCanvasMount stores cleanup and shared context together', () => {

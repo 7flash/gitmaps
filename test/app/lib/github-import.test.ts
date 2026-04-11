@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import { setupGithubImport } from './events';
-import { installFetchMock, installWindowOpenMock, setupDomTest } from './test-dom';
+import { setupGithubImport } from '../../../app/lib/events';
+import { installFetchMock, installWindowOpenMock, setupDomTest } from '../../../app/lib/test-dom';
 
 function makeSseResponse(chunks: string[]): Response {
   const stream = new ReadableStream({

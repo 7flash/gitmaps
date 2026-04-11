@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { Window } from 'happy-dom';
-import { addRecentRepo, getRecentRepos, removeRecentRepo, renderRecentCommitsUI } from './recent-commits';
-import { setCanvasContext } from './context';
-import { installFetchMock, setupDomTest } from './test-dom';
+import { addRecentRepo, getRecentRepos, removeRecentRepo, renderRecentCommitsUI } from '../../../app/lib/recent-commits';
+import { setCanvasContext } from '../../../app/lib/context';
+import { installFetchMock, setupDomTest } from '../../../app/lib/test-dom';
 
 describe('recent commits sidebar', () => {
   let window: Window;
@@ -394,7 +394,7 @@ describe('recent commits sidebar', () => {
       resolveLoad = resolve;
     });
     const loadRepositoryMock = mock(() => loadPromise);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -435,7 +435,7 @@ describe('recent commits sidebar', () => {
       rejectLoad = reject;
     });
     const loadRepositoryMock = mock(() => loadPromise);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -472,7 +472,7 @@ describe('recent commits sidebar', () => {
 
   test('repeated renderRecentCommitsUI calls do not double-bind the Pull button handler', async () => {
     const loadRepositoryMock = mock(async () => undefined);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -507,7 +507,7 @@ describe('recent commits sidebar', () => {
 
   test('replacing the Pull button DOM node and rerendering binds the handler exactly once on the new element', async () => {
     const loadRepositoryMock = mock(async () => undefined);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -551,7 +551,7 @@ describe('recent commits sidebar', () => {
 
   test('rerendering the recent repo list does not break the already-bound Pull button behavior', async () => {
     const loadRepositoryMock = mock(async () => undefined);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -592,7 +592,7 @@ describe('recent commits sidebar', () => {
     });
     let currentRepoPath = 'C:/Code/gitmaps';
     const loadRepositoryMock = mock(async () => undefined);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -794,7 +794,7 @@ describe('recent commits sidebar', () => {
 
   test('after rerenders and recent-repo removal, Pull uses the surviving clicked entry as the active repo path', async () => {
     const loadRepositoryMock = mock(async () => undefined);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,
@@ -869,7 +869,7 @@ describe('recent commits sidebar', () => {
 
   test('removing the final recent repo after rerenders leaves Pull bound only to the active repo state', async () => {
     const loadRepositoryMock = mock(async () => undefined);
-    const originalRepoModule = require('./repo');
+    const originalRepoModule = require('../../../app/lib/repo');
     mock.module('./repo', () => ({
       ...originalRepoModule,
       loadRepository: loadRepositoryMock,

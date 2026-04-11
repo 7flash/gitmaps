@@ -4,6 +4,9 @@ const PREVIEWABLE_EXTS = new Set([
   'ts', 'tsx', 'js', 'jsx', 'json', 'css', 'scss', 'html', 'md', 'py', 'rs', 'go', 'vue', 'svelte', 'toml', 'yaml', 'yml', 'sh', 'sql', 'txt'
 ]);
 
+const MAX_PREVIEW_BACKING_PIXELS = 1_500_000;
+const MAX_PREVIEW_BACKING_DPR = 1.25;
+
 export function getLowZoomScale(zoom: number) {
   const clampedZoom = Math.max(0.08, Math.min(1, zoom));
   const settings = getSettings();
@@ -151,7 +154,12 @@ function ellipsizeWrappedLines(lines: string[], maxLines: number) {
   return sliced;
 }
 
-export function estimatePreviewLineCapacity(height: number, zoom: number): number {
+function getPreviewZoomT(zoom: number) {
+  const clamped = Math.max(0.08, Math.min(1, zoom));
+  return (clamped - 0.08) / (1 - 0.08);
+}
+
+function estimatePhysicalPreviewLineCapacity(height: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
   const titleLines = zoom >= 0.35 ? 2 : 1;
   const available = Math.max(
@@ -159,6 +167,17 @@ export function estimatePreviewLineCapacity(height: number, zoom: number): numbe
     height - scale.padding * 2 - scale.titleLineHeight * titleLines - scale.bodyFont - scale.gap * 3,
   );
   return Math.max(2, Math.floor(available / scale.bodyLineHeight));
+}
+
+export function estimatePreviewLineCapacity(height: number, zoom: number): number {
+  const settings = getSettings();
+  const t = getPreviewZoomT(zoom);
+  const far = Math.max(2, settings.previewFarVisibleLines || 3);
+  const near = Math.max(far, settings.previewNearVisibleLines || 60);
+  const interpolated = Math.round(far + (near - far) * t);
+  const physicalCap = estimatePhysicalPreviewLineCapacity(height, zoom);
+  const globalCap = Math.max(2, settings.maxVisibleLines || near);
+  return Math.max(2, Math.min(interpolated, physicalCap, globalCap));
 }
 
 export function estimateTitleCharsPerLine(width: number, zoom: number): number {
@@ -175,16 +194,21 @@ export function estimatePreviewCharsPerLine(width: number, zoom: number): number
   return Math.max(10, Math.floor(available / avgCharWidth));
 }
 
+function estimateVisibleRawLines(height: number, zoom: number) {
+  const wrappedVisibleLines = Math.max(1, estimatePreviewLineCapacity(height, zoom));
+  return Math.max(1, Math.floor(wrappedVisibleLines * 0.55));
+}
+
 export function estimatePreviewMaxScroll(file: any, height: number, zoom: number): number {
   if (!file || !file.content) return 0;
   const totalLines = String(file.content).split('\n').length;
-  const visibleLines = estimatePreviewLineCapacity(height, zoom);
+  const visibleLines = estimateVisibleRawLines(height, zoom);
   return Math.max(0, (totalLines - visibleLines) * 20);
 }
 
 export function getPreviewScrollMetrics(file: any, height: number, zoom: number, scrollTop: number) {
   const totalLines = Math.max(1, String(file?.content || '').split('\n').length);
-  const visibleLines = Math.max(1, estimatePreviewLineCapacity(height, zoom));
+  const visibleLines = Math.max(1, estimateVisibleRawLines(height, zoom));
   const maxScroll = Math.max(0, (totalLines - visibleLines) * 20);
   const trackPadding = 10;
   const trackHeight = Math.max(24, height - trackPadding * 2);
@@ -217,6 +241,22 @@ export function collectPreviewDiffMarkers(file: any, totalLines: number) {
   return markers;
 }
 
+function getPreviewBackingScale(width: number, height: number) {
+  const safeWidth = Math.max(1, width);
+  const safeHeight = Math.max(1, height);
+  const deviceDpr = Math.max(1, globalThis.devicePixelRatio || 1);
+  const areaLimitedDpr = Math.sqrt(MAX_PREVIEW_BACKING_PIXELS / (safeWidth * safeHeight));
+  return Math.max(1, Math.min(deviceDpr, MAX_PREVIEW_BACKING_DPR, areaLimitedDpr));
+}
+
+export function releaseLowZoomPreviewCanvas(canvas: HTMLCanvasElement | null | undefined) {
+  if (!canvas) return;
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.style.width = '1px';
+  canvas.style.height = '1px';
+}
+
 export function renderLowZoomPreviewCanvas(
   canvas: HTMLCanvasElement,
   params: {
@@ -231,14 +271,16 @@ export function renderLowZoomPreviewCanvas(
   },
 ) {
   const { path, file, width, height, zoom, scrollTop, accentColor } = params;
-  const dpr = (globalThis.devicePixelRatio || 1);
+  const dpr = getPreviewBackingScale(width, height);
   const scale = getLowZoomScale(zoom);
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   const scrollMetrics = getPreviewScrollMetrics(file, height, zoom, scrollTop);
 
-  canvas.width = Math.max(1, Math.floor(width * dpr));
-  canvas.height = Math.max(1, Math.floor(height * dpr));
+  const targetWidth = Math.max(1, Math.floor(width * dpr));
+  const targetHeight = Math.max(1, Math.floor(height * dpr));
+  if (canvas.width !== targetWidth) canvas.width = targetWidth;
+  if (canvas.height !== targetHeight) canvas.height = targetHeight;
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
 
@@ -267,7 +309,7 @@ export function renderLowZoomPreviewCanvas(
   ctx.font = `700 ${scale.titleFont}px "JetBrains Mono", monospace`;
   ctx.fillStyle = '#f8fafc';
   const title = path.split('/').pop() || path;
-  const maxTitleLines = zoom >= 0.35 ? 2 : 1;
+  const maxTitleLines = zoom <= 0.18 ? 3 : 2;
   const titleLines = wrapPreviewText(title, estimateTitleCharsPerLine(width, zoom), maxTitleLines);
   titleLines.forEach((line, index) => {
     ctx.fillText(trimToWidth(ctx, line, maxTextWidth), leftInset, topInset + index * scale.titleLineHeight);

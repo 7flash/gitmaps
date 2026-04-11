@@ -6,6 +6,7 @@
  */
 
 import path from 'path';
+import pkg from '../package.json';
 
 function getBuildInfo() {
   const repoRoot = path.resolve(import.meta.dir, '..');
@@ -21,6 +22,7 @@ function getBuildInfo() {
   });
 
   return {
+    version: pkg.version || '0.0.0',
     commit: commitProc.exitCode === 0 ? commitProc.stdout.toString().trim() : 'unknown',
     date: dateProc.exitCode === 0 ? dateProc.stdout.toString().trim() : '',
   };
@@ -132,6 +134,7 @@ export default function RootLayout({ children }: { children: any }) {
           dangerouslySetInnerHTML={{
             __html: `
                     (function() {
+                        window.__GITMAPS_BUILD_VERSION__ = ${JSON.stringify(build.version)};
                         window.__GITMAPS_BUILD_COMMIT__ = ${JSON.stringify(build.commit)};
                         window.__GITMAPS_BUILD_DATE__ = ${JSON.stringify(build.date)};
                         if (window.innerWidth < 768) {

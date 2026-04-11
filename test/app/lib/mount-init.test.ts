@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { ensureSvgOverlay, initializeMountUi } from './mount-init';
-import { setupDomTest } from './test-dom';
+import { ensureSvgOverlay, initializeMountUi } from '../../../app/lib/mount-init';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('mount init helper', () => {
   test('ensureSvgOverlay reuses existing overlay or creates one on demand', () => {

@@ -1301,7 +1301,7 @@ body.landing-placeholder-visible .sticky-zoom-pill {
 /* File Card */
 .file-card {
   position: absolute;
-  width: 580px;
+  width: var(--card-width, 580px);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -1363,6 +1363,7 @@ body.landing-placeholder-visible .sticky-zoom-pill {
   top: 0;
   z-index: 2;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 /* Simple file cards (all-files mode) */
@@ -1426,6 +1427,7 @@ body.landing-placeholder-visible .sticky-zoom-pill {
 
 .file-name {
   flex: 1;
+  min-width: 0;
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-primary);
@@ -8166,6 +8168,15 @@ button.sb-item {
   color: var(--accent-primary, #a78bfa);
 }
 
+.sb-build {
+  color: #c4b5fd;
+  cursor: pointer;
+}
+
+.sb-build:hover {
+  color: var(--text-primary, #e2e8f0);
+}
+
 .sb-slug {
   color: #7dd3fc;
   max-width: min(46vw, 520px);
@@ -8520,6 +8531,57 @@ button.sb-item {
 .settings-switch input:checked + .settings-switch-slider::before {
   transform: translateX(20px);
   background: white;
+}
+
+ .settings-dimension-preview {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+}
+
+.settings-dimension-preview__card {
+  width: 132px;
+  height: 120px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(15, 23, 42, 0.98));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+  transition: width 0.12s ease, height 0.12s ease, border-color 0.12s ease;
+}
+
+.settings-dimension-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 10px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  color: var(--text-primary);
+  background: rgba(124, 58, 237, 0.12);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.18);
+}
+
+.settings-dimension-preview__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+}
+
+.settings-dimension-preview__line {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.16);
+}
+
+.settings-dimension-preview__line.short {
+  width: 48%;
+}
+
+.settings-dimension-preview__line.medium {
+  width: 72%;
 }
 
 /* Footer */

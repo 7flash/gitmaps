@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { bindMountPopstate, wireMountRoutes } from './mount-route-wiring';
+import { bindMountPopstate, wireMountRoutes } from '../../../app/lib/mount-route-wiring';
 
 describe('mount route wiring helper', () => {
   test('wires initial hydration through shared route helpers', async () => {

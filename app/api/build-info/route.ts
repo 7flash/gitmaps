@@ -1,4 +1,5 @@
 import path from 'path';
+import pkg from '../../../package.json';
 
 function runGit(args: string[]): string {
     const repoRoot = path.resolve(import.meta.dir, '../../..');
@@ -13,7 +14,8 @@ function runGit(args: string[]): string {
 }
 
 export async function GET() {
+    const version = process.env.GITMAPS_VERSION || pkg.version || '0.0.0';
     const commit = process.env.GIT_COMMIT_HASH || runGit(['rev-parse', '--short', 'HEAD']) || 'unknown';
     const commitDate = process.env.GIT_COMMIT_DATE || runGit(['log', '-1', '--format=%cs']) || '';
-    return Response.json({ commit, commitDate });
+    return Response.json({ version, commit, commitDate });
 }

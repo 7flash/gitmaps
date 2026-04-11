@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { handoffRepoLoad } from './repo-handoff';
-import { setupDomTest } from './test-dom';
+import { handoffRepoLoad } from '../../../app/lib/repo-handoff';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('repo handoff helper', () => {
   test('uses onRepoReady seam and syncs repo selection without loading immediately', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import Page from '../page';
+import Page from '../../../app/page';
 
 type VNode = {
   type?: any;

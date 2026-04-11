@@ -18,6 +18,7 @@ import { performViewportCulling } from "./viewport-culling";
 import { getPositionKey, loadSavedPositions } from "./positions";
 import { updateHiddenUI } from "./hidden-files";
 import { clearVirtualCards } from "./virtual-files";
+import { getDefaultCardHeight, getDefaultCardWidth } from "./settings";
 import {
   showLoadingProgress,
   updateLoadingProgress,
@@ -709,8 +710,8 @@ export function renderFilesOnCanvas(
     }
 
     const cols = Math.min(layerFiles.length, getAutoColumnCount(ctx));
-    const cardWidth = 580;
-    const cardHeight = 700;
+    const cardWidth = getDefaultCardWidth();
+    const cardHeight = getDefaultCardHeight();
     const gap = 40;
 
     layerFiles.forEach((f, index) => {
@@ -807,8 +808,8 @@ export function renderAllFilesOnCanvas(ctx: CanvasContext, files: any[]) {
     // Square-ish grid: use ceil(sqrt(n)) columns for a dense rectangle
     const count = layerFiles.length;
     const cols = Math.max(1, Math.ceil(Math.sqrt(count)));
-    const defaultCardWidth = 580;
-    const defaultCardHeight = 700;
+    const defaultCardWidth = getDefaultCardWidth();
+    const defaultCardHeight = getDefaultCardHeight();
     const gap = 20;
     const cellW = defaultCardWidth + gap;
     const cellH = defaultCardHeight + gap;

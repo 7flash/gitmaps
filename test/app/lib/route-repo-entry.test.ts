@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { getCurrentRouteSlug, handlePopstateRepoEntry, resolveMappedRepoPath } from './route-repo-entry';
-import { setupDomTest } from './test-dom';
+import { getCurrentRouteSlug, handlePopstateRepoEntry, resolveMappedRepoPath } from '../../../app/lib/route-repo-entry';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('route repo entry helper', () => {
   test('reads the current decoded route slug', () => {

@@ -8,13 +8,13 @@
  * - CanvasState coordinate conversions at scale
  * - getVisibleWorldRect + fitRect computations
  *
- * Run: bun test packages/galaxydraw/perf.test.ts
+ * Run: bun test test/packages/galaxydraw/perf.test.ts
  */
 import { describe, expect, test } from 'bun:test';
-import { CanvasState } from './src/core/state';
-import { CardManager } from './src/core/cards';
-import { EventBus } from './src/core/events';
-import type { CardPlugin, CardData } from './src/core/cards';
+import { CanvasState } from '../../../packages/galaxydraw/src/core/state';
+import { CardManager } from '../../../packages/galaxydraw/src/core/cards';
+import { EventBus } from '../../../packages/galaxydraw/src/core/events';
+import type { CardPlugin, CardData } from '../../../packages/galaxydraw/src/core/cards';
 
 // ── Synthetic file positions (grid layout like GitMaps) ──
 function generateFileGrid(count: number, colWidth = 600, rowHeight = 720, gap = 20) {

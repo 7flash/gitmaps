@@ -4,7 +4,7 @@ import {
     assertRouteExpectation,
     discoverContractRoutes,
     gitmapsCatchAllRoutingContract,
-} from './router-contract';
+} from '../../../app/lib/router-contract';
 
 describe('GitMaps catch-all route integration', () => {
     const appDir = path.resolve(import.meta.dir, '..');

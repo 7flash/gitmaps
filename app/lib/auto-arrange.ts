@@ -13,6 +13,7 @@ import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
 import { savePosition, flushPositions } from './positions';
 import { updateMinimap } from './canvas';
+import { getDefaultCardHeight, getDefaultCardWidth } from './settings';
 
 interface FileEntry {
     path: string;
@@ -47,8 +48,8 @@ export function arrangeByDirectory(
 ): Map<string, { x: number; y: number }> {
     const positions = new Map<string, { x: number; y: number }>();
     const {
-        cardWidth = 580,
-        cardHeight = 700,
+        cardWidth = getDefaultCardWidth(),
+        cardHeight = getDefaultCardHeight(),
         fileGap = 20,
         dirGap = 80,
         originX = 50,

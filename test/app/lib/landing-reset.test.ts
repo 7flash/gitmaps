@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { showLandingPlaceholder } from './landing-reset';
-import { setupDomTest } from './test-dom';
+import { showLandingPlaceholder } from '../../../app/lib/landing-reset';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('landing reset helper', () => {
   test('clears repo ui and resets shared canvas state back to landing mode', () => {

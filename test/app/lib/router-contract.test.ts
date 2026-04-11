@@ -4,7 +4,7 @@ import {
   assertRouteExpectation,
   discoverContractRoutes,
   gitmapsCatchAllRoutingContract,
-} from './router-contract';
+} from '../../../app/lib/router-contract';
 
 describe('Melina catch-all routing contract fixture', () => {
   const fixtureAppDir = path.resolve(import.meta.dir, 'test-fixtures/router-contract');

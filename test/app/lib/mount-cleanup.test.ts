@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { cleanupMount } from './mount-cleanup';
-import { setupDomTest } from './test-dom';
+import { cleanupMount } from '../../../app/lib/mount-cleanup';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('mount cleanup helper', () => {
   test('runs cleanup steps in order and tears down preview when viewport exists', async () => {

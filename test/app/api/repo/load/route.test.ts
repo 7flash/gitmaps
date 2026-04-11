@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { extractCanonicalForgeSlugInfo } from './route';
+import { extractCanonicalForgeSlugInfo } from '../../../../../app/api/repo/load/route';
 
 describe('extractCanonicalForgeSlugInfo', () => {
     test('parses GitHub HTTPS remote', () => {

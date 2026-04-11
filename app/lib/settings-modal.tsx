@@ -4,7 +4,9 @@
  * with organized toggle switches and sliders.
  */
 import { render } from 'melina/client';
-import { getSettings, updateSettings, resetSettings, type GitCanvasSettings } from './settings';
+import { getCanvasContext } from './context';
+import { getCardManager } from './xydraw-bridge';
+import { getDefaultCardHeight, getSettings, updateSettings, resetSettings, type GitCanvasSettings } from './settings';
 
 let _modal: HTMLElement | null = null;
 
@@ -100,11 +102,15 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                     </SettingsRow>
                     <SettingsRow label="Font Size" desc="Code font size in full cards and editor views">
                         <Slider id="settingFontSize" valueId="fontSizeValue"
-                            min={10} max={18} step={1} value={settings.fontSize} suffix="px" />
+                            min={6} max={40} step={1} value={settings.fontSize} suffix="px" />
                     </SettingsRow>
                     <SettingsRow label="Card Width" desc="Character columns per card (like editors)">
                         <Slider id="settingCardWidth" valueId="cardWidthValue"
-                            min={40} max={120} step={5} value={cardCols} suffix=" cols" />
+                            min={30} max={250} step={5} value={cardCols} suffix=" cols" />
+                    </SettingsRow>
+                    <SettingsRow label="Card Height" desc="Default card height for canvas and preview layout">
+                        <Slider id="settingCardHeight" valueId="cardHeightValue"
+                            min={220} max={1000} step={20} value={Math.min(settings.cardHeight, 1000)} suffix="px" />
                     </SettingsRow>
                 </SettingsSection>
 
@@ -144,7 +150,15 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                 <SettingsSection title="Preview Mode">
                     <SettingsRow label="Preview text size" desc="Fixed text size used by preview cards">
                         <Slider id="settingPreviewFontPx" valueId="previewFontPxValue"
-                            min={7} max={16} step={1} value={settings.previewFontPx} suffix="px" />
+                            min={4} max={28} step={1} value={settings.previewFontPx} suffix="px" />
+                    </SettingsRow>
+                    <SettingsRow label="Far zoom lines" desc="Body lines shown when zoomed far out">
+                        <Slider id="settingPreviewFarLines" valueId="previewFarLinesValue"
+                            min={2} max={12} step={1} value={settings.previewFarVisibleLines} suffix=" lines" />
+                    </SettingsRow>
+                    <SettingsRow label="Near zoom lines" desc="Body lines shown near full zoom">
+                        <Slider id="settingPreviewNearLines" valueId="previewNearLinesValue"
+                            min={12} max={120} step={2} value={settings.previewNearVisibleLines} suffix=" lines" />
                     </SettingsRow>
                 </SettingsSection>
 
@@ -154,6 +168,24 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                         <Slider id="settingMaxLines" valueId="maxLinesValue"
                             min={30} max={500} step={10} value={settings.maxVisibleLines} suffix="" />
                     </SettingsRow>
+                </SettingsSection>
+
+                <SettingsSection title="Card Size Preview">
+                    <div className="settings-dimension-preview" id="settingsDimensionPreview">
+                        <div className="settings-dimension-preview__card" id="settingsDimensionPreviewCard">
+                            <div className="settings-dimension-preview__header">
+                                <span>example.ts</span>
+                                <span id="settingsDimensionPreviewBadge">75 cols · 700px</span>
+                            </div>
+                            <div className="settings-dimension-preview__body">
+                                <div className="settings-dimension-preview__line short"></div>
+                                <div className="settings-dimension-preview__line"></div>
+                                <div className="settings-dimension-preview__line"></div>
+                                <div className="settings-dimension-preview__line medium"></div>
+                                <div className="settings-dimension-preview__line"></div>
+                            </div>
+                        </div>
+                    </div>
                 </SettingsSection>
             </div>
             <div className="settings-footer">
@@ -243,12 +275,57 @@ export function openSettingsModal(ctx?: any) {
 
     const cardWidthSlider = _modal.querySelector('#settingCardWidth') as HTMLInputElement;
     const cardWidthValue = _modal.querySelector('#cardWidthValue')!;
+    const cardHeightSlider = _modal.querySelector('#settingCardHeight') as HTMLInputElement;
+    const cardHeightValue = _modal.querySelector('#cardHeightValue')!;
+    const dimensionPreviewCard = _modal.querySelector('#settingsDimensionPreviewCard') as HTMLElement;
+    const dimensionPreviewBadge = _modal.querySelector('#settingsDimensionPreviewBadge') as HTMLElement;
+
+    const updateDimensionPreview = (widthPx: number, heightPx: number, cols: number) => {
+        if (dimensionPreviewCard) {
+            const previewScale = Math.min(1, 220 / Math.max(1, widthPx), 160 / Math.max(1, heightPx));
+            dimensionPreviewCard.style.width = `${Math.max(88, Math.round(widthPx * previewScale))}px`;
+            dimensionPreviewCard.style.height = `${Math.max(72, Math.round(heightPx * previewScale))}px`;
+        }
+        if (dimensionPreviewBadge) {
+            dimensionPreviewBadge.textContent = `${cols} cols · ${heightPx}px`;
+        }
+    };
+
+    updateDimensionPreview(Math.round(parseInt(cardWidthSlider.value) * 7.2), parseInt(cardHeightSlider.value), parseInt(cardWidthSlider.value));
+
+    const commitCardDimensions = () => {
+        const cols = parseInt(cardWidthSlider.value);
+        const widthPx = Math.round(cols * 7.2);
+        const heightPx = parseInt(cardHeightSlider.value);
+        applyCardDimensions(widthPx, heightPx, { persist: true, commitLayout: true });
+    };
+
     cardWidthSlider?.addEventListener('input', () => {
+        _cardDimensionDragging = true;
         const cols = parseInt(cardWidthSlider.value);
         const px = Math.round(cols * 7.2);
+        const heightPx = parseInt(cardHeightSlider.value);
         cardWidthValue.textContent = `${cols} cols`;
-        updateSettings({ cardWidth: px });
-        applyCardWidth(px);
+        updateDimensionPreview(px, heightPx, cols);
+        applyCardDimensions(px, heightPx, { persist: false, commitLayout: false });
+    });
+    cardWidthSlider?.addEventListener('change', () => {
+        _cardDimensionDragging = false;
+        commitCardDimensions();
+    });
+
+    cardHeightSlider?.addEventListener('input', () => {
+        _cardDimensionDragging = true;
+        const px = parseInt(cardHeightSlider.value);
+        const cols = parseInt(cardWidthSlider.value);
+        const widthPx = Math.round(cols * 7.2);
+        cardHeightValue.textContent = `${px}px`;
+        updateDimensionPreview(widthPx, px, cols);
+        applyCardDimensions(widthPx, px, { persist: false, commitLayout: false });
+    });
+    cardHeightSlider?.addEventListener('change', () => {
+        _cardDimensionDragging = false;
+        commitCardDimensions();
     });
 
     const maxLinesSlider = _modal.querySelector('#settingMaxLines') as HTMLInputElement;
@@ -263,6 +340,35 @@ export function openSettingsModal(ctx?: any) {
     previewFontSlider?.addEventListener('input', () => {
         previewFontValue.textContent = `${previewFontSlider.value}px`;
         updateSettings({ previewFontPx: parseInt(previewFontSlider.value) });
+        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+    });
+
+    const previewFarLinesSlider = _modal.querySelector('#settingPreviewFarLines') as HTMLInputElement;
+    const previewFarLinesValue = _modal.querySelector('#previewFarLinesValue')!;
+    const previewNearLinesSlider = _modal.querySelector('#settingPreviewNearLines') as HTMLInputElement;
+    const previewNearLinesValue = _modal.querySelector('#previewNearLinesValue')!;
+
+    previewFarLinesSlider?.addEventListener('input', () => {
+        const far = parseInt(previewFarLinesSlider.value);
+        const near = Math.max(far, parseInt(previewNearLinesSlider.value));
+        previewFarLinesValue.textContent = `${far} lines`;
+        if (previewNearLinesSlider.value !== String(near)) {
+            previewNearLinesSlider.value = String(near);
+            previewNearLinesValue.textContent = `${near} lines`;
+        }
+        updateSettings({ previewFarVisibleLines: far, previewNearVisibleLines: near });
+        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+    });
+
+    previewNearLinesSlider?.addEventListener('input', () => {
+        const near = parseInt(previewNearLinesSlider.value);
+        const far = Math.min(near, parseInt(previewFarLinesSlider.value));
+        previewNearLinesValue.textContent = `${near} lines`;
+        if (previewFarLinesSlider.value !== String(far)) {
+            previewFarLinesSlider.value = String(far);
+            previewFarLinesValue.textContent = `${far} lines`;
+        }
+        updateSettings({ previewFarVisibleLines: far, previewNearVisibleLines: near });
         window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
     });
 
@@ -350,15 +456,125 @@ function applyMinimap(show: boolean) {
     if (minimap) (minimap as HTMLElement).style.display = show ? '' : 'none';
 }
 
-export function applyCardWidth(width: number) {
-    document.documentElement.style.setProperty('--card-width', width + 'px');
+type ApplyCardDimensionOptions = {
+    persist?: boolean;
+    commitLayout?: boolean;
+};
+
+let _cardDimensionPreviewRaf: number | null = null;
+let _cardDimensionCullRaf: number | null = null;
+let _cardDimensionCullTimer: ReturnType<typeof setTimeout> | null = null;
+let _cardDimensionDragIdleTimer: ReturnType<typeof setTimeout> | null = null;
+let _cardDimensionDragging = false;
+const CARD_DIMENSION_PREVIEW_CULL_MS = 50;
+const CARD_DIMENSION_DRAG_IDLE_MS = 140;
+
+export function applyCardDimensions(width: number, height: number, options: ApplyCardDimensionOptions = {}) {
+    const { persist = false, commitLayout = false } = options;
+
+    document.documentElement.style.setProperty('--card-width', `${width}px`);
+    document.documentElement.style.setProperty('--card-height', `${height}px`);
     window.dispatchEvent(new CustomEvent('gitcanvas:card-width-changed', { detail: width }));
-    document.querySelectorAll('.file-card').forEach(card => {
-        const el = card as HTMLElement;
-        if (!el.style.height || el.style.height === '') {
+    window.dispatchEvent(new CustomEvent('gitcanvas:card-height-changed', { detail: height }));
+
+    if (persist) {
+        updateSettings({ cardWidth: width, cardHeight: height });
+    }
+
+    const applyDomPreview = () => {
+        document.querySelectorAll('.file-pill').forEach(card => {
+            const el = card as HTMLElement;
             el.style.width = `${width}px`;
-        }
+            el.style.height = `${height}px`;
+        });
+    };
+
+    if (_cardDimensionPreviewRaf != null) {
+        cancelAnimationFrame(_cardDimensionPreviewRaf);
+    }
+    _cardDimensionPreviewRaf = requestAnimationFrame(() => {
+        _cardDimensionPreviewRaf = null;
+        applyDomPreview();
     });
+
+    const ctx = getCanvasContext();
+    const manager = getCardManager();
+    if (!ctx) return;
+
+    for (const deferred of ctx.deferredCards.values()) {
+        deferred.size = { ...(deferred.size || {}), width, height };
+    }
+
+    if (manager) {
+        for (const [id, deferred] of manager.deferred.entries()) {
+            manager.deferred.set(id, { ...deferred, width, height });
+        }
+    }
+
+    if (!commitLayout) {
+        if (_cardDimensionDragIdleTimer != null) {
+            clearTimeout(_cardDimensionDragIdleTimer);
+        }
+        _cardDimensionDragIdleTimer = setTimeout(() => {
+            _cardDimensionDragIdleTimer = null;
+            _cardDimensionDragging = false;
+            if (_cardDimensionCullTimer != null) {
+                clearTimeout(_cardDimensionCullTimer);
+            }
+            _cardDimensionCullTimer = setTimeout(() => {
+                _cardDimensionCullTimer = null;
+                if (_cardDimensionCullRaf != null) {
+                    cancelAnimationFrame(_cardDimensionCullRaf);
+                }
+                _cardDimensionCullRaf = requestAnimationFrame(() => {
+                    _cardDimensionCullRaf = null;
+                    import('./viewport-culling').then(({ performViewportCulling }) => performViewportCulling(ctx)).catch(() => { });
+                });
+            }, CARD_DIMENSION_PREVIEW_CULL_MS);
+        }, CARD_DIMENSION_DRAG_IDLE_MS);
+
+        if (_cardDimensionDragging) {
+            return;
+        }
+        return;
+    }
+
+    for (const [path, card] of ctx.fileCards.entries()) {
+        const el = card as HTMLElement;
+        el.style.width = `${width}px`;
+        el.style.height = `${height}px`;
+        el.style.maxHeight = `${height}px`;
+        ctx.actor.send({ type: 'RESIZE_CARD', path, width, height });
+    }
+
+    if (manager) {
+        for (const [, card] of manager.cards.entries()) {
+            const el = card as HTMLElement;
+            el.style.width = `${width}px`;
+            el.style.height = `${height}px`;
+            el.style.maxHeight = `${height}px`;
+        }
+    }
+
+    if (_cardDimensionDragIdleTimer != null) {
+        clearTimeout(_cardDimensionDragIdleTimer);
+        _cardDimensionDragIdleTimer = null;
+    }
+    if (_cardDimensionCullTimer != null) {
+        clearTimeout(_cardDimensionCullTimer);
+        _cardDimensionCullTimer = null;
+    }
+    if (_cardDimensionCullRaf != null) {
+        cancelAnimationFrame(_cardDimensionCullRaf);
+        _cardDimensionCullRaf = null;
+    }
+    requestAnimationFrame(() => {
+        import('./viewport-culling').then(({ performViewportCulling }) => performViewportCulling(ctx)).catch(() => { });
+    });
+}
+
+export function applyCardWidth(width: number) {
+    applyCardDimensions(width, getDefaultCardHeight(), { persist: false, commitLayout: false });
 }
 
 /** Apply theme to document */
@@ -370,7 +586,7 @@ export function applyTheme(theme: string) {
 export function applyAllSettings(ctx?: any) {
     const s = getSettings();
     applyFontSize(s.fontSize);
-    applyCardWidth(s.cardWidth);
+    applyCardDimensions(s.cardWidth, s.cardHeight, { persist: false, commitLayout: true });
     applyTheme(s.theme);
     if (ctx) {
         ctx.useCanvasText = s.renderMode === 'canvas';

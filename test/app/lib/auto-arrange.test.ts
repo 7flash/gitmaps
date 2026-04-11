@@ -1,9 +1,9 @@
 /**
  * Tests for auto-arrange layout algorithms.
- * Run with: bun test app/lib/auto-arrange.test.ts
+ * Run with: bun test test/app/lib/auto-arrange.test.ts
  */
 import { describe, expect, test } from 'bun:test';
-import { arrangeByDirectory } from './auto-arrange';
+import { arrangeByDirectory } from '../../../app/lib/auto-arrange';
 
 // ─── Helpers ────────────────────────────────────────────
 

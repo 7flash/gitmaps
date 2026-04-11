@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { createCanvasContext, getCanvasContext, setCanvasContext } from './context';
-import { setupDomTest } from './test-dom';
+import { createCanvasContext, getCanvasContext, setCanvasContext } from '../../../app/lib/context';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('shared canvas context lifecycle', () => {
   test('createCanvasContext registers the created context globally', () => {

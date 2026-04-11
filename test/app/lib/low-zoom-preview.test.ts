@@ -1,5 +1,25 @@
-import { describe, expect, test } from 'bun:test';
-import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewRenderableLines, getPreviewScrollMetrics, wrapPreviewText } from './low-zoom-preview';
+import { afterEach, describe, expect, test } from 'bun:test';
+import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewRenderableLines, getPreviewScrollMetrics, wrapPreviewText } from '../../../app/lib/low-zoom-preview';
+import { __resetSettingsCacheForTests } from '../../../app/lib/settings';
+
+const originalLocalStorage = globalThis.localStorage;
+
+function installSettings(settings: Record<string, any>) {
+  __resetSettingsCacheForTests();
+  (globalThis as any).localStorage = {
+    getItem(key: string) {
+      if (key === 'gitcanvas:settings') return JSON.stringify(settings);
+      return null;
+    },
+    setItem() { },
+    removeItem() { },
+  };
+}
+
+afterEach(() => {
+  (globalThis as any).localStorage = originalLocalStorage;
+  __resetSettingsCacheForTests();
+});
 
 describe('low zoom preview helpers', () => {
   test('anchors preview text to approximate saved scroll position', () => {
@@ -55,6 +75,31 @@ describe('low zoom preview helpers', () => {
   test('higher zoom yields substantially more visible preview lines', () => {
     expect(estimatePreviewLineCapacity(700, 1)).toBeGreaterThanOrEqual(20);
     expect(estimatePreviewLineCapacity(700, 0.1)).toBeLessThan(estimatePreviewLineCapacity(700, 1));
+  });
+
+  test('preview visible lines interpolate between far and near settings', () => {
+    installSettings({
+      previewFontPx: 10,
+      previewFarVisibleLines: 4,
+      previewNearVisibleLines: 36,
+      maxVisibleLines: 120,
+    });
+    expect(estimatePreviewLineCapacity(4000, 0.08)).toBe(4);
+    expect(estimatePreviewLineCapacity(4000, 1)).toBe(36);
+    const mid = estimatePreviewLineCapacity(4000, 0.54);
+    expect(mid).toBeGreaterThanOrEqual(20);
+    expect(mid).toBeLessThan(30);
+  });
+
+  test('preview visible lines still respect physical and global caps', () => {
+    installSettings({
+      previewFontPx: 10,
+      previewFarVisibleLines: 3,
+      previewNearVisibleLines: 120,
+      maxVisibleLines: 18,
+    });
+    expect(estimatePreviewLineCapacity(700, 1)).toBeLessThanOrEqual(18);
+    expect(estimatePreviewLineCapacity(220, 1)).toBeLessThan(estimatePreviewLineCapacity(4000, 1));
   });
 
   test('preview scroll range grows with longer files', () => {

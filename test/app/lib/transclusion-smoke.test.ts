@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { Window } from 'happy-dom';
-import { processVirtualFileSet } from './virtual-files';
-import { setElementRect, setupDomTest } from './test-dom';
+import { processVirtualFileSet } from '../../../app/lib/virtual-files';
+import { setElementRect, setupDomTest } from '../../../app/lib/test-dom';
 
 function makeActor() {
   const state = {

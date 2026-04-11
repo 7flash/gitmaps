@@ -27,7 +27,7 @@ import { createLayer, getActiveLayer, addSectionToLayer } from './layers';
 import { updateCanvasTransform, updateZoomUI, updateMinimap, fitAllFiles, setupMinimapClick } from './canvas';
 import { zoomTowardScreen, panByDelta, screenToWorld, getCardManager } from './xydraw-bridge';
 import { hideSelectedFiles, showHiddenFilesModal as showHiddenModal } from './hidden-files';
-import { getDetailMode, toggleDetailMode, updatePillSelectionHighlights } from './viewport-culling';
+import { getDetailMode, scheduleViewportCulling, toggleDetailMode, updatePillSelectionHighlights } from './viewport-culling';
 import { clearSelectionHighlights, updateSelectionHighlights, updateArrangeToolbar, arrangeRow, arrangeColumn, arrangeGrid, toggleCardExpand, fitScreenSize, changeCardsFontSize } from './cards';
 import { loadRepository, rerenderCurrentView, selectCommit } from './repo';
 import { handoffRepoLoad, syncRepoSelection } from './repo-handoff';
@@ -466,6 +466,10 @@ export function setupEventListeners(ctx: CanvasContext) {
                 const next = toggleDetailMode();
                 updateDetailModeUi();
                 rerenderCurrentView(ctx);
+                requestAnimationFrame(() => {
+                    scheduleViewportCulling(ctx);
+                    updatePillSelectionHighlights(ctx);
+                });
                 showToast(next === 'preview'
                     ? 'Preview mode enabled'
                     : 'Classic mode enabled', 'info');

@@ -5,8 +5,8 @@ import {
   updateLoadingFileCount,
   updateLoadingMessage,
   updateLoadingProgress,
-} from './loading';
-import { setupDomTest } from './test-dom';
+} from '../../../app/lib/loading';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('repo loading overlay smoke', () => {
   let cleanup: (() => void) | undefined;

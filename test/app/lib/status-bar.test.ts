@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { Window } from 'happy-dom';
-import { initStatusBar, updateStatusBarRepo } from './status-bar';
-import { setupDomTest } from './test-dom';
+import { initStatusBar, updateStatusBarRepo } from '../../../app/lib/status-bar';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 function makeContext() {
     return {

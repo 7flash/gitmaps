@@ -17,6 +17,7 @@ import { CardManager } from '../../packages/galaxydraw/src/core/cards';
 import { EventBus } from '../../packages/galaxydraw/src/core/events';
 import { createFileCardPlugin, createDiffCardPlugin } from './file-card-plugin';
 import type { CanvasContext } from './context';
+import { getDefaultCardHeight, getDefaultCardWidth } from './settings';
 
 /** 
  * Shared xydraw state instance.
@@ -191,8 +192,8 @@ export function initCardManager(ctx: CanvasContext): CardManager | null {
 
     _eventBus = new EventBus();
     _cardManager = new CardManager(_gdState, _eventBus, ctx.canvas, {
-        defaultWidth: 580,
-        defaultHeight: 700,
+        defaultWidth: getDefaultCardWidth(),
+        defaultHeight: getDefaultCardHeight(),
         minWidth: 280,
         minHeight: 200,
         gridSize: 0,
@@ -300,8 +301,8 @@ export function renderAllFilesViaCardManager(ctx: CanvasContext, files: any[]) {
     // Grid layout: square-ish
     const count = layerFiles.length;
     const cols = Math.max(1, Math.ceil(Math.sqrt(count)));
-    const defaultCardWidth = 580;
-    const defaultCardHeight = 700;
+    const defaultCardWidth = getDefaultCardWidth();
+    const defaultCardHeight = getDefaultCardHeight();
     const gap = 20;
     const cellW = defaultCardWidth + gap;
     const cellH = defaultCardHeight + gap;

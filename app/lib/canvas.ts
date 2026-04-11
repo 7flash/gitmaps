@@ -8,6 +8,7 @@ import type { CanvasContext } from './context';
 import { scheduleViewportCulling, markTransformActive, clearAllPills } from './viewport-culling';
 import { clearVirtualCards } from './virtual-files';
 import { getGalaxyDrawState } from './xydraw-bridge';
+import { getDefaultCardWidth } from './settings';
 
 // ─── Minimap cached state (avoids full rebuild on every pan/zoom) ──
 let _mmCache: {
@@ -618,7 +619,7 @@ export function clearCanvas(ctx: CanvasContext) {
 // ─── Auto column count based on viewport width ─────────
 export function getAutoColumnCount(ctx: CanvasContext): number {
     const vpWidth = ctx.canvasViewport?.getBoundingClientRect().width || window.innerWidth;
-    const cardWidth = 580;
+    const cardWidth = getDefaultCardWidth();
     const gap = 40;
     const margin = 100;
     return Math.max(1, Math.floor((vpWidth - margin) / (cardWidth + gap)));

@@ -11,6 +11,7 @@ import type { CanvasContext } from './context';
 import { savePosition, flushPositions } from './positions';
 import { updateMinimap } from './canvas';
 import { renderConnections } from './connections';
+import { getDefaultCardHeight, getDefaultCardWidth } from './settings';
 
 // ─── Helpers ────────────────────────────────────────────
 interface CardInfo {
@@ -26,6 +27,8 @@ function getSelectedCardsInfo(ctx: CanvasContext): CardInfo[] {
     const selected = ctx.snap().context.selectedCards;
     const infos: CardInfo[] = [];
     const seen = new Set<string>();
+    const defaultWidth = getDefaultCardWidth();
+    const defaultHeight = getDefaultCardHeight();
 
     // 1. Check materialized DOM cards (ctx.fileCards)
     selected.forEach(path => {
@@ -38,8 +41,8 @@ function getSelectedCardsInfo(ctx: CanvasContext): CardInfo[] {
             // In pill mode, card might be display:none (0px) or rendered as a pill (~24px).
             let cw = card.offsetWidth;
             let ch = card.offsetHeight;
-            if (!cw || cw < 100) cw = 580;
-            if (!ch || ch < 100) ch = 700;
+            if (!cw || cw < 100) cw = defaultWidth;
+            if (!ch || ch < 100) ch = defaultHeight;
 
             const pos = ctx.positions?.get(path);
             const def = ctx.deferredCards?.get(path);
@@ -66,8 +69,8 @@ function getSelectedCardsInfo(ctx: CanvasContext): CardInfo[] {
                     path,
                     card: null, // no DOM card — will need to update pill + deferred entry
                     x, y,
-                    w: entry.size?.width || 580,
-                    h: entry.size?.height || 400,
+                    w: entry.size?.width || defaultWidth,
+                    h: entry.size?.height || defaultHeight,
                 });
             }
         });
@@ -88,8 +91,8 @@ function getSelectedCardsInfo(ctx: CanvasContext): CardInfo[] {
                 infos.push({
                     path, card: null,
                     x, y,
-                    w: pos?.width || def?.size?.width || 580,
-                    h: pos?.height || def?.size?.height || 700,
+                    w: pos?.width || def?.size?.width || defaultWidth,
+                    h: pos?.height || def?.size?.height || defaultHeight,
                 });
             }
         });
@@ -188,9 +191,9 @@ export function arrangeGrid(ctx: CanvasContext) {
             const col = i % cols;
             const row = Math.floor(i / cols);
             let x = startX;
-            for (let c = 0; c < col; c++) x += (colWidths[c] || 580) + gapX;
+            for (let c = 0; c < col; c++) x += (colWidths[c] || defaultWidth) + gapX;
             let y = startY;
-            for (let r = 0; r < row; r++) y += (rowHeights[r] || 400) + gapY;
+            for (let r = 0; r < row; r++) y += (rowHeights[r] || defaultHeight) + gapY;
             applyPosition(ctx, info, x, y);
             savePosition(ctx, commitHash, info.path, x, y);
         });

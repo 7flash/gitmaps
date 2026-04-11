@@ -4,10 +4,10 @@
  * Pure logic tests (no DOM). Validates coordinate conversion,
  * zoom clamping, snapshot/subscribe, and pub/sub.
  *
- * Run: bun test app/lib/xydraw.test.ts
+ * Run: bun test test/app/lib/xydraw.test.ts
  */
 import { describe, expect, test } from 'bun:test'
-import { CanvasState, EventBus } from '../../packages/galaxydraw/src/index'
+import { CanvasState, EventBus } from '../../../packages/galaxydraw/src/index'
 
 // ─── CanvasState ────────────────────────────────────────
 

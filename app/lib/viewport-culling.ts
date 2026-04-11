@@ -23,7 +23,8 @@
  */
 import { measure } from 'measure-fn';
 import type { CanvasContext } from './context';
-import { collectPreviewDiffMarkers, estimatePreviewMaxScroll, getLowZoomScale, getPreviewScrollMetrics, renderLowZoomPreviewCanvas } from './low-zoom-preview';
+import { collectPreviewDiffMarkers, estimatePreviewMaxScroll, getLowZoomScale, getPreviewScrollMetrics, releaseLowZoomPreviewCanvas, renderLowZoomPreviewCanvas } from './low-zoom-preview';
+import { getDefaultCardHeight, getDefaultCardWidth } from './settings';
 import { materializeViewport } from './xydraw-bridge';
 
 // ── Culling state ──────────────────────────────────────────
@@ -233,9 +234,19 @@ function createPillCard(ctx: CanvasContext, file: any, path: string, x: number, 
     return pill;
 }
 
+function getEffectiveCardWidth(el: HTMLElement, fallback?: number) {
+    return parseFloat(el.style.width) || parseFloat(getComputedStyle(el).width) || fallback || getDefaultCardWidth();
+}
+
+function destroyPill(pill: HTMLElement) {
+    const canvas = pill.querySelector('.file-pill-canvas') as HTMLCanvasElement | null;
+    releaseLowZoomPreviewCanvas(canvas);
+    pill.remove();
+}
+
 function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: number, isChanged?: boolean) {
-    const w = parseFloat(pill.style.width) || 580;
-    const h = parseFloat(pill.style.height) || 700;
+    const w = getEffectiveCardWidth(pill);
+    const h = parseFloat(pill.style.height) || getDefaultCardHeight();
     const scale = getLowZoomScale(zoom);
     const path = pill.dataset.path || '';
     const canvas = pill.querySelector('.file-pill-canvas') as HTMLCanvasElement | null;
@@ -414,7 +425,7 @@ function isCardVisible(card: HTMLElement, worldRect: { left: number; top: number
  */
 export function clearAllPills(ctx: CanvasContext) {
     for (const [, pill] of pillCards) {
-        pill.remove();
+        destroyPill(pill);
     }
     pillCards.clear();
 }
@@ -443,7 +454,7 @@ function removePillForPath(path: string) {
         pill.style.opacity = '0';
         pill.style.transform = 'scale(0.92)';
         pillCards.delete(path);
-        setTimeout(() => pill.remove(), 250);
+        setTimeout(() => destroyPill(pill), 250);
     }
 }
 
@@ -505,7 +516,7 @@ export function performViewportCulling(ctx: CanvasContext) {
             // 2. Remove all pills immediately (no fade — avoids ghost overlap)
             for (const [path, pill] of pillCards) {
                 pill.style.display = 'none';
-                pill.remove();
+                destroyPill(pill);
             }
             pillCards.clear();
         }
@@ -567,8 +578,8 @@ export function performViewportCulling(ctx: CanvasContext) {
         // Create pills for deferred cards that are visible
         for (const [path, entry] of ctx.deferredCards) {
             const { file, x, y, size, isChanged } = entry;
-            const cardW = size?.width || 580;
-            const cardH = size?.height || 700;
+            const cardW = size?.width || getDefaultCardWidth();
+            const cardH = size?.height || getDefaultCardHeight();
 
             const inView = (
                 x + cardW > worldRect.left &&
@@ -595,8 +606,9 @@ export function performViewportCulling(ctx: CanvasContext) {
             if (!pillCards.has(path)) {
                 const x = parseFloat(card.style.left) || 0;
                 const y = parseFloat(card.style.top) || 0;
-                const w = card.offsetWidth || 580;
-                const h = card.offsetHeight || 700;
+                const deferred = ctx.deferredCards.get(path);
+                const w = getEffectiveCardWidth(card, deferred?.size?.width);
+                const h = parseFloat(card.style.height) || card.offsetHeight || deferred?.size?.height || getDefaultCardHeight();
                 const isChanged = card.dataset.changed === 'true';
 
                 const inView = (
@@ -623,7 +635,7 @@ export function performViewportCulling(ctx: CanvasContext) {
         for (const [path, pill] of pillCards) {
             const x = parseFloat(pill.style.left) || 0;
             const y = parseFloat(pill.style.top) || 0;
-            const w = parseFloat(pill.style.width) || 580;
+            const w = getEffectiveCardWidth(pill);
             const h = parseFloat(pill.style.height) || 80;
             const inView = (
                 x + w > worldRect.left &&
@@ -654,8 +666,8 @@ export function performViewportCulling(ctx: CanvasContext) {
             if (ctx.hiddenFiles.has(path)) { toRemove.push(path); continue; }
 
             const { file, x, y, size, isChanged } = entry;
-            const cardW = size?.width || 580;
-            const cardH = size?.height || 700;
+            const cardW = size?.width || getDefaultCardWidth();
+            const cardH = size?.height || getDefaultCardHeight();
 
             // AABB check against world rect
             const inView = (

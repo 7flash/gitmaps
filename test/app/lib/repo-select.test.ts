@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { appendDiscoveredRepos, populateRepoSelect } from './repo-select';
-import { setupDomTest } from './test-dom';
+import { appendDiscoveredRepos, populateRepoSelect } from '../../../app/lib/repo-select';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('repo select smoke', () => {
   let cleanup: (() => void) | undefined;

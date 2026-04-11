@@ -9,8 +9,8 @@ import {
   migrateLegacyHashRoute,
   resolveInitialRepoPath,
   showInitialRouteCloneStart,
-} from './initial-route-hydration';
-import { installFetchMock, setupDomTest } from './test-dom';
+} from '../../../app/lib/initial-route-hydration';
+import { installFetchMock, setupDomTest } from '../../../app/lib/test-dom';
 
 describe('initial route hydration helper', () => {
   test('parses path and legacy hash route parts', () => {

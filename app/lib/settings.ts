@@ -6,6 +6,11 @@
 
 const STORAGE_KEY = 'gitcanvas:settings';
 
+export const MIN_CARD_WIDTH = 240;
+export const MAX_CARD_WIDTH = 1800;
+export const MIN_CARD_HEIGHT = 220;
+export const MAX_CARD_HEIGHT = 1000;
+
 export interface GitCanvasSettings {
     /** Text rendering mode: 'canvas' (default, fast) or 'dom' (rich, slower) */
     renderMode: 'canvas' | 'dom';
@@ -19,6 +24,8 @@ export interface GitCanvasSettings {
     showMinimap: boolean;
     /** Card width (px) */
     cardWidth: number;
+    /** Card height (px) */
+    cardHeight: number;
     /** Max visible lines before virtual scroll kicks in */
     maxVisibleLines: number;
     /** Auto-detect import connections on load */
@@ -33,6 +40,10 @@ export interface GitCanvasSettings {
     heatmapDays: number;
     /** Preview mode fixed text size (screen px) */
     previewFontPx: number;
+    /** Visible preview body lines at the farthest zoom-out */
+    previewFarVisibleLines: number;
+    /** Visible preview body lines near full zoom */
+    previewNearVisibleLines: number;
 }
 
 const DEFAULTS: GitCanvasSettings = {
@@ -42,6 +53,7 @@ const DEFAULTS: GitCanvasSettings = {
     controlMode: 'simple',
     showMinimap: true,
     cardWidth: 540,
+    cardHeight: 700,
     maxVisibleLines: 100,
     autoDetectImports: false,
     theme: 'dark',
@@ -49,9 +61,15 @@ const DEFAULTS: GitCanvasSettings = {
     heatmapEnabled: false,
     heatmapDays: 90,
     previewFontPx: 10,
+    previewFarVisibleLines: 4,
+    previewNearVisibleLines: 36,
 };
 
 let _settings: GitCanvasSettings | null = null;
+
+export function __resetSettingsCacheForTests() {
+    _settings = null;
+}
 
 /** Load settings from localStorage (synchronous, uses cache) */
 export function getSettings(): GitCanvasSettings {
@@ -102,4 +120,16 @@ export function resetSettings(): GitCanvasSettings {
 /** Get a single setting value */
 export function getSetting<K extends keyof GitCanvasSettings>(key: K): GitCanvasSettings[K] {
     return getSettings()[key];
+}
+
+export function getDefaultCardWidth(): number {
+    const width = Number(getSettings().cardWidth);
+    if (!Number.isFinite(width)) return DEFAULTS.cardWidth;
+    return Math.max(MIN_CARD_WIDTH, Math.min(MAX_CARD_WIDTH, Math.round(width)));
+}
+
+export function getDefaultCardHeight(): number {
+    const height = Number(getSettings().cardHeight);
+    if (!Number.isFinite(height)) return DEFAULTS.cardHeight;
+    return Math.max(MIN_CARD_HEIGHT, Math.min(MAX_CARD_HEIGHT, Math.round(height)));
 }

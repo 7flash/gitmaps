@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { applySharedLayout, clearSharedLayoutParam, decodeSharedLayout, getSharedLayoutParam } from './shared-layout';
-import { setupDomTest } from './test-dom';
+import { applySharedLayout, clearSharedLayoutParam, decodeSharedLayout, getSharedLayoutParam } from '../../../app/lib/shared-layout';
+import { setupDomTest } from '../../../app/lib/test-dom';
 
 describe('shared layout helper', () => {
   test('reads and clears the layout query param', () => {
