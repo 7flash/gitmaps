@@ -1,57 +1,17 @@
 import { measure } from 'measure-fn';
 import path from 'path';
 import fs from 'fs';
-import { createHash } from 'crypto';
 import { blockInProduction, validateRepoPath } from '../validate-path';
-
-function normalizeRepoFilePath(filePath: string): string {
-    return filePath.replace(/\\/g, '/').replace(/^\/+/, '');
-}
-
-function isRunnableTsFile(filePath: string): boolean {
-    return filePath.endsWith('.ts') && !filePath.endsWith('.d.ts');
-}
-
-function buildProcessName(repoPath: string, filePath: string): string {
-    const repoName = path.basename(repoPath).replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase() || 'repo';
-    const fileName = path.basename(filePath, '.ts').replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase() || 'script';
-    const digest = createHash('sha1').update(`${repoPath}:${filePath}`).digest('hex').slice(0, 8);
-    return `gitmaps-run-${repoName}-${fileName}-${digest}`;
-}
-
-function writeWrapperScript(repoPath: string, filePath: string, digest: string): { command: string; wrapperPath: string } {
-    const isWindows = process.platform === 'win32';
-    const wrapperName = `run-${digest}${isWindows ? '.cmd' : '.sh'}`;
-    const wrapperPath = path.join(repoPath, '.gout', wrapperName);
-
-    if (filePath.includes('"')) {
-        throw new Error('Script path cannot contain double quotes');
-    }
-
-    if (isWindows) {
-        const scriptPath = filePath.replace(/\//g, '\\');
-        fs.writeFileSync(
-            wrapperPath,
-            `@echo off\r\ncd /d "${repoPath.replace(/"/g, '""')}"\r\nbun "${scriptPath}"\r\n`,
-            'utf8',
-        );
-        return {
-            command: `.gout\\${wrapperName}`,
-            wrapperPath,
-        };
-    }
-
-    fs.writeFileSync(
-        wrapperPath,
-        `#!/usr/bin/env sh\ncd "${repoPath.replace(/"/g, '\\"')}"\nexec bun "${filePath}"\n`,
-        'utf8',
-    );
-    fs.chmodSync(wrapperPath, 0o755);
-    return {
-        command: `./.gout/${wrapperName}`,
-        wrapperPath,
-    };
-}
+import {
+    buildProcessDigest,
+    buildProcessName,
+    ensureWithinRepo,
+    getScriptLogPaths,
+    isRunnableTsFile,
+    normalizeRepoFilePath,
+    relativeRepoPath,
+    writeWrapperScript,
+} from '../script-runner';
 
 export async function POST(req: Request) {
     return measure('api:repo:run-script', async () => {
@@ -77,24 +37,18 @@ export async function POST(req: Request) {
             }
 
             const absRepo = path.resolve(repoPath);
-            const absFile = path.resolve(repoPath, normalizedFilePath);
-            if (!absFile.startsWith(absRepo)) {
-                return new Response('File path must be within the repository', { status: 403 });
-            }
+            const safeFilePath = ensureWithinRepo(absRepo, normalizedFilePath);
+            const absFile = path.resolve(absRepo, safeFilePath);
             if (!fs.existsSync(absFile)) {
                 return new Response('Script file not found', { status: 404 });
             }
 
-            const goutDir = path.join(absRepo, '.gout', path.dirname(normalizedFilePath));
+            const { goutDir, stdoutPath, stderrPath } = getScriptLogPaths(absRepo, safeFilePath);
             fs.mkdirSync(goutDir, { recursive: true });
 
-            const fileBase = path.basename(normalizedFilePath);
-            const stdoutPath = path.join(goutDir, `${fileBase}.stdout.log`);
-            const stderrPath = path.join(goutDir, `${fileBase}.stderr.log`);
-
-            const processName = buildProcessName(absRepo, normalizedFilePath);
-            const digest = createHash('sha1').update(`${absRepo}:${normalizedFilePath}`).digest('hex').slice(0, 8);
-            const { command, wrapperPath } = writeWrapperScript(absRepo, normalizedFilePath, digest);
+            const processName = buildProcessName(absRepo, safeFilePath);
+            const digest = buildProcessDigest(absRepo, safeFilePath);
+            const { command, wrapperPath } = writeWrapperScript(absRepo, safeFilePath, digest);
 
             const proc = Bun.spawnSync([
                 'bgrun',
@@ -118,10 +72,10 @@ export async function POST(req: Request) {
                 success: true,
                 processName,
                 command,
-                wrapperPath: path.relative(absRepo, wrapperPath).replace(/\\/g, '/'),
-                filePath: normalizedFilePath,
-                stdoutPath: path.relative(absRepo, stdoutPath).replace(/\\/g, '/'),
-                stderrPath: path.relative(absRepo, stderrPath).replace(/\\/g, '/'),
+                wrapperPath: relativeRepoPath(absRepo, wrapperPath),
+                filePath: safeFilePath,
+                stdoutPath: relativeRepoPath(absRepo, stdoutPath),
+                stderrPath: relativeRepoPath(absRepo, stderrPath),
                 outputDir: '.gout',
             });
         } catch (error: any) {

@@ -73,7 +73,10 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
             <button type="button" className="ctx-item" onClick={() => onAction('edit')}>✏️ Edit file</button>
             <button type="button" className="ctx-item" onClick={() => onAction('blame')}>👤 Git blame</button>
             {canRunScript && (
-                <button type="button" className="ctx-item" onClick={() => onAction('run-script')}>▶ Run with bgrun</button>
+                <>
+                    <button type="button" className="ctx-item" onClick={() => onAction('run-script')}>▶ Run with bgrun</button>
+                    <button type="button" className="ctx-item" onClick={() => onAction('script-output')}>📟 View script output</button>
+                </>
             )}
             <button type="button" className="ctx-item" onClick={() => onAction('connect')}>🔗 Connect to...</button>
             <button type="button" className="ctx-item" onClick={() => onAction('fit-content')}>📏 Fit content</button>
@@ -174,10 +177,13 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
                 })
                 .then((data) => {
                     showToast(`Started ${filePath.split('/').pop()} → ${data.stdoutPath}`, 'success');
+                    showScriptOutputPanel(ctx, filePath);
                 })
                 .catch((err) => {
                     showToast(`Run failed: ${err.message}`, 'error');
                 });
+        } else if (action === 'script-output') {
+            showScriptOutputPanel(ctx, filePath);
         } else if (action === 'fit-content') {
             ctx.actor.send({ type: 'SELECT_CARD', path: filePath, shift: false });
             _updateSelectionHighlights(ctx);
@@ -340,6 +346,155 @@ export async function showFileHistory(ctx: CanvasContext, filePath: string) {
     } catch (err) {
         render(<FileHistoryContent fileName={fileName} commits={[]} error={err.message} loading={false} onClose={closePanel} onSelect={selectCommitHash} />, panel);
     }
+}
+
+function ScriptOutputPanel({
+    fileName,
+    status,
+    stdout,
+    stderr,
+    stdoutPath,
+    stderrPath,
+    loading,
+    error,
+    onClose,
+    onAction,
+}: {
+    fileName: string;
+    status?: string;
+    stdout?: string;
+    stderr?: string;
+    stdoutPath?: string;
+    stderrPath?: string;
+    loading: boolean;
+    error?: string;
+    onClose: () => void;
+    onAction: (action: 'run' | 'restart' | 'stop' | 'refresh') => void;
+}) {
+    const statusColor = status === 'running' ? '#22c55e' : status === 'stopped' ? '#f59e0b' : 'var(--text-muted)';
+    return (
+        <>
+            <div className="panel-header">
+                <span className="panel-title">Script Output: {fileName}</span>
+                <div style="display:flex; gap:6px; align-items:center; margin-left:auto;">
+                    <span style={`font-size:11px; color:${statusColor}; text-transform:uppercase; letter-spacing:0.08em;`}>{status || 'not-found'}</span>
+                    <button className="btn-ghost btn-xs" onClick={() => onAction('run')}>Run</button>
+                    <button className="btn-ghost btn-xs" onClick={() => onAction('restart')}>Restart</button>
+                    <button className="btn-ghost btn-xs" onClick={() => onAction('stop')}>Stop</button>
+                    <button className="btn-ghost btn-xs" onClick={() => onAction('refresh')}>Refresh</button>
+                    <button className="btn-ghost btn-xs" onClick={onClose}>✕</button>
+                </div>
+            </div>
+            {loading ? (
+                <div style="padding: 16px; color: var(--text-muted); font-size: 0.75rem;">Loading...</div>
+            ) : error ? (
+                <div style="padding: 16px; color: var(--error); font-size: 0.75rem;">Error: {error}</div>
+            ) : (
+                <div style="display:flex; flex-direction:column; gap:10px; padding:12px; max-height:70vh; overflow:auto;">
+                    <div style="font-size:11px; color:var(--text-muted);">stdout → {stdoutPath || '.gout'}<br />stderr → {stderrPath || '.gout'}</div>
+                    <div>
+                        <div style="font-size:11px; color:#93c5fd; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.08em;">stdout</div>
+                        <pre style="margin:0; padding:10px; background:rgba(15,23,42,0.7); border:1px solid var(--border); border-radius:8px; white-space:pre-wrap; font-size:12px; max-height:220px; overflow:auto;">{stdout || '(no stdout yet)'}</pre>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#fca5a5; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.08em;">stderr</div>
+                        <pre style="margin:0; padding:10px; background:rgba(15,23,42,0.7); border:1px solid var(--border); border-radius:8px; white-space:pre-wrap; font-size:12px; max-height:220px; overflow:auto;">{stderr || '(no stderr yet)'}</pre>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
+export function showScriptOutputPanel(ctx: CanvasContext, filePath: string) {
+    const state = ctx.snap().context;
+    if (!state.repoPath) {
+        showToast('Load a repository first', 'error');
+        return;
+    }
+
+    document.querySelector('.script-output-panel')?.remove();
+
+    const panel = document.createElement('div');
+    panel.className = 'file-history-panel script-output-panel';
+    const fileName = filePath.split('/').pop() || filePath;
+    let pollTimer: any = null;
+    let closed = false;
+
+    const closePanel = () => {
+        closed = true;
+        if (pollTimer) clearTimeout(pollTimer);
+        panel.remove();
+    };
+
+    const renderState = (payload: any) => {
+        render(
+            <ScriptOutputPanel
+                fileName={fileName}
+                status={payload?.status}
+                stdout={payload?.stdout}
+                stderr={payload?.stderr}
+                stdoutPath={payload?.stdoutPath}
+                stderrPath={payload?.stderrPath}
+                loading={!!payload?.loading}
+                error={payload?.error}
+                onClose={closePanel}
+                onAction={(action) => {
+                    if (action === 'refresh') {
+                        refresh();
+                        return;
+                    }
+                    const endpoint = action === 'run' ? '/api/repo/run-script' : '/api/repo/script-control';
+                    const body = action === 'run'
+                        ? { path: state.repoPath, filePath }
+                        : { path: state.repoPath, filePath, action };
+                    fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    })
+                        .then(async (res) => {
+                            if (!res.ok) throw new Error(await res.text());
+                            return res.json();
+                        })
+                        .then(() => {
+                            showToast(`${action} ${fileName}`, 'success');
+                            refresh();
+                        })
+                        .catch((err) => {
+                            showToast(`${action} failed: ${err.message}`, 'error');
+                            refresh();
+                        });
+                }}
+            />,
+            panel,
+        );
+    };
+
+    const refresh = async () => {
+        if (closed) return;
+        renderState({ loading: true });
+        try {
+            const response = await fetch('/api/repo/script-output', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: state.repoPath, filePath, lines: 120 }),
+            });
+            if (!response.ok) throw new Error(await response.text());
+            const data = await response.json();
+            renderState(data);
+        } catch (err: any) {
+            renderState({ error: err.message });
+        } finally {
+            if (!closed) {
+                pollTimer = setTimeout(refresh, 2000);
+            }
+        }
+    };
+
+    renderState({ loading: true });
+    document.querySelector('.canvas-area')?.appendChild(panel);
+    refresh();
 }
 
 // ─── Delete file ────────────────────────────────────
