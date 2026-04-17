@@ -29,13 +29,14 @@ function lazyLoad() {
 }
 
 // ─── Context Menu JSX component ─────────────────────
-function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer, pinned, filePath }: {
+function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer, pinned, filePath, canRunScript }: {
     onAction: (action: string) => void;
     onActionLayer: (layerId: string) => void;
     onSelectFolder: (dir: string) => void;
     isInActiveLayer: boolean;
     pinned: boolean;
     filePath: string;
+    canRunScript: boolean;
 }) {
     const customLayers = layerState.layers.filter(l => l.id !== 'default');
 
@@ -71,6 +72,9 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
             <button type="button" className="ctx-item" onClick={() => onAction('expand')}>📖 Open in Editor</button>
             <button type="button" className="ctx-item" onClick={() => onAction('edit')}>✏️ Edit file</button>
             <button type="button" className="ctx-item" onClick={() => onAction('blame')}>👤 Git blame</button>
+            {canRunScript && (
+                <button type="button" className="ctx-item" onClick={() => onAction('run-script')}>▶ Run with bgrun</button>
+            )}
             <button type="button" className="ctx-item" onClick={() => onAction('connect')}>🔗 Connect to...</button>
             <button type="button" className="ctx-item" onClick={() => onAction('fit-content')}>📏 Fit content</button>
             <button type="button" className="ctx-item" onClick={() => onAction('fit-screen')}>📺 Fit screen</button>
@@ -111,6 +115,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     document.querySelector('.card-context-menu')?.remove();
 
     const filePath = card.dataset.path;
+    const canRunScript = !!filePath && filePath.endsWith('.ts') && !filePath.endsWith('.d.ts');
     const menu = document.createElement('div');
     menu.className = 'card-context-menu';
     menu.style.left = `${x}px`;
@@ -152,6 +157,27 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
                 ctx.allFilesData?.find(f => f.path === filePath) ||
                 { path: filePath, name: filePath.split('/').pop(), lines: 0 };
             _openFileModal(ctx, file, 'blame');
+        } else if (action === 'run-script') {
+            const state = ctx.snap().context;
+            if (!state.repoPath) {
+                showToast('Load a repository first', 'error');
+                return;
+            }
+            fetch('/api/repo/run-script', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: state.repoPath, filePath }),
+            })
+                .then(async (res) => {
+                    if (!res.ok) throw new Error(await res.text());
+                    return res.json();
+                })
+                .then((data) => {
+                    showToast(`Started ${filePath.split('/').pop()} → ${data.stdoutPath}`, 'success');
+                })
+                .catch((err) => {
+                    showToast(`Run failed: ${err.message}`, 'error');
+                });
         } else if (action === 'fit-content') {
             ctx.actor.send({ type: 'SELECT_CARD', path: filePath, shift: false });
             _updateSelectionHighlights(ctx);
@@ -225,7 +251,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     }
 
     const pinned = isPinned(filePath);
-    render(<ContextMenu onAction={handleAction} onActionLayer={handleActionLayer} onSelectFolder={handleSelectFolder} isInActiveLayer={isInActiveLayer} pinned={pinned} filePath={filePath} />, menu);
+    render(<ContextMenu onAction={handleAction} onActionLayer={handleActionLayer} onSelectFolder={handleSelectFolder} isInActiveLayer={isInActiveLayer} pinned={pinned} filePath={filePath} canRunScript={canRunScript} />, menu);
     document.body.appendChild(menu);
 
     requestAnimationFrame(() => {

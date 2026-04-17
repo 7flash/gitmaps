@@ -117,8 +117,10 @@
 - [x] ~~**GitHub import SSE completion smoke coverage**~~ — ✅ DONE. `app/lib/github-import.test.ts` now covers cached JSON success, SSE `done`, and SSE `error` clone-stream outcomes using synthetic responses.
 - [ ] **Routing helper extraction upstream** — Consider moving the test-time route-discovery log suppression into Melina or a shared test utility so multi-repo routing tests stay consistent.
 - [ ] **Audit null-safe DOM event binding in modal helpers** — Trace the `share-modal.js`/missing-element `addEventListener` error path and convert the remaining modal bootstrap code to explicit existence guards so route-specific UI chunks never crash when their target DOM is absent.
+- [x] ~~**Run repo TypeScript files via bgrun**~~ — ✅ DONE. File-card context menu now exposes `▶ Run with bgrun` for runnable `.ts` files, `/api/repo/run-script` launches them through bgrun, and stdout/stderr are redirected into repo-local `.gout/` logs.
 - [ ] **Split staged vs unstaged change filters in UI** — Add explicit timeline/panel toggles so users can isolate staged-only, unstaged-only, or combined working-tree diffs instead of only seeing the merged `HEAD → working tree` snapshot.
 - [ ] **Melina client-build regression test** — Add coverage in Melina for `buildClientScript()` so client TSX bundles use the VDOM JSX runtime instead of `jsx-dom`, preventing future `<undefined>` UI regressions in History/layers/loading panels.
+- [ ] **Script runner output viewer** — Add a small GitMaps UI surface to tail `.gout` stdout/stderr logs and restart/stop the matching bgrun process without leaving the repo canvas.
 - [x] ~~**Shared canvas context lifecycle cleanup**~~ — ✅ DONE. Fixed `createCanvasContext()` registration, wired `page.client.tsx` mount/cleanup to set and clear the shared context consistently, and added `app/lib/context.test.ts` regression coverage.
 - [x] ~~**DOM harness helper ergonomics**~~ — ✅ DONE. Added `installFetchMock()` and `installWindowOpenMock()` to `app/lib/test-dom.ts` and migrated repetitive smoke tests to use them.
 - [x] ~~**Clone completion flow isolation**~~ — ✅ DONE. GitHub import clone completion now hands off through a small helper in `app/lib/events.tsx`, allowing tests to inject `ctx.onRepoReady` instead of depending on real repo-load side effects.
@@ -255,3 +257,4 @@
 - **Low-zoom LOD**: `app/lib/viewport-culling.ts` now uses content-aware low-zoom cards instead of filename-only pills; preview text layout + canvas drawing helpers live in `app/lib/low-zoom-preview.ts`, the fixed top-right switch swaps between persistent `Preview` and `Classic` renderers, and wheel scrolling over preview cards updates persisted per-file scroll state.
 - **URL routing**: Path-based (`/slug`) with `[slug]/page.tsx` dynamic route. Legacy `#slug` auto-migrates.
 - **Storage**: All client state in localStorage (positions, connections, layers, hidden files)
+- **Script execution**: `/api/repo/run-script` launches runnable `.ts` files through `bgrun`; process stdout/stderr go to repo-local `.gout/*.stdout.log` and `.gout/*.stderr.log` files.
