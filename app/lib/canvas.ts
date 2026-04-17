@@ -416,12 +416,12 @@ export function jumpToFile(ctx: CanvasContext, filePath: string) {
             // Flash highlight on the card (may have been materialized by culling)
             const finalCard = ctx.fileCards.get(filePath);
             if (finalCard) {
-                finalCard.style.outline = '2px solid var(--accent-primary)';
-                finalCard.style.outlineOffset = '4px';
+                finalCard.style.outline = '1.5px solid rgba(124, 58, 237, 0.75)';
+                finalCard.style.outlineOffset = '2px';
                 setTimeout(() => {
                     finalCard.style.outline = '';
                     finalCard.style.outlineOffset = '';
-                }, 1500);
+                }, 900);
             }
         }, 420);
     });

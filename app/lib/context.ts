@@ -30,6 +30,9 @@ export interface CanvasContext {
     // ─── Hidden files ─────────────────────────
     hiddenFiles: Set<string>;
 
+    // ─── Notes ────────────────────────────────
+    notes: any[];
+
     // ─── Constants ────────────────────────────
     CORNER_SIZE: number;
 
@@ -82,6 +85,7 @@ export function createCanvasContext(actor: any): CanvasContext {
         spaceHeld: false,
 
         hiddenFiles: new Set(),
+        notes: [],
 
         CORNER_SIZE: 40,
         scrollTimers: {},

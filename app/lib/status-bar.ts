@@ -23,6 +23,7 @@ let _repoSlug = '';
 let _repoSlugSource = '';
 let _mode = 'Simple';
 let _commitHash = '';
+const WORKING_TREE_HASH = '__working__';
 
 function summarizeSlugSource(source: string): string {
     if (!source) return '';
@@ -239,7 +240,7 @@ function render() {
             : `Canonical slug ${_repoSlug}. Press Enter or Space for details.`);
         slugTriggerEl = slugEl;
     }
-    if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash.substring(0, 7)}` : '';
+    if (commitEl) commitEl.textContent = _commitHash ? `⊙ ${_commitHash === WORKING_TREE_HASH ? 'WORKDIR' : _commitHash.substring(0, 7)}` : '';
     if (modeEl) {
         modeEl.textContent = `${_mode === 'Advanced' ? '🎯' : '✋'} ${_mode}`;
         modeEl.className = `sb-item sb-mode sb-mode--${_mode.toLowerCase()}`;
@@ -352,7 +353,7 @@ export function updateStatusBarRepo(repoPath: string, canonicalSlug = '', canoni
 export function updateStatusBarCommit(hash: string) {
     _commitHash = hash;
     const el = bar?.querySelector('#sbCommit') as HTMLElement;
-    if (el) el.textContent = hash ? `⊙ ${hash.substring(0, 7)}` : '';
+    if (el) el.textContent = hash ? `⊙ ${hash === WORKING_TREE_HASH ? 'WORKDIR' : hash.substring(0, 7)}` : '';
 }
 
 export function updateStatusBarMode(mode: string) {

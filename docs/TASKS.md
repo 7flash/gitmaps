@@ -15,6 +15,11 @@
 - [x] ~~**OG image for social sharing**~~ — ✅ DONE. og:image, og:title, og:description, twitter:card meta tags added. Image served from `/api/og-image`. Deployed.
 - [x] ~~**Error handling for missing repos**~~ — ✅ ALREADY DONE. clone-stream SSE sends error events, client shows `❌ Clone failed` toast that auto-hides after 5s.
 - [x] ~~**Mobile viewport**~~ — ✅ DONE. Full-screen overlay on screens <768px: "GitMaps needs a bigger screen" with Learn more + Continue anyway dismiss button.
+- [ ] **Aspect-ratio slider live tuning** — Validate the new card proportion slider on real repos and tune the allowed ratio range / default card area if the wide/tall extremes still feel awkward.
+- [ ] **Temporary free-draw mode** — Add a sketch overlay mode for drawing strokes across/inside cards with thickness controls. Intentionally ephemeral: clear on refresh, repo reload, and commit changes.
+- [x] ~~**Persistent line notes foundation**~~ — ✅ DONE. Added `app/lib/notes.ts` with localStorage persistence, `(path, originalLineNumber, originalLineText, note)` note model, exact-text line reattachment helpers, repo-load reconciliation, and focused tests in `test/app/lib/notes.test.ts`.
+- [ ] **Persistent line notes with content-based reattachment** — Replace the current connections workflow with notes attached to file lines using `(path, originalLineNumber, originalLineText, noteBody)` and re-anchor them on commit changes by matching the captured line text near the old location first.
+- [ ] **Line notes UI** — Add create/edit/delete note UI on file lines plus visible note markers in cards so the new notes model is actually usable.
 
 ## 🔴 Priority: Fix
 - [x] ~~**GitHub URL routing clobbered**~~ — ✅ DONE. `loadRepository` was replacing `/denoland/deno` with just `/deno` via `history.replaceState`. Fixed to detect and preserve GitHub-style owner/repo URLs. Both short (`deno`) and full (`denoland/deno`) slugs stored in localStorage for bidirectional lookup.
@@ -41,6 +46,7 @@
 ## ✅ Completed
 - [x] ~~**Nested folder selection**~~ — ✅ DONE. "Select from folder" now shows a dropdown with all ancestor directories. Selection is recursive — picking `app` selects everything under `app/`.
 - [x] ~~**Settings modal JSX refactor**~~ — ✅ DONE. Converted from innerHTML string template to proper JSX components using melina/client render.
+- [x] ~~**Preview settings simplification**~~ — ✅ DONE. Removed the zoom-based preview line-count controls and separate width/height sliders, renamed "Preview text size" to "Map font size", and replaced pixel sizing controls with a single card proportion slider derived from aspect ratio.
 - [x] ~~**Popup font size in settings**~~ — ✅ DONE. New `popupFontSize` setting (10-24px slider) reads from localStorage, live-updates popup on change.
 - [x] ~~**Cross-layer file navigation**~~ — ✅ DONE. `jumpToFile` now calls `navigateToFileInLayer` when file not found on current layer, switches layers and retries.
 - [x] ~~**Collaborative cursor sharing**~~ — ✅ DONE. WebSocket-based live presence via Bun pub/sub. Broadcasts canvas-space mouse coords at 50ms throttle. Remote cursors rendered as colored SVG pointers with name labels. 5s stale fade, 15s auto-remove. Positions sync with local viewport pan/zoom.

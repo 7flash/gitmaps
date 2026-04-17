@@ -248,9 +248,9 @@ export function setupCanvasInteraction(ctx: CanvasContext) {
                                 const ch = parseFloat(pill.style.height) || 700;
                                 const overlaps = cx + cw > rx && cx < rx + rw && cy + ch > ry && cy < ry + rh;
                                 if (overlaps) {
-                                    pill.style.outline = '8px solid rgba(124, 58, 237, 1)';
-                                    pill.style.outlineOffset = '6px';
-                                    pill.style.filter = 'brightness(1.3)';
+                                    pill.style.outline = '1.5px solid rgba(124, 58, 237, 0.75)';
+                                    pill.style.outlineOffset = '2px';
+                                    pill.style.filter = '';
                                 } else {
                                     pill.style.outline = '';
                                     pill.style.outlineOffset = '';
@@ -909,19 +909,43 @@ export function setupEventListeners(ctx: CanvasContext) {
                 return;
             }
 
-            // Ctrl+= / Ctrl+- / Ctrl+0 = preview text size
+            // Ctrl+= / Ctrl+- / Ctrl+0 = map font size
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) {
                 e.preventDefault();
                 import('./settings').then(({ getSettings, updateSettings }) => {
                     const settings = getSettings();
                     let next = settings.previewFontPx;
-                    if (e.key === '=' || e.key === '+') next = Math.min(16, settings.previewFontPx + 1);
-                    else if (e.key === '-') next = Math.max(7, settings.previewFontPx - 1);
+                    if (e.key === '=' || e.key === '+') next = Math.min(28, settings.previewFontPx + 1);
+                    else if (e.key === '-') next = Math.max(4, settings.previewFontPx - 1);
                     else next = 10;
                     if (next !== settings.previewFontPx) {
                         updateSettings({ previewFontPx: next });
                         window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
-                        showToast(`Preview text: ${next}px`, 'info');
+                        showToast(`Map font: ${next}px`, 'info');
+                    }
+                });
+                return;
+            }
+
+            // Ctrl+Shift+= / Ctrl+Shift+- / Ctrl+Shift+0 = card aspect ratio
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) {
+                e.preventDefault();
+                Promise.all([
+                    import('./settings'),
+                    import('./settings-modal'),
+                ]).then(([settingsModule, settingsModalModule]) => {
+                    const { getSettings, updateSettings, getDefaultCardWidth, getDefaultCardHeight, MIN_CARD_ASPECT_RATIO, MAX_CARD_ASPECT_RATIO } = settingsModule;
+                    const { applyCardDimensions } = settingsModalModule;
+                    const settings = getSettings();
+                    let next = Number(settings.cardAspectRatio) || (getDefaultCardWidth() / Math.max(1, getDefaultCardHeight()));
+                    if (e.key === '=' || e.key === '+') next = Math.min(MAX_CARD_ASPECT_RATIO, next + 0.05);
+                    else if (e.key === '-') next = Math.max(MIN_CARD_ASPECT_RATIO, next - 0.05);
+                    else next = 540 / 700;
+                    next = Math.round(next * 100) / 100;
+                    if (next !== settings.cardAspectRatio) {
+                        const updated = updateSettings({ cardAspectRatio: next });
+                        applyCardDimensions(updated.cardWidth, updated.cardHeight, { persist: false, commitLayout: true });
+                        showToast(`Card proportion: ${next.toFixed(2)}:1`, 'info');
                     }
                 });
                 return;

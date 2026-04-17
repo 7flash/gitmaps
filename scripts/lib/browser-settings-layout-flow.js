@@ -15,23 +15,27 @@
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const colsForWidth = (widthPx) => Math.round(widthPx / 7.2);
+  const DEFAULT_CARD_AREA = 540 * 700;
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const aspectForWidth = (widthPx) => clamp((widthPx * widthPx) / DEFAULT_CARD_AREA, 0.45, 1.8);
+  const widthForAspect = (aspect) => Math.round(Math.sqrt(DEFAULT_CARD_AREA * aspect));
 
   const applySettingsViaModal = async () => {
     const openButton = await waitFor(() => document.getElementById('openSettings') || document.getElementById('openSettingsBottom'));
     openButton.click();
 
     const modal = await waitFor(() => document.getElementById('settingsModal'));
-    const slider = await waitFor(() => modal.querySelector('#settingCardWidth'));
-    const valueEl = await waitFor(() => modal.querySelector('#cardWidthValue'));
-    const targetCols = String(colsForWidth(targetCardWidth));
+    const slider = await waitFor(() => modal.querySelector('#settingCardAspectRatio'));
+    const valueEl = await waitFor(() => modal.querySelector('#cardAspectRatioValue'));
+    const targetAspect = aspectForWidth(targetCardWidth);
+    const expectedWidth = widthForAspect(targetAspect);
 
-    slider.value = targetCols;
+    slider.value = String(targetAspect);
     slider.dispatchEvent(new Event('input', { bubbles: true }));
     slider.dispatchEvent(new Event('change', { bubbles: true }));
 
-    await waitFor(() => getComputedStyle(document.documentElement).getPropertyValue('--card-width').trim() === `${targetCardWidth}px`, 5000, 100);
-    await waitFor(() => valueEl.textContent.trim() === `${targetCols} cols`, 5000, 100);
+    await waitFor(() => getComputedStyle(document.documentElement).getPropertyValue('--card-width').trim() === `${expectedWidth}px`, 5000, 100);
+    await waitFor(() => valueEl.textContent.trim() === `${targetAspect.toFixed(2)}:1`, 5000, 100);
 
     const raw = localStorage.getItem('gitcanvas:settings');
     const parsed = raw ? JSON.parse(raw) : {};
@@ -109,8 +113,10 @@
 
   const result = snapshot();
 
-  if (result.cardWidthVar !== `${targetCardWidth}px`) {
-    throw new Error(`Expected --card-width to be ${targetCardWidth}px, got ${result.cardWidthVar}`);
+  const expectedAspect = aspectForWidth(targetCardWidth);
+  const expectedWidth = widthForAspect(expectedAspect);
+  if (result.cardWidthVar !== `${expectedWidth}px`) {
+    throw new Error(`Expected --card-width to be ${expectedWidth}px, got ${result.cardWidthVar}`);
   }
   if (!result.buildBadge.includes(`v`) || !result.buildBadge.includes('@')) {
     throw new Error(`Build badge missing version/commit: ${result.buildBadge}`);

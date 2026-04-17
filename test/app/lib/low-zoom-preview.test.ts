@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewRenderableLines, getPreviewScrollMetrics, wrapPreviewText } from '../../../app/lib/low-zoom-preview';
+import { collectPreviewDiffMarkers, estimatePreviewCharsPerLine, estimatePreviewLineCapacity, estimatePreviewMaxScroll, estimateTitleCharsPerLine, getLowZoomPreviewText, getLowZoomScale, getPreviewRelativeDirectoryPath, getPreviewRenderableLines, getPreviewScrollMetrics, wrapPreviewText } from '../../../app/lib/low-zoom-preview';
 import { __resetSettingsCacheForTests } from '../../../app/lib/settings';
 
 const originalLocalStorage = globalThis.localStorage;
@@ -77,29 +77,16 @@ describe('low zoom preview helpers', () => {
     expect(estimatePreviewLineCapacity(700, 0.1)).toBeLessThan(estimatePreviewLineCapacity(700, 1));
   });
 
-  test('preview visible lines interpolate between far and near settings', () => {
-    installSettings({
-      previewFontPx: 10,
-      previewFarVisibleLines: 4,
-      previewNearVisibleLines: 36,
-      maxVisibleLines: 120,
-    });
-    expect(estimatePreviewLineCapacity(4000, 0.08)).toBe(4);
-    expect(estimatePreviewLineCapacity(4000, 1)).toBe(36);
-    const mid = estimatePreviewLineCapacity(4000, 0.54);
-    expect(mid).toBeGreaterThanOrEqual(20);
-    expect(mid).toBeLessThan(30);
+  test('preview visible lines are driven by physical card space instead of line-count settings', () => {
+    installSettings({ previewFontPx: 10 });
+    expect(estimatePreviewLineCapacity(220, 0.08)).toBeGreaterThanOrEqual(2);
+    expect(estimatePreviewLineCapacity(4000, 1)).toBeGreaterThan(estimatePreviewLineCapacity(700, 1));
   });
 
-  test('preview visible lines still respect physical and global caps', () => {
-    installSettings({
-      previewFontPx: 10,
-      previewFarVisibleLines: 3,
-      previewNearVisibleLines: 120,
-      maxVisibleLines: 18,
-    });
-    expect(estimatePreviewLineCapacity(700, 1)).toBeLessThanOrEqual(18);
-    expect(estimatePreviewLineCapacity(220, 1)).toBeLessThan(estimatePreviewLineCapacity(4000, 1));
+  test('preview visible lines still respond to zoom and card height', () => {
+    installSettings({ previewFontPx: 10 });
+    expect(estimatePreviewLineCapacity(220, 1)).toBeLessThan(estimatePreviewLineCapacity(700, 1));
+    expect(estimatePreviewLineCapacity(700, 0.1)).toBeLessThan(estimatePreviewLineCapacity(700, 1));
   });
 
   test('preview scroll range grows with longer files', () => {
@@ -156,5 +143,11 @@ describe('low zoom preview helpers', () => {
     const scale = getLowZoomScale(0.18);
     expect(scale.titleFont).toBeGreaterThan(scale.bodyFont);
     expect(scale.titleLineHeight).toBeGreaterThan(scale.bodyLineHeight * 0.7);
+  });
+
+  test('subtitle path shows the full repo-relative directory path', () => {
+    expect(getPreviewRelativeDirectoryPath('src/lib/components/button.tsx')).toBe('src / lib / components');
+    expect(getPreviewRelativeDirectoryPath('README.md')).toBe('root');
+    expect(getPreviewRelativeDirectoryPath('nested\\windows\\path.txt')).toBe('nested / windows');
   });
 });

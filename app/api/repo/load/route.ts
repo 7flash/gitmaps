@@ -3,6 +3,8 @@ import simpleGit from 'simple-git';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
+const WORKING_TREE_HASH = '__working__';
+
 export function extractCanonicalForgeSlugInfo(remoteUrl?: string | null): { slug: string | null; source: string } {
     if (!remoteUrl) return { slug: null, source: '' };
 
@@ -73,6 +75,37 @@ export async function POST(req: Request) {
                 date: commit.date,
                 refs: commit.refs ? commit.refs.split(',').map(r => r.trim()).filter(Boolean) : []
             }));
+
+            try {
+                const porcelain = await git.raw(['status', '--porcelain=v1', '--untracked-files=all']);
+                const workingTreeLines = porcelain.split('\n').filter(line => line.trim());
+                if (workingTreeLines.length > 0) {
+                    let stagedCount = 0;
+                    let unstagedCount = 0;
+                    for (const line of workingTreeLines) {
+                        const indexStatus = line[0] || ' ';
+                        const workTreeStatus = line[1] || ' ';
+                        if (indexStatus !== ' ' && indexStatus !== '?') stagedCount++;
+                        if (workTreeStatus !== ' ' && workTreeStatus !== '?') unstagedCount++;
+                        if (indexStatus === '?' && workTreeStatus === '?') unstagedCount++;
+                    }
+                    const summaryBits = [];
+                    if (stagedCount > 0) summaryBits.push(`${stagedCount} staged`);
+                    if (unstagedCount > 0) summaryBits.push(`${unstagedCount} unstaged`);
+                    commits.unshift({
+                        hash: WORKING_TREE_HASH,
+                        parents: commits[0] ? [commits[0].hash] : [],
+                        message: summaryBits.length > 0 ? `Working tree · ${summaryBits.join(' · ')}` : 'Working tree',
+                        author: 'Uncommitted',
+                        email: '',
+                        date: new Date().toISOString(),
+                        refs: ['WORKTREE'],
+                        isVirtual: true,
+                    });
+                }
+            } catch {
+                // Ignore status failures — commit history still loads
+            }
 
             let canonicalSlug: string | null = null;
             let canonicalSlugSource = '';

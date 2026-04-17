@@ -5,7 +5,8 @@ const PREVIEWABLE_EXTS = new Set([
 ]);
 
 const MAX_PREVIEW_BACKING_PIXELS = 1_500_000;
-const MAX_PREVIEW_BACKING_DPR = 1.25;
+const MAX_PREVIEW_BACKING_DPR_FAR = 1.25;
+const MAX_PREVIEW_BACKING_DPR_NEAR = 2.5;
 
 export function getLowZoomScale(zoom: number) {
   const clampedZoom = Math.max(0.08, Math.min(1, zoom));
@@ -104,6 +105,14 @@ export function getLowZoomPreviewText(file: any, scrollTop: number): string {
   return getPreviewRenderableLines(file, scrollTop).map((line) => line.text).join('\n').trim();
 }
 
+export function getPreviewRelativeDirectoryPath(path: string): string {
+  const normalized = String(path || '').replace(/\\+/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!normalized) return 'root';
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length <= 1) return 'root';
+  return parts.slice(0, -1).join(' / ');
+}
+
 export function wrapPreviewText(text: string, maxCharsPerLine: number, maxLines: number): string[] {
   const safeMaxChars = Math.max(8, Math.floor(maxCharsPerLine));
   const safeMaxLines = Math.max(1, Math.floor(maxLines));
@@ -154,11 +163,6 @@ function ellipsizeWrappedLines(lines: string[], maxLines: number) {
   return sliced;
 }
 
-function getPreviewZoomT(zoom: number) {
-  const clamped = Math.max(0.08, Math.min(1, zoom));
-  return (clamped - 0.08) / (1 - 0.08);
-}
-
 function estimatePhysicalPreviewLineCapacity(height: number, zoom: number): number {
   const scale = getLowZoomScale(zoom);
   const titleLines = zoom >= 0.35 ? 2 : 1;
@@ -170,14 +174,7 @@ function estimatePhysicalPreviewLineCapacity(height: number, zoom: number): numb
 }
 
 export function estimatePreviewLineCapacity(height: number, zoom: number): number {
-  const settings = getSettings();
-  const t = getPreviewZoomT(zoom);
-  const far = Math.max(2, settings.previewFarVisibleLines || 3);
-  const near = Math.max(far, settings.previewNearVisibleLines || 60);
-  const interpolated = Math.round(far + (near - far) * t);
-  const physicalCap = estimatePhysicalPreviewLineCapacity(height, zoom);
-  const globalCap = Math.max(2, settings.maxVisibleLines || near);
-  return Math.max(2, Math.min(interpolated, physicalCap, globalCap));
+  return estimatePhysicalPreviewLineCapacity(height, zoom);
 }
 
 export function estimateTitleCharsPerLine(width: number, zoom: number): number {
@@ -241,12 +238,14 @@ export function collectPreviewDiffMarkers(file: any, totalLines: number) {
   return markers;
 }
 
-function getPreviewBackingScale(width: number, height: number) {
+function getPreviewBackingScale(width: number, height: number, zoom: number) {
   const safeWidth = Math.max(1, width);
   const safeHeight = Math.max(1, height);
   const deviceDpr = Math.max(1, globalThis.devicePixelRatio || 1);
   const areaLimitedDpr = Math.sqrt(MAX_PREVIEW_BACKING_PIXELS / (safeWidth * safeHeight));
-  return Math.max(1, Math.min(deviceDpr, MAX_PREVIEW_BACKING_DPR, areaLimitedDpr));
+  const zoomT = Math.max(0, Math.min(1, (Math.max(0.08, zoom) - 0.35) / (1.5 - 0.35)));
+  const zoomAwareCap = MAX_PREVIEW_BACKING_DPR_FAR + (MAX_PREVIEW_BACKING_DPR_NEAR - MAX_PREVIEW_BACKING_DPR_FAR) * zoomT;
+  return Math.max(1, Math.min(deviceDpr, zoomAwareCap, areaLimitedDpr));
 }
 
 export function releaseLowZoomPreviewCanvas(canvas: HTMLCanvasElement | null | undefined) {
@@ -271,7 +270,7 @@ export function renderLowZoomPreviewCanvas(
   },
 ) {
   const { path, file, width, height, zoom, scrollTop, accentColor } = params;
-  const dpr = getPreviewBackingScale(width, height);
+  const dpr = getPreviewBackingScale(width, height, zoom);
   const scale = getLowZoomScale(zoom);
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -319,8 +318,7 @@ export function renderLowZoomPreviewCanvas(
   const subtitleFont = Math.max(scale.bodyFont * 0.82, 6 / Math.max(zoom, 0.08));
   ctx.font = `${subtitleFont}px "JetBrains Mono", monospace`;
   ctx.fillStyle = 'rgba(226,232,240,0.72)';
-  const pathParts = path.split('/');
-  const subtitle = pathParts.length > 1 ? pathParts.slice(Math.max(0, pathParts.length - 2), -1).join(' / ') : 'root';
+  const subtitle = getPreviewRelativeDirectoryPath(path);
   ctx.fillText(trimToWidth(ctx, subtitle, maxTextWidth), leftInset, subtitleY);
 
   const previewY = subtitleY + subtitleFont + scale.gap;

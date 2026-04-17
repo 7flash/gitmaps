@@ -2870,12 +2870,10 @@ body.landing-placeholder-visible .sticky-zoom-pill {
 
 /* ─── Card states ─────────────────────────────────── */
 .file-card.selected {
-  outline: 3px solid var(--accent-primary);
-  outline-offset: 3px;
-  box-shadow:
-    0 0 24px rgba(124, 58, 237, 0.4),
-    0 0 8px rgba(124, 58, 237, 0.3);
-  z-index: 50 !important;
+  outline: 1.5px solid rgba(124, 58, 237, 0.75);
+  outline-offset: 2px;
+  box-shadow: none;
+  z-index: auto !important;
 }
 
 .file-card.resizing {
@@ -3842,10 +3840,8 @@ body.landing-placeholder-visible .sticky-zoom-pill {
 
 /* Selected card highlight */
 .file-card.selected {
-  border-color: var(--accent-primary);
-  box-shadow:
-    0 0 0 2px var(--accent-glow),
-    var(--shadow-md);
+  border-color: rgba(124, 58, 237, 0.55);
+  box-shadow: var(--shadow-md);
 }
 
 /* Resizing card */
@@ -4881,39 +4877,18 @@ body.landing-placeholder-visible .sticky-zoom-pill {
 
 /* Card highlight when navigating to it */
 .goto-highlight {
-  animation: goto-pulse 2s ease-out;
-  z-index: 9999 !important;
+  animation: goto-pulse 1.2s ease-out;
 }
 
 @keyframes goto-pulse {
   0% {
-    box-shadow:
-      0 0 0 0 rgba(34, 197, 94, 0.6),
-      0 0 20px rgba(34, 197, 94, 0.3);
-  }
-
-  25% {
-    box-shadow:
-      0 0 0 8px rgba(34, 197, 94, 0.3),
-      0 0 30px rgba(34, 197, 94, 0.2);
-  }
-
-  50% {
-    box-shadow:
-      0 0 0 4px rgba(34, 197, 94, 0.2),
-      0 0 15px rgba(34, 197, 94, 0.1);
-  }
-
-  75% {
-    box-shadow:
-      0 0 0 8px rgba(34, 197, 94, 0.1),
-      0 0 20px rgba(34, 197, 94, 0.05);
+    outline: 1.5px solid rgba(34, 197, 94, 0.85);
+    outline-offset: 2px;
   }
 
   100% {
-    box-shadow:
-      0 0 0 0 rgba(34, 197, 94, 0),
-      0 0 0 rgba(34, 197, 94, 0);
+    outline: 1.5px solid rgba(34, 197, 94, 0);
+    outline-offset: 2px;
   }
 }
 

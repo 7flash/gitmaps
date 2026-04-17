@@ -975,11 +975,11 @@ export function updatePillSelectionHighlights(ctx: CanvasContext) {
     const selected = ctx.snap().context.selectedCards;
     for (const [path, pill] of pillCards) {
         if (selected.includes(path)) {
-            pill.style.outline = '8px solid rgba(124, 58, 237, 1)';
-            pill.style.outlineOffset = '6px';
-            pill.style.boxShadow = '0 0 0 6px rgba(124, 58, 237, 0.5), 0 0 60px 20px rgba(124, 58, 237, 0.6), 0 0 100px 40px rgba(124, 58, 237, 0.3)';
-            pill.style.zIndex = '100';
-            pill.style.filter = 'brightness(1.3)';
+            pill.style.outline = '1.5px solid rgba(124, 58, 237, 0.75)';
+            pill.style.outlineOffset = '2px';
+            pill.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+            pill.style.zIndex = '';
+            pill.style.filter = '';
         } else {
             pill.style.outline = '';
             pill.style.outlineOffset = '';

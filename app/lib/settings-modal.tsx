@@ -6,7 +6,7 @@
 import { render } from 'melina/client';
 import { getCanvasContext } from './context';
 import { getCardManager } from './xydraw-bridge';
-import { getDefaultCardHeight, getSettings, updateSettings, resetSettings, type GitCanvasSettings } from './settings';
+import { getDefaultCardAspectRatio, getDefaultCardHeight, getDefaultCardWidth, MAX_CARD_ASPECT_RATIO, MIN_CARD_ASPECT_RATIO, getSettings, updateSettings, resetSettings, type GitCanvasSettings } from './settings';
 
 let _modal: HTMLElement | null = null;
 
@@ -79,7 +79,10 @@ function SettingsSection({ title, children }: { title: string; children: any }) 
 }
 
 function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
-    const cardCols = Math.round(settings.cardWidth / 7.2);
+    const aspect = Number.isFinite(settings.cardAspectRatio) ? settings.cardAspectRatio : getDefaultCardAspectRatio();
+    const derivedWidth = getDefaultCardWidth();
+    const derivedHeight = getDefaultCardHeight();
+    const aspectLabel = aspect < 0.72 ? 'Tall' : aspect > 1.05 ? 'Wide' : 'Balanced';
     return (
         <div className="settings-modal">
             <div className="settings-header">
@@ -94,7 +97,6 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                 <button className="settings-close" id="closeSettings">✕</button>
             </div>
             <div className="settings-body">
-                {/* Rendering Section */}
                 <SettingsSection title="Rendering">
                     <SettingsRow label="Text Rendering" desc="Canvas (fast) or DOM (rich interactions)">
                         <ToggleGroup id="settingRenderMode" value={settings.renderMode}
@@ -104,17 +106,12 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                         <Slider id="settingFontSize" valueId="fontSizeValue"
                             min={6} max={40} step={1} value={settings.fontSize} suffix="px" />
                     </SettingsRow>
-                    <SettingsRow label="Card Width" desc="Character columns per card (like editors)">
-                        <Slider id="settingCardWidth" valueId="cardWidthValue"
-                            min={30} max={250} step={5} value={cardCols} suffix=" cols" />
-                    </SettingsRow>
-                    <SettingsRow label="Card Height" desc="Default card height for canvas and preview layout">
-                        <Slider id="settingCardHeight" valueId="cardHeightValue"
-                            min={220} max={1000} step={20} value={Math.min(settings.cardHeight, 1000)} suffix="px" />
+                    <SettingsRow label="Card proportion" desc="Tall ↔ wide shape for map cards; zoom controls overall scale">
+                        <Slider id="settingCardAspectRatio" valueId="cardAspectRatioValue"
+                            min={MIN_CARD_ASPECT_RATIO} max={MAX_CARD_ASPECT_RATIO} step={0.01} value={aspect} suffix=":1" />
                     </SettingsRow>
                 </SettingsSection>
 
-                {/* Interface Section */}
                 <SettingsSection title="Interface">
                     <SettingsRow label="Theme" desc="Dark or light appearance">
                         <ToggleGroup id="settingTheme" value={settings.theme}
@@ -135,7 +132,6 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                     </SettingsRow>
                 </SettingsSection>
 
-                {/* Visualization Section */}
                 <SettingsSection title="Visualization">
                     <SettingsRow label="Git Heatmap" desc="Color-code cards by commit frequency (H key)">
                         <Switch id="settingHeatmap" checked={settings.heatmapEnabled} />
@@ -146,36 +142,19 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                     </SettingsRow>
                 </SettingsSection>
 
-                {/* Preview Mode Section */}
-                <SettingsSection title="Preview Mode">
-                    <SettingsRow label="Preview text size" desc="Fixed text size used by preview cards">
+                <SettingsSection title="Map View">
+                    <SettingsRow label="Map font size" desc="Fixed text size used by map cards at every zoom level">
                         <Slider id="settingPreviewFontPx" valueId="previewFontPxValue"
                             min={4} max={28} step={1} value={settings.previewFontPx} suffix="px" />
                     </SettingsRow>
-                    <SettingsRow label="Far zoom lines" desc="Body lines shown when zoomed far out">
-                        <Slider id="settingPreviewFarLines" valueId="previewFarLinesValue"
-                            min={2} max={12} step={1} value={settings.previewFarVisibleLines} suffix=" lines" />
-                    </SettingsRow>
-                    <SettingsRow label="Near zoom lines" desc="Body lines shown near full zoom">
-                        <Slider id="settingPreviewNearLines" valueId="previewNearLinesValue"
-                            min={12} max={120} step={2} value={settings.previewNearVisibleLines} suffix=" lines" />
-                    </SettingsRow>
                 </SettingsSection>
 
-                {/* Advanced Section */}
-                <SettingsSection title="Advanced">
-                    <SettingsRow label="Max Visible Lines" desc="Lines shown per card before virtual scroll">
-                        <Slider id="settingMaxLines" valueId="maxLinesValue"
-                            min={30} max={500} step={10} value={settings.maxVisibleLines} suffix="" />
-                    </SettingsRow>
-                </SettingsSection>
-
-                <SettingsSection title="Card Size Preview">
+                <SettingsSection title="Card Shape Preview">
                     <div className="settings-dimension-preview" id="settingsDimensionPreview">
                         <div className="settings-dimension-preview__card" id="settingsDimensionPreviewCard">
                             <div className="settings-dimension-preview__header">
                                 <span>example.ts</span>
-                                <span id="settingsDimensionPreviewBadge">75 cols · 700px</span>
+                                <span id="settingsDimensionPreviewBadge">{aspectLabel} · {aspect.toFixed(2)}:1</span>
                             </div>
                             <div className="settings-dimension-preview__body">
                                 <div className="settings-dimension-preview__line short"></div>
@@ -184,6 +163,9 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                                 <div className="settings-dimension-preview__line medium"></div>
                                 <div className="settings-dimension-preview__line"></div>
                             </div>
+                        </div>
+                        <div className="settings-label-desc" style={{ marginTop: '12px' }}>
+                            Current derived size: {derivedWidth} × {derivedHeight}px
                         </div>
                     </div>
                 </SettingsSection>
@@ -273,66 +255,53 @@ export function openSettingsModal(ctx?: any) {
         applyFontSize(parseInt(fontSlider.value));
     });
 
-    const cardWidthSlider = _modal.querySelector('#settingCardWidth') as HTMLInputElement;
-    const cardWidthValue = _modal.querySelector('#cardWidthValue')!;
-    const cardHeightSlider = _modal.querySelector('#settingCardHeight') as HTMLInputElement;
-    const cardHeightValue = _modal.querySelector('#cardHeightValue')!;
+    const cardAspectRatioSlider = _modal.querySelector('#settingCardAspectRatio') as HTMLInputElement;
+    const cardAspectRatioValue = _modal.querySelector('#cardAspectRatioValue')!;
     const dimensionPreviewCard = _modal.querySelector('#settingsDimensionPreviewCard') as HTMLElement;
     const dimensionPreviewBadge = _modal.querySelector('#settingsDimensionPreviewBadge') as HTMLElement;
 
-    const updateDimensionPreview = (widthPx: number, heightPx: number, cols: number) => {
+    const deriveCardDimensionsForAspect = (aspectRatio: number) => {
+        const safeAspect = Math.max(MIN_CARD_ASPECT_RATIO, Math.min(MAX_CARD_ASPECT_RATIO, aspectRatio));
+        const widthPx = Math.max(1, Math.round(Math.sqrt(540 * 700 * safeAspect)));
+        const heightPx = Math.max(1, Math.round(widthPx / safeAspect));
+        return { widthPx, heightPx, aspectRatio: safeAspect };
+    };
+
+    const getAspectLabel = (aspectRatio: number) => aspectRatio < 0.72 ? 'Tall' : aspectRatio > 1.05 ? 'Wide' : 'Balanced';
+
+    const updateDimensionPreview = (aspectRatio: number) => {
+        const { widthPx, heightPx, aspectRatio: safeAspect } = deriveCardDimensionsForAspect(aspectRatio);
         if (dimensionPreviewCard) {
             const previewScale = Math.min(1, 220 / Math.max(1, widthPx), 160 / Math.max(1, heightPx));
             dimensionPreviewCard.style.width = `${Math.max(88, Math.round(widthPx * previewScale))}px`;
             dimensionPreviewCard.style.height = `${Math.max(72, Math.round(heightPx * previewScale))}px`;
         }
         if (dimensionPreviewBadge) {
-            dimensionPreviewBadge.textContent = `${cols} cols · ${heightPx}px`;
+            dimensionPreviewBadge.textContent = `${getAspectLabel(safeAspect)} · ${safeAspect.toFixed(2)}:1`;
         }
     };
 
-    updateDimensionPreview(Math.round(parseInt(cardWidthSlider.value) * 7.2), parseInt(cardHeightSlider.value), parseInt(cardWidthSlider.value));
+    updateDimensionPreview(parseFloat(cardAspectRatioSlider.value));
 
     const commitCardDimensions = () => {
-        const cols = parseInt(cardWidthSlider.value);
-        const widthPx = Math.round(cols * 7.2);
-        const heightPx = parseInt(cardHeightSlider.value);
-        applyCardDimensions(widthPx, heightPx, { persist: true, commitLayout: true });
+        const aspectRatio = parseFloat(cardAspectRatioSlider.value);
+        const { widthPx, heightPx, aspectRatio: safeAspect } = deriveCardDimensionsForAspect(aspectRatio);
+        cardAspectRatioValue.textContent = `${safeAspect.toFixed(2)}:1`;
+        updateSettings({ cardAspectRatio: safeAspect });
+        applyCardDimensions(widthPx, heightPx, { persist: false, commitLayout: true });
     };
 
-    cardWidthSlider?.addEventListener('input', () => {
+    cardAspectRatioSlider?.addEventListener('input', () => {
         _cardDimensionDragging = true;
-        const cols = parseInt(cardWidthSlider.value);
-        const px = Math.round(cols * 7.2);
-        const heightPx = parseInt(cardHeightSlider.value);
-        cardWidthValue.textContent = `${cols} cols`;
-        updateDimensionPreview(px, heightPx, cols);
-        applyCardDimensions(px, heightPx, { persist: false, commitLayout: false });
+        const aspectRatio = parseFloat(cardAspectRatioSlider.value);
+        const { widthPx, heightPx, aspectRatio: safeAspect } = deriveCardDimensionsForAspect(aspectRatio);
+        cardAspectRatioValue.textContent = `${safeAspect.toFixed(2)}:1`;
+        updateDimensionPreview(safeAspect);
+        applyCardDimensions(widthPx, heightPx, { persist: false, commitLayout: false });
     });
-    cardWidthSlider?.addEventListener('change', () => {
+    cardAspectRatioSlider?.addEventListener('change', () => {
         _cardDimensionDragging = false;
         commitCardDimensions();
-    });
-
-    cardHeightSlider?.addEventListener('input', () => {
-        _cardDimensionDragging = true;
-        const px = parseInt(cardHeightSlider.value);
-        const cols = parseInt(cardWidthSlider.value);
-        const widthPx = Math.round(cols * 7.2);
-        cardHeightValue.textContent = `${px}px`;
-        updateDimensionPreview(widthPx, px, cols);
-        applyCardDimensions(widthPx, px, { persist: false, commitLayout: false });
-    });
-    cardHeightSlider?.addEventListener('change', () => {
-        _cardDimensionDragging = false;
-        commitCardDimensions();
-    });
-
-    const maxLinesSlider = _modal.querySelector('#settingMaxLines') as HTMLInputElement;
-    const maxLinesValue = _modal.querySelector('#maxLinesValue')!;
-    maxLinesSlider?.addEventListener('input', () => {
-        maxLinesValue.textContent = maxLinesSlider.value;
-        updateSettings({ maxVisibleLines: parseInt(maxLinesSlider.value) });
     });
 
     const previewFontSlider = _modal.querySelector('#settingPreviewFontPx') as HTMLInputElement;
@@ -343,34 +312,6 @@ export function openSettingsModal(ctx?: any) {
         window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
     });
 
-    const previewFarLinesSlider = _modal.querySelector('#settingPreviewFarLines') as HTMLInputElement;
-    const previewFarLinesValue = _modal.querySelector('#previewFarLinesValue')!;
-    const previewNearLinesSlider = _modal.querySelector('#settingPreviewNearLines') as HTMLInputElement;
-    const previewNearLinesValue = _modal.querySelector('#previewNearLinesValue')!;
-
-    previewFarLinesSlider?.addEventListener('input', () => {
-        const far = parseInt(previewFarLinesSlider.value);
-        const near = Math.max(far, parseInt(previewNearLinesSlider.value));
-        previewFarLinesValue.textContent = `${far} lines`;
-        if (previewNearLinesSlider.value !== String(near)) {
-            previewNearLinesSlider.value = String(near);
-            previewNearLinesValue.textContent = `${near} lines`;
-        }
-        updateSettings({ previewFarVisibleLines: far, previewNearVisibleLines: near });
-        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
-    });
-
-    previewNearLinesSlider?.addEventListener('input', () => {
-        const near = parseInt(previewNearLinesSlider.value);
-        const far = Math.min(near, parseInt(previewFarLinesSlider.value));
-        previewNearLinesValue.textContent = `${near} lines`;
-        if (previewFarLinesSlider.value !== String(far)) {
-            previewFarLinesSlider.value = String(far);
-            previewFarLinesValue.textContent = `${far} lines`;
-        }
-        updateSettings({ previewFarVisibleLines: far, previewNearVisibleLines: near });
-        window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
-    });
 
     // Wire switches
     const minimapSwitch = _modal.querySelector('#settingMinimap') as HTMLInputElement;

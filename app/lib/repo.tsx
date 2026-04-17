@@ -34,6 +34,7 @@ import {
 } from "./cards";
 import { getActiveLayer } from "./layers";
 import { renderConnections, buildConnectionMarkers } from "./connections";
+import { loadAndReconcileNotes } from "./notes";
 import {
   renderAllFilesViaCardManager,
   materializeViewport,
@@ -61,6 +62,7 @@ export function setPanelCtx(ctx: CanvasContext) {
 let _loadingRepo: string | null = null;
 let _repoLoadRequestId = 0;
 const LARGE_REPO_AUTO_COMMIT_THRESHOLD = 1000;
+const WORKING_TREE_HASH = '__working__';
 
 // ─── Load repository ─────────────────────────────────────
 export async function loadRepository(ctx: CanvasContext, repoPath: string) {
@@ -116,7 +118,8 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
 
       // Add to recent repos
       const { addRecentRepo } = require("./recent-commits");
-      addRecentRepo(repoPath, data.commits.length);
+      const persistedCommitCount = data.commits.filter((c) => c.hash !== WORKING_TREE_HASH).length;
+      addRecentRepo(repoPath, persistedCommitCount);
 
       // Set global repo path for image URLs
       (window as any).__GITCANVAS_REPO_PATH__ = repoPath;
@@ -144,6 +147,8 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
         ? currentPath
         : canonicalSlug || repoSlug;
       const commitHash = data.commits[0]?.hash || "";
+      const historyHash =
+        commitHash && commitHash !== WORKING_TREE_HASH ? `#${commitHash}` : "";
       history.replaceState(
         null,
         "",
@@ -151,7 +156,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
           (displaySlug.includes("/")
             ? displaySlug
             : encodeURIComponent(displaySlug)) +
-          (commitHash ? `#${commitHash}` : ""),
+          historyHash,
       );
       localStorage.setItem("gitcanvas:lastRepo", repoPath);
       // Store slug→path mapping for URL-based loading (both short and GitHub-style)
@@ -178,7 +183,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
 
       updateLoadingProgress(
         ctx,
-        `Found ${data.commits.length} commits, rendering timeline...`,
+        `Found ${persistedCommitCount} commits${data.commits[0]?.hash === WORKING_TREE_HASH ? ' + working tree' : ''}, rendering timeline...`,
         50,
       );
       renderCommitTimeline(ctx);
@@ -245,7 +250,7 @@ export async function loadRepository(ctx: CanvasContext, repoPath: string) {
       // at line 76 can get clobbered if DOM re-renders during loadAllFiles/selectCommit
       renderCommitTimeline(ctx);
 
-      showToast(`Loaded ${data.commits.length} commits`, "success");
+      showToast(`Loaded ${persistedCommitCount} commits${data.commits[0]?.hash === WORKING_TREE_HASH ? ' + working tree' : ''}`, "success");
 
       // Register in multi-repo workspace
       registerRepo(ctx, repoPath, data.commits, ctx.allFilesData || []);
@@ -339,6 +344,7 @@ export async function loadAllFiles(ctx: CanvasContext) {
 
       ctx.actor.send({ type: "ALL_FILES_LOADED", files: allFiles });
       ctx.allFilesData = allFiles;
+      loadAndReconcileNotes(ctx, allFiles);
       updateLoadingFileCount(
         ctx,
         total,
@@ -374,6 +380,7 @@ function CommitItem({
   color: string;
   onClick: () => void;
 }) {
+  const isWorkingTree = commit.hash === WORKING_TREE_HASH;
   // Derive handle from email (part before @) — more useful than git config name
   const handle = commit.email ? commit.email.split("@")[0] : commit.author;
 
@@ -388,7 +395,7 @@ function CommitItem({
       style={`padding-left: ${paddingLeft}px; --timeline-color: ${color};`}
       onClick={onClick}
     >
-      <div className="commit-hash">{commit.hash.substring(0, 7)}</div>
+      <div className="commit-hash">{isWorkingTree ? 'WORKDIR' : commit.hash.substring(0, 7)}</div>
       <div className="commit-message">
         {commit.refs && commit.refs.length > 0 && (
           <span className="commit-refs">
@@ -400,8 +407,8 @@ function CommitItem({
         {commit.message}
       </div>
       <div className="commit-meta">
-        <span className="commit-author">👤 {handle}</span>
-        <span>{formatDate(commit.date)}</span>
+        <span className="commit-author">{isWorkingTree ? '🛠️ Working tree' : `👤 ${handle}`}</span>
+        <span>{isWorkingTree ? 'now' : formatDate(commit.date)}</span>
       </div>
     </div>
   );
@@ -422,7 +429,9 @@ function CommitInfo({
     <>
       {allFiles && <span style="color: var(--accent-tertiary)">All Files</span>}
       {hash ? (
-        <span className="commit-hash">{hash.substring(0, 7)}</span>
+        <span className="commit-hash">
+          {hash === WORKING_TREE_HASH ? 'WORKDIR' : hash.substring(0, 7)}
+        </span>
       ) : null}
       {message ? (
         <span style="color: var(--text-secondary)">{message}</span>
@@ -617,14 +626,16 @@ export async function selectCommit(ctx: CanvasContext, hash: string) {
 
     const state = ctx.snap().context;
     const commit = state.commits.find((c) => c.hash === hash);
+    const isWorkingTree = hash === WORKING_TREE_HASH;
 
     // Show non-blocking inline progress bar (not overlay)
     const indexedFiles = ctx.allFilesData?.length || 0;
+    const progressLabel = isWorkingTree ? 'WORKDIR' : hash.substring(0, 7);
     _showCommitProgress(
       true,
       indexedFiles > 0
-        ? `${hash.substring(0, 7)} • ${indexedFiles} indexed files`
-        : `${hash.substring(0, 7)} — ${commit?.message || ""}`,
+        ? `${progressLabel} • ${indexedFiles} indexed files`
+        : `${progressLabel} — ${commit?.message || ""}`,
     );
 
     try {
@@ -646,7 +657,7 @@ export async function selectCommit(ctx: CanvasContext, hash: string) {
         renderAllFilesOnCanvas(ctx, ctx.allFilesData);
       }
 
-      updateCommitInfo(hash, commit?.message || "", true, data.files.length);
+      updateCommitInfo(hash, commit?.message || (isWorkingTree ? 'Working tree' : ''), true, data.files.length);
 
       const fileCountEl = document.getElementById("fileCount");
       if (fileCountEl) fileCountEl.textContent = ctx.fileCards.size;
@@ -656,7 +667,7 @@ export async function selectCommit(ctx: CanvasContext, hash: string) {
 
       // Update URL hash for shareable links
       const [basePath] = window.location.href.split("#");
-      history.replaceState(null, "", `${basePath}#${hash}`);
+      history.replaceState(null, "", isWorkingTree ? basePath : `${basePath}#${hash}`);
 
       // Populate changed files panel with diff stats
       populateChangedFilesPanel(ctx, data.files);

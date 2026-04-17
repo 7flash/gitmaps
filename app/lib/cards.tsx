@@ -1184,7 +1184,7 @@ export function createAllFileCard(
   };
   const statusBadge =
     file.status && file.status !== "unmodified"
-      ? `<span style="font-size: 9px; color: ${statusColors[file.status] || "var(--text-muted)"}; margin-left: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${escapeHtml(file.status)}${addedLines.size > 0 ? ` <span style="color:#22c55e">+${addedLines.size}</span>` : ""}${deletedBeforeLine.size > 0 ? ` <span style="color:#f87171">-${Array.from(deletedBeforeLine.values()).reduce((s, a) => s + a.length, 0)}</span>` : ""}</span>`
+      ? `<span style="font-size: 9px; color: ${statusColors[file.status] || "var(--text-muted)"}; margin-left: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${escapeHtml(file.status)}${file.staged ? ' <span style="color:#60a5fa">● staged</span>' : ''}${file.unstaged ? ' <span style="color:#f59e0b">● unstaged</span>' : ''}${addedLines.size > 0 ? ` <span style="color:#22c55e">+${addedLines.size}</span>` : ""}${deletedBeforeLine.size > 0 ? ` <span style="color:#f87171">-${Array.from(deletedBeforeLine.values()).reduce((s, a) => s + a.length, 0)}</span>` : ""}</span>`
       : "";
   const metaInfo = file.status
     ? statusBadge
