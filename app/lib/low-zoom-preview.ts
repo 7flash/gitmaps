@@ -120,47 +120,19 @@ export function wrapPreviewText(text: string, maxCharsPerLine: number, maxLines:
   const out: string[] = [];
 
   for (const sourceLine of sourceLines) {
-    const words = sourceLine.length === 0 ? [''] : sourceLine.split(/(\s+)/).filter(Boolean);
-    let current = '';
-
-    for (const part of words) {
-      if (part.length > safeMaxChars) {
-        if (current.trim().length > 0) {
-          out.push(current.trimEnd());
-          if (out.length >= safeMaxLines) return ellipsizeWrappedLines(out, safeMaxLines);
-          current = '';
-        }
-        for (let i = 0; i < part.length; i += safeMaxChars) {
-          out.push(part.slice(i, i + safeMaxChars));
-          if (out.length >= safeMaxLines) return ellipsizeWrappedLines(out, safeMaxLines);
-        }
-        continue;
-      }
-
-      if ((current + part).length > safeMaxChars && current.length > 0) {
-        out.push(current.trimEnd());
-        if (out.length >= safeMaxLines) return ellipsizeWrappedLines(out, safeMaxLines);
-        current = part.trimStart();
-      } else {
-        current += part;
-      }
+    if (sourceLine.length === 0) {
+      out.push('');
+      if (out.length >= safeMaxLines) return out.slice(0, safeMaxLines);
+      continue;
     }
 
-    if (current.length > 0 || sourceLine.length === 0) {
-      out.push(current.trimEnd());
-      if (out.length >= safeMaxLines) return ellipsizeWrappedLines(out, safeMaxLines);
+    for (let i = 0; i < sourceLine.length; i += safeMaxChars) {
+      out.push(sourceLine.slice(i, i + safeMaxChars));
+      if (out.length >= safeMaxLines) return out.slice(0, safeMaxLines);
     }
   }
 
   return out.slice(0, safeMaxLines);
-}
-
-function ellipsizeWrappedLines(lines: string[], maxLines: number) {
-  const sliced = lines.slice(0, maxLines);
-  if (sliced.length === 0) return sliced;
-  const last = sliced[sliced.length - 1].replace(/[\s.…]+$/g, '');
-  sliced[sliced.length - 1] = `${last}…`;
-  return sliced;
 }
 
 function estimatePhysicalPreviewLineCapacity(height: number, zoom: number): number {
@@ -373,10 +345,10 @@ export function renderLowZoomPreviewCanvas(
 function trimToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
   if (ctx.measureText(text).width <= maxWidth) return text;
   let out = text;
-  while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) {
+  while (out.length > 1 && ctx.measureText(out).width > maxWidth) {
     out = out.slice(0, -1);
   }
-  return `${out}…`;
+  return out;
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
