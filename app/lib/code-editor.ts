@@ -121,6 +121,11 @@ const gitMapsDarkTheme = EditorView.theme({
     '.cm-lineWrapping': {
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-all',
+        textOverflow: 'clip',
+        overflow: 'visible',
+    },
+    '.cm-lineWrapping *': {
+        textOverflow: 'clip',
     },
 }, { dark: true });
 
