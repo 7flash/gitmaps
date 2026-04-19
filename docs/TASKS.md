@@ -1,6 +1,7 @@
 # GitMaps Tasks & Ideas
 
 ## 🟢 Completed Fixes (Recent)
+- [x] ~~**Editor soft wrap no longer preserves whole words**~~ — ✅ DONE. CodeMirror soft wrap now breaks long code tokens at the viewport edge instead of bumping the whole word onto the next visual line.
 - [x] ~~**Interactive Onboarding Tutorial**~~ — ✅ DONE. Created `app/lib/tutorial.ts` which injects a step-by-step spatial DOM overlay for first-time visitors (tracked via `localStorage`). Teaches panning, zooming, layers control, and repo-loading.
 
 - [x] ~~**Canvas WebGL Acceleration Research**~~ — ✅ DONE. Implemented `app/lib/webgl-text.ts` with Pixi.js GPU text rendering. 3-mode toggle (DOM → Canvas → WebGL) tested & working. Solves the actual bottleneck (text DOM nodes) without over-engineering full card WebGL.

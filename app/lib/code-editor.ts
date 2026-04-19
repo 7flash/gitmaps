@@ -118,6 +118,11 @@ const gitMapsDarkTheme = EditorView.theme({
     '.cm-line': {
         padding: '0 4px',
     },
+    '.cm-lineWrapping': {
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-all',
+        overflowWrap: 'anywhere',
+    },
 }, { dark: true });
 
 // ─── Syntax highlighting colors ─────────────────────────
