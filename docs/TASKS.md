@@ -32,7 +32,7 @@
 - [x] ~~**Landing page cleanup**~~ — ✅ DONE. Merged problem/solution into hero, explore cards link to gitmaps.xyz/owner/repo.
 
 ## 🟢 Priority: Features
-- [x] ~~**Live Collaboration Enhancements**~~ — ✅ DONE. Added remote typing indicators and live selection bounds in CodeMirror via `StateEffect` and `Decoration`. Syncs over WebSocket `cursors` channel (`editor_sync`). Typing bounds pulse using a pulse animation on the remote cursor overlay.
+- [x] ~~**Removed editor collaboration cursors**~~ — ✅ DONE. Deleted remote typing indicators and shared selection bounds from the CodeMirror modal so editor state is local-only again.
 - [x] ~~**Project Layout Snapshots**~~ — ✅ DONE. Added `layout-snapshots.ts` to allow saving and restoring specific viewport layouts (positions, sizes, zoom, hidden files) under a custom name, saved locally per-repo.
 
 ## 🟢 Priority: Features (Completed)
@@ -49,7 +49,7 @@
 - [x] ~~**Preview settings simplification**~~ — ✅ DONE. Removed the zoom-based preview line-count controls and separate width/height sliders, renamed "Preview text size" to "Map font size", and replaced pixel sizing controls with a single card proportion slider derived from aspect ratio.
 - [x] ~~**Popup font size in settings**~~ — ✅ DONE. New `popupFontSize` setting (10-24px slider) reads from localStorage, live-updates popup on change.
 - [x] ~~**Cross-layer file navigation**~~ — ✅ DONE. `jumpToFile` now calls `navigateToFileInLayer` when file not found on current layer, switches layers and retries.
-- [x] ~~**Collaborative cursor sharing**~~ — ✅ DONE. WebSocket-based live presence via Bun pub/sub. Broadcasts canvas-space mouse coords at 50ms throttle. Remote cursors rendered as colored SVG pointers with name labels. 5s stale fade, 15s auto-remove. Positions sync with local viewport pan/zoom.
+- [x] ~~**Removed collaborative cursor sharing**~~ — ✅ DONE. Deleted the canvas multiplayer cursor overlay, mouse-position broadcasting, and server WebSocket relay because shared cursor positions were more distracting than useful.
 - [x] ~~**Popup non-blocking**~~ — ✅ DONE. `pointer-events: none` so popup never blocks cursor movement to adjacent lines.
 - [x] ~~**Popup wheel scroll**~~ — ✅ DONE. When popup has overflowing content, wheel events scroll the popup instead of the card body.
 - [x] ~~**Double scrollbar fix**~~ — ✅ DONE. Hidden native scrollbar (`scrollbar-width: none`) since CanvasTextRenderer has its own custom scroll track.
@@ -96,7 +96,7 @@
 
 ## 📝 Architecture Notes
 - **Canvas//DOM split**: Canvas text for cards, DOM for popup previews & modals
-- **Editor modal**: CodeMirror 6 + `file-modal.tsx`, auto-save via `auto-save.ts`
+- **Editor modal**: CodeMirror 6 + `file-modal.tsx`, auto-save via `auto-save.ts`, single-user only (no shared cursor sync)
 - **Tab system**: `file-tabs.ts` with localStorage persistence
 - **Global search**: `global-search.ts` (UI) + `/api/repo/search` (git grep)
 - **Branch compare**: `branch-compare.ts` (drawer) + `/api/repo/branch-diff` (API)

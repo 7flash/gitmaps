@@ -1021,8 +1021,6 @@ export function setupEventListeners(ctx: CanvasContext) {
         // Local Directory Drag-and-Drop
         setupDragAndDrop(ctx);
 
-        // Collaborative cursor sharing (WebSocket)
-        import('./cursor-sharing').then(({ initCursorSharing }) => initCursorSharing(ctx));
     });
 }
 
