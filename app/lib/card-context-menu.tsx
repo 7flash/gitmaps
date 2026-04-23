@@ -29,7 +29,7 @@ function lazyLoad() {
 }
 
 // ─── Context Menu JSX component ─────────────────────
-function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer, pinned, filePath, canRunScript }: {
+function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer, pinned, filePath, canRunScript, selectedCount }: {
     onAction: (action: string) => void;
     onActionLayer: (layerId: string) => void;
     onSelectFolder: (dir: string) => void;
@@ -37,6 +37,7 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
     pinned: boolean;
     filePath: string;
     canRunScript: boolean;
+    selectedCount: number;
 }) {
     const customLayers = layerState.layers.filter(l => l.id !== 'default');
 
@@ -52,6 +53,11 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
     return (
         <>
             <button type="button" className="ctx-item" onClick={() => onAction('copy-path')}>📋 Copy path</button>
+            {selectedCount > 1 && (
+                <button type="button" className="ctx-item" onClick={() => onAction('copy-selected-content')}>
+                    📋 Copy content of {selectedCount} files
+                </button>
+            )}
             <button type="button" className="ctx-item" onClick={() => onAction('select')}>☑️ Select</button>
             {ancestors.length > 0 ? (
                 <div className="ctx-item ctx-dropdown">
@@ -112,6 +118,58 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
     );
 }
 
+async function copyFilesContentToClipboard(ctx: CanvasContext, filePaths: string[]) {
+    const state = ctx.snap().context;
+    if (!state.repoPath) {
+        showToast('Load a repository first', 'error');
+        return;
+    }
+
+    try {
+        const results = await Promise.all(filePaths.map(async (path) => {
+            const response = await fetch('/api/repo/file-content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path: state.repoPath,
+                    commit: state.currentCommitHash || undefined,
+                    filePath: path,
+                }),
+            });
+
+            if (!response.ok) {
+                return {
+                    path,
+                    ok: false,
+                    content: `<< Failed to load: ${await response.text()} >>`,
+                };
+            }
+
+            const data = await response.json();
+            return {
+                path,
+                ok: true,
+                content: data.content || '',
+            };
+        }));
+
+        const payload = results
+            .map(({ path, content }) => `===== ${path} =====\n${content}`)
+            .join('\n\n');
+
+        await navigator.clipboard.writeText(payload);
+
+        const failedCount = results.filter(r => !r.ok).length;
+        if (failedCount > 0) {
+            showToast(`Copied ${results.length} files to clipboard (${failedCount} failed to load)`, 'info');
+        } else {
+            showToast(`Copied ${results.length} files to clipboard`, 'success');
+        }
+    } catch (err: any) {
+        showToast(`Failed to copy files: ${err.message}`, 'error');
+    }
+}
+
 // ─── Show context menu ──────────────────────────────
 export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: number, y: number) {
     lazyLoad();
@@ -127,6 +185,8 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     // Check if file is in the active layer
     const activeLayer = getActiveLayer();
     const isInActiveLayer = !!(activeLayer && activeLayer.files[filePath]);
+    const selectedCards = ctx.snap().context.selectedCards || [];
+    const contextSelection = selectedCards.length > 1 ? selectedCards : [filePath];
 
     function handleAction(action: string) {
         menu.remove();
@@ -134,6 +194,8 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
             navigator.clipboard.writeText(filePath).then(() => {
                 showToast(`Copied: ${filePath}`, 'info');
             });
+        } else if (action === 'copy-selected-content') {
+            copyFilesContentToClipboard(ctx, contextSelection);
         } else if (action === 'select') {
             ctx.actor.send({ type: 'SELECT_CARD', path: filePath, shift: false });
             _updateSelectionHighlights(ctx);
@@ -221,9 +283,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
 
     function handleActionLayer(layerId: string) {
         menu.remove();
-        // Get all currently selected files for batch move
-        const selectedCards = ctx.snap().context.selectedCards || [];
-        const filesToMove = selectedCards.length > 1 ? selectedCards : [filePath];
+        const filesToMove = contextSelection;
 
         if (layerId === 'new') {
             const name = prompt('Enter a name for the new layer:');
@@ -257,7 +317,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     }
 
     const pinned = isPinned(filePath);
-    render(<ContextMenu onAction={handleAction} onActionLayer={handleActionLayer} onSelectFolder={handleSelectFolder} isInActiveLayer={isInActiveLayer} pinned={pinned} filePath={filePath} canRunScript={canRunScript} />, menu);
+    render(<ContextMenu onAction={handleAction} onActionLayer={handleActionLayer} onSelectFolder={handleSelectFolder} isInActiveLayer={isInActiveLayer} pinned={pinned} filePath={filePath} canRunScript={canRunScript} selectedCount={contextSelection.length} />, menu);
     document.body.appendChild(menu);
 
     requestAnimationFrame(() => {

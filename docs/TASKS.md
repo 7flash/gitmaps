@@ -17,6 +17,7 @@
 - [x] ~~**Error handling for missing repos**~~ — ✅ ALREADY DONE. clone-stream SSE sends error events, client shows `❌ Clone failed` toast that auto-hides after 5s.
 - [x] ~~**Mobile viewport**~~ — ✅ DONE. Full-screen overlay on screens <768px: "GitMaps needs a bigger screen" with Learn more + Continue anyway dismiss button.
 - [ ] **Aspect-ratio slider live tuning** — Validate the new card proportion slider on real repos and tune the allowed ratio range / default card area if the wide/tall extremes still feel awkward.
+- [ ] **Context-menu bulk copy regression test** — Add focused coverage for the multi-select `Copy content of N files` action, especially working-tree reads and binary-file placeholders.
 - [ ] **Temporary free-draw mode** — Add a sketch overlay mode for drawing strokes across/inside cards with thickness controls. Intentionally ephemeral: clear on refresh, repo reload, and commit changes.
 - [x] ~~**Persistent line notes foundation**~~ — ✅ DONE. Added `app/lib/notes.ts` with localStorage persistence, `(path, originalLineNumber, originalLineText, note)` note model, exact-text line reattachment helpers, repo-load reconciliation, and focused tests in `test/app/lib/notes.test.ts`.
 - [ ] **Persistent line notes with content-based reattachment** — Replace the current connections workflow with notes attached to file lines using `(path, originalLineNumber, originalLineText, noteBody)` and re-anchor them on commit changes by matching the captured line text near the old location first.
@@ -46,6 +47,7 @@
 
 ## ✅ Completed
 - [x] ~~**Nested folder selection**~~ — ✅ DONE. "Select from folder" now shows a dropdown with all ancestor directories. Selection is recursive — picking `app` selects everything under `app/`.
+- [x] ~~**Bulk copy selected file contents from context menu**~~ — ✅ DONE. When multiple files are selected, the file-card context menu now shows `📋 Copy content of N files`, which bundles each selected file under a path header and copies the combined text to the clipboard from either the active commit snapshot or the working tree.
 - [x] ~~**Settings modal JSX refactor**~~ — ✅ DONE. Converted from innerHTML string template to proper JSX components using melina/client render.
 - [x] ~~**Preview settings simplification**~~ — ✅ DONE. Removed the zoom-based preview line-count controls and separate width/height sliders, renamed "Preview text size" to "Map font size", and replaced pixel sizing controls with a single card proportion slider derived from aspect ratio.
 - [x] ~~**Popup font size in settings**~~ — ✅ DONE. New `popupFontSize` setting (10-24px slider) reads from localStorage, live-updates popup on change.

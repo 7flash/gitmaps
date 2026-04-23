@@ -61,46 +61,29 @@ export async function POST(req: Request) {
                 return results;
             }
 
-            // Filter files using git check-ignore (respects .gitignore)
-            async function filterByGitIgnore(paths: string[]): Promise<string[]> {
-                if (paths.length === 0) return [];
-
-                // First pass: quick filter of common ignores
-                let filtered = paths.filter(p => !shouldQuickIgnore(p));
-
-                if (filtered.length === 0) return [];
-
-                try {
-                    // Use git check-ignore with --stdin to get ignored files
-                    const stdin = filtered.join('\n') + '\n';
-                    const result = await git.raw(['check-ignore', '--stdin'], { stdin });
-                    // Output is the list of ignored files (one per line)
-                    const ignoredPaths = result.trim().split('\n').filter(p => p);
-                    const ignoredSet = new Set(ignoredPaths);
-                    return filtered.filter(p => !ignoredSet.has(p));
-                } catch (e) {
-                    // If git check-ignore fails, return all filtered paths
-                    console.warn('[tree] git check-ignore failed, using quick filter only');
-                    return filtered;
-                }
-            }
-
             let filePaths: string[];
 
             if (!isRepo || includeAll) {
                 // Not a git repo or explicit all-files mode: scan filesystem, no gitignore filtering
                 filePaths = scanDir(repoPath, '');
             } else {
-                // For git repos, get tracked + untracked files, then filter by .gitignore
-                const trackedResult = await git.raw(['ls-files']);
-                const untrackedResult = await git.raw(['ls-files', '--others', '--exclude-standard']);
+                // For git repos, get tracked files + untracked non-ignored files
+                // git ls-files --others --exclude-standard already respects .gitignore
+                const [trackedResult, untrackedResult] = await Promise.all([
+                    git.raw(['ls-files']),
+                    git.raw(['ls-files', '--others', '--exclude-standard'])
+                ]);
 
                 const trackedPaths = trackedResult.trim().split('\n').filter(p => p);
                 const untrackedPaths = untrackedResult.trim().split('\n').filter(p => p);
 
-                // Combine and filter using git check-ignore
-                const allPaths = [...new Set([...trackedPaths, ...untrackedPaths])];
-                filePaths = await filterByGitIgnore(allPaths);
+                // Combine tracked and untracked (untracked already has .gitignore applied)
+                filePaths = [...new Set([...trackedPaths, ...untrackedPaths])];
+
+                // Additional quick filter for common ignores (performance)
+                filePaths = filePaths.filter(p => !shouldQuickIgnore(p));
+
+                console.log(`[tree] ${trackedPaths.length} tracked, ${untrackedPaths.length} untracked, ${filePaths.length} total`);
             }
 
             function readFile(filePath: string) {
