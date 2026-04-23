@@ -81,7 +81,7 @@ export async function POST(req: Request) {
                 filePaths = filePaths.filter(p => !shouldQuickIgnore(p));
             }
 
-            // Get metadata WITHOUT reading file content to avoid OOM
+            // Get metadata - load content for small files, lazy load large ones
             function getFileMetadata(filePath: string) {
                 const parts = filePath.split('/');
                 const name = parts[parts.length - 1];
@@ -93,20 +93,26 @@ export async function POST(req: Request) {
 
                 let size = 0;
                 let lines = 0;
+                let content = null;
 
                 try {
                     const fullPath = path.join(repoPath, filePath);
                     const file = Bun.file(fullPath);
                     size = file.size;
 
-                    // For non-binary files, estimate line count from size or read a sample
-                    if (!isBinary && size > 0 && size < 1024 * 1024) {
-                        // Read just the first few lines to estimate
+                    // Load content for small files (under 100KB) to avoid OOM
+                    const SMALL_FILE_THRESHOLD = 100 * 1024; // 100KB
+
+                    if (!isBinary && !isImage && !isPdf && size > 0 && size < SMALL_FILE_THRESHOLD) {
+                        const text = file.text();
+                        content = text;
+                        lines = text.split('\n').length;
+                    } else if (!isBinary && size > 0 && size < 1024 * 1024) {
+                        // For medium files (100KB - 1MB), just estimate line count without loading content
                         const sample = file.slice(0, Math.min(size, 8192));
                         const text = sample.text();
                         const newlines = (text.match(/\n/g) || []).length;
                         lines = newlines + 1;
-                        // Scale up if the file is larger than our sample
                         if (size > 8192) {
                             lines = Math.floor(lines * (size / 8192));
                         }
@@ -115,7 +121,7 @@ export async function POST(req: Request) {
                     // Silently fail for inaccessible files
                 }
 
-                return { path: filePath, name, ext, type: 'file', content: null, lines, size, isBinary, isImage, isPdf };
+                return { path: filePath, name, ext, type: 'file', content, lines, size, isBinary, isImage, isPdf };
             }
 
             // ── Streaming mode: NDJSON with total header ──
