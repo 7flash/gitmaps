@@ -42,6 +42,7 @@ export async function POST(req: Request) {
 
             if (!isRepo || includeAll) {
                 // Not a git repo or explicit all-files mode: scan filesystem
+                console.log(`[tree] Using filesystem scan (isRepo=${isRepo}, includeAll=${includeAll})`);
                 function scanDir(dir: string, prefix: string): string[] {
                     const results: string[] = [];
                     try {
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
                     return results;
                 }
                 filePaths = scanDir(repoPath, '');
+                console.log(`[tree] Filesystem scan found ${filePaths.length} files`);
             } else {
                 // For git repos, get tracked + untracked non-ignored files
                 const [trackedResult, untrackedResult] = await Promise.all([
@@ -136,6 +138,7 @@ export async function POST(req: Request) {
             // ── Streaming mode: NDJSON with total header ──
             if (stream) {
                 const total = filePaths.length;
+                console.log(`[tree] Streaming ${total} files to client`);
                 const BATCH_SIZE = 50; // Larger batches for better performance
                 const encoder = new TextEncoder();
 
@@ -171,6 +174,7 @@ export async function POST(req: Request) {
             }
 
             // ── Legacy non-streaming mode ──
+            console.log(`[tree] Non-streaming mode: returning ${filePaths.length} files`);
             const files = filePaths.map(getFileMetadata);
             return Response.json({ files, total: files.length });
         } catch (error: any) {
