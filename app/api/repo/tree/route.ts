@@ -80,6 +80,12 @@ export async function POST(req: Request) {
                 // Quick filter for common ignores
                 filePaths = filePaths.filter(p => !shouldQuickIgnore(p));
 
+                // Debug: log any files with "data" in path
+                const dataFiles = filePaths.filter(p => p.toLowerCase().includes('data') || p.toLowerCase().includes('.db') || p.toLowerCase().includes('.sqlite'));
+                if (dataFiles.length > 0) {
+                    console.warn(`[tree] Found data files:`, dataFiles);
+                }
+
                 console.log(`[tree] ${trackedPaths.length} tracked, ${untrackedPaths.length} untracked, ${filePaths.length} total`);
             }
 
