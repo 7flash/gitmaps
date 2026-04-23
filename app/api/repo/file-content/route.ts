@@ -15,25 +15,65 @@ const MIME_TYPES: Record<string, string> = {
   ".ico": "image/x-icon",
 };
 
+const BINARY_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".bmp",
+  ".ico",
+  ".pdf",
+  ".zip",
+  ".gz",
+  ".tar",
+  ".mp3",
+  ".mp4",
+  ".mov",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
+]);
+
+function isLikelyBinary(filePath: string, buffer: Buffer) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (BINARY_EXTENSIONS.has(ext)) return true;
+  const sample = buffer.subarray(0, Math.min(buffer.length, 8000));
+  return sample.includes(0);
+}
+
 export async function POST(req: Request) {
   return measure("api:repo:file-content", async () => {
     try {
       const { path: repoPath, commit, filePath } = await req.json();
 
-      if (!repoPath || !commit || !filePath) {
-        return new Response(
-          "Repository path, commit, and file path are required",
-          { status: 400 },
-        );
+      if (!repoPath || !filePath) {
+        return new Response("Repository path and file path are required", {
+          status: 400,
+        });
       }
 
       const blocked = validateRepoPath(repoPath);
       if (blocked) return blocked;
 
-      const git = simpleGit(repoPath);
-      const content = await git.show([`${commit}:${filePath}`]);
+      if (commit && commit !== "__working__") {
+        const git = simpleGit(repoPath);
+        const content = await git.show([`${commit}:${filePath}`]);
+        return Response.json({ content });
+      }
 
-      return Response.json({ content });
+      const fullPath = path.join(repoPath, filePath);
+      const buffer = readFileSync(fullPath);
+
+      if (isLikelyBinary(filePath, buffer)) {
+        return new Response("Binary file cannot be copied as text", {
+          status: 415,
+        });
+      }
+
+      return Response.json({ content: buffer.toString("utf8") });
     } catch (error: any) {
       console.error("api:repo:file-content:error", error);
       return new Response(`Error: ${error.message}`, { status: 500 });

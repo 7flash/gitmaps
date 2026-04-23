@@ -1,6 +1,6 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { readdirSync, statSync, readFileSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
@@ -8,6 +8,14 @@ const BINARY_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', '
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp']);
 const PDF_EXTS = new Set(['pdf']);
 const MAX_READ_SIZE = 2 * 1024 * 1024;
+
+// Hardcoded common ignores for performance (avoid git check-ignore for obvious junk)
+const COMMON_IGNORES = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', 'coverage', '.turbo', '__pycache__', '.tsbuildinfo']);
+
+function shouldQuickIgnore(path: string): boolean {
+    const parts = path.split(/[/\\]/);
+    return parts.some(p => COMMON_IGNORES.has(p));
+}
 
 export async function POST(req: Request) {
     return measure('api:repo:tree', async () => {
@@ -24,15 +32,16 @@ export async function POST(req: Request) {
             const blocked = validateRepoPath(repoPath);
             if (blocked) return blocked;
 
-            const ignoreDirs = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', 'coverage', '.turbo', '__pycache__', '.tsbuildinfo']);
+            const git = simpleGit(repoPath);
+            const isRepo = await git.checkIsRepo().catch(() => false);
 
-            // Recursively scan filesystem for all files (ignoring standard dirs)
+            // Recursively scan filesystem for all files
             function scanDir(dir: string, prefix: string): string[] {
                 const results: string[] = [];
                 try {
                     const entries = readdirSync(dir);
                     for (const entry of entries) {
-                        if (ignoreDirs.has(entry)) continue;
+                        if (COMMON_IGNORES.has(entry)) continue;
                         const fullPath = path.join(dir, entry);
                         const relativePath = prefix ? `${prefix}/${entry}` : entry;
                         try {
@@ -52,44 +61,46 @@ export async function POST(req: Request) {
                 return results;
             }
 
+            // Filter files using git check-ignore (respects .gitignore)
+            async function filterByGitIgnore(paths: string[]): Promise<string[]> {
+                if (paths.length === 0) return [];
+
+                // First pass: quick filter of common ignores
+                let filtered = paths.filter(p => !shouldQuickIgnore(p));
+
+                if (filtered.length === 0) return [];
+
+                try {
+                    // Use git check-ignore with --stdin to get ignored files
+                    const stdin = filtered.join('\n') + '\n';
+                    const result = await git.raw(['check-ignore', '--stdin'], { stdin });
+                    // Output is the list of ignored files (one per line)
+                    const ignoredPaths = result.trim().split('\n').filter(p => p);
+                    const ignoredSet = new Set(ignoredPaths);
+                    return filtered.filter(p => !ignoredSet.has(p));
+                } catch (e) {
+                    // If git check-ignore fails, return all filtered paths
+                    console.warn('[tree] git check-ignore failed, using quick filter only');
+                    return filtered;
+                }
+            }
+
             let filePaths: string[];
 
-            const git = simpleGit(repoPath);
-            const isRepo = await git.checkIsRepo().catch(() => false);
-
             if (!isRepo || includeAll) {
-                // Not a git repo or explicit all-files mode: scan filesystem
+                // Not a git repo or explicit all-files mode: scan filesystem, no gitignore filtering
                 filePaths = scanDir(repoPath, '');
             } else {
-                // Get tracked files
-                const result = await git.raw(['ls-files']);
-                const trackedPaths = result.trim().split('\n').filter(fp => {
-                    if (!fp) return false;
-                    if (Array.from(ignoreDirs).some(d => fp.startsWith(d + '/') || fp.startsWith(d + '\\'))) return false;
-                    return true;
-                });
+                // For git repos, get tracked + untracked files, then filter by .gitignore
+                const trackedResult = await git.raw(['ls-files']);
+                const untrackedResult = await git.raw(['ls-files', '--others', '--exclude-standard']);
 
-                // If very few tracked files, also scan filesystem for untracked content
-                // This catches repos where most content (PDFs, images) is gitignored
-                if (trackedPaths.length < 50) {
-                    const allPaths = scanDir(repoPath, '');
-                    console.log(`[tree] ${trackedPaths.length} tracked, ${allPaths.length} on disk`);
-                    if (allPaths.length > trackedPaths.length * 5) {
-                        // Lots of untracked content — include everything
-                        const trackedSet = new Set(trackedPaths);
-                        filePaths = allPaths;
-                        // But still filter out obvious junk from non-tracked scan
-                        filePaths = filePaths.filter(fp => {
-                            if (Array.from(ignoreDirs).some(d => fp.startsWith(d + '/') || fp.startsWith(d + '\\'))) return false;
-                            return true;
-                        });
-                        console.log(`[tree] ${trackedPaths.length} tracked, ${allPaths.length} on disk → including all ${filePaths.length} files`);
-                    } else {
-                        filePaths = trackedPaths;
-                    }
-                } else {
-                    filePaths = trackedPaths;
-                }
+                const trackedPaths = trackedResult.trim().split('\n').filter(p => p);
+                const untrackedPaths = untrackedResult.trim().split('\n').filter(p => p);
+
+                // Combine and filter using git check-ignore
+                const allPaths = [...new Set([...trackedPaths, ...untrackedPaths])];
+                filePaths = await filterByGitIgnore(allPaths);
             }
 
             function readFile(filePath: string) {
