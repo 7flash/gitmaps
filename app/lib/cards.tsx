@@ -1167,7 +1167,10 @@ export function createAllFileCard(
       );
     }
   } else {
-    contentHTML = `<div class="file-content-preview"><pre><code><span class="error-notice">Could not read file</span></code></pre></div>`;
+    // Content not loaded yet - show click-to-load message
+    contentHTML = `<div class="file-content-preview" data-lazy-load="true" data-file="${escapeHtml(file.path)}" style="display:flex;align-items:center;justify-content:center;height:100%;background:var(--bg-card);cursor:pointer;">
+      <span style="color:var(--text-muted);font-size:12px;">Click to load file content</span>
+    </div>`;
   }
 
   const dir = file.path.includes("/")
@@ -1360,6 +1363,88 @@ export function createAllFileCard(
     aiBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       _handleChatClick(ctx, file);
+    });
+  }
+
+  // Lazy-load content on click
+  const lazyLoadEl = card.querySelector(".file-content-preview[data-lazy-load]") as HTMLElement;
+  if (lazyLoadEl) {
+    lazyLoadEl.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const filePath = lazyLoadEl.dataset.file;
+      if (!filePath) return;
+
+      // Show loading state
+      lazyLoadEl.innerHTML = `<span style="color:var(--text-muted);font-size:12px;">Loading...</span>`;
+
+      try {
+        const state = ctx.snap().context;
+        const response = await fetch('/api/repo/file-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: state.repoPath,
+            commit: state.currentCommitHash || undefined,
+            filePath: filePath,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const data = await response.json();
+
+        // Update file object with content
+        file.content = data.content;
+
+        // Re-render the card preview with the loaded content
+        const preview = card.querySelector(".file-content-preview");
+        if (preview) {
+          const addedLines = new Set<number>();
+          const deletedBeforeLine = new Map<number, string[]>();
+
+          if (file.hunks?.length > 0) {
+            // Parse hunks to get added/deleted lines
+            for (const hunk of file.hunks) {
+              let newLine = hunk.newStart;
+              let pendingDeleted: string[] = [];
+              for (const l of hunk.lines) {
+                if (l.type === "add") {
+                  addedLines.add(newLine);
+                  if (pendingDeleted.length > 0) {
+                    const existing = deletedBeforeLine.get(newLine) || [];
+                    deletedBeforeLine.set(newLine, existing.concat(pendingDeleted));
+                    pendingDeleted = [];
+                  }
+                  newLine++;
+                } else if (l.type === "del") {
+                  pendingDeleted.push(l.content);
+                } else {
+                  if (pendingDeleted.length > 0) {
+                    const existing = deletedBeforeLine.get(newLine) || [];
+                    deletedBeforeLine.set(newLine, existing.concat(pendingDeleted));
+                    pendingDeleted = [];
+                  }
+                  newLine++;
+                }
+              }
+            }
+          }
+
+          const newHTML = _buildFileContentHTML(
+            file.content,
+            file.layerSections,
+            addedLines,
+            deletedBeforeLine,
+            false,
+            file.lines,
+          );
+          preview.outerHTML = newHTML;
+        }
+      } catch (err: any) {
+        lazyLoadEl.innerHTML = `<span style="color:#ef4444;font-size:12px;">Error loading file: ${err.message}</span>`;
+      }
     });
   }
 
