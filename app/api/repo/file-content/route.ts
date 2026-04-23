@@ -54,8 +54,6 @@ export async function POST(req: Request) {
     try {
       const { path: repoPath, commit, filePath } = await req.json();
 
-      console.log(`[file-content] Request: repoPath=${repoPath}, commit=${commit}, filePath=${filePath}`);
-
       if (!repoPath || !filePath) {
         return new Response("Repository path and file path are required", {
           status: 400,
@@ -68,7 +66,6 @@ export async function POST(req: Request) {
       if (commit && commit !== "__working__") {
         const git = simpleGit(repoPath);
         const content = await git.show([`${commit}:${filePath}`]);
-        console.log(`[file-content] Git show returned ${content.length} chars`);
         // Truncate if too large
         if (content.length > MAX_TEXT_FILE_SIZE) {
           return Response.json({
@@ -81,14 +78,11 @@ export async function POST(req: Request) {
       }
 
       const fullPath = path.join(repoPath, filePath);
-      console.log(`[file-content] Full path: ${fullPath}`);
       const file = Bun.file(fullPath);
       const size = file.size;
-      console.log(`[file-content] File size: ${size} bytes`);
 
       // Check size before reading
       if (size > MAX_TEXT_FILE_SIZE) {
-        console.log(`[file-content] File too large, truncating`);
         // Read only the first part for large files
         const buffer = readFileSync(fullPath);
         const sample = buffer.subarray(0, MAX_TEXT_FILE_SIZE).toString("utf8");
@@ -110,10 +104,8 @@ export async function POST(req: Request) {
       }
 
       const buffer = readFileSync(fullPath);
-      console.log(`[file-content] Read ${buffer.length} bytes`);
 
       if (isLikelyBinary(filePath, buffer)) {
-        console.log(`[file-content] File detected as binary, rejecting`);
         return new Response("Binary file cannot be copied as text", {
           status: 415,
         });
@@ -121,7 +113,6 @@ export async function POST(req: Request) {
 
       const content = buffer.toString("utf8");
       const lines = content.split("\n");
-      console.log(`[file-content] Converted to text, ${lines.length} lines, ${content.length} chars`);
 
       // Truncate by line count
       if (lines.length > MAX_LINES) {
@@ -133,7 +124,6 @@ export async function POST(req: Request) {
         });
       }
 
-      console.log(`[file-content] Returning content`);
       return Response.json({ content });
     } catch (error: any) {
       console.error("api:repo:file-content:error", error);

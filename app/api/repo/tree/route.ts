@@ -32,17 +32,13 @@ export async function POST(req: Request) {
             const blocked = validateRepoPath(repoPath);
             if (blocked) return blocked;
 
-            console.log(`[tree] Request for repo: ${repoPath}, stream: ${stream}, includeAll: ${includeAll}`);
-
             const git = simpleGit(repoPath);
             const isRepo = await git.checkIsRepo().catch(() => false);
-            console.log(`[tree] isRepo: ${isRepo}`);
 
             let filePaths: string[];
 
             if (!isRepo || includeAll) {
                 // Not a git repo or explicit all-files mode: scan filesystem
-                console.log(`[tree] Using filesystem scan (isRepo=${isRepo}, includeAll=${includeAll})`);
                 function scanDir(dir: string, prefix: string): string[] {
                     const results: string[] = [];
                     try {
@@ -68,7 +64,6 @@ export async function POST(req: Request) {
                     return results;
                 }
                 filePaths = scanDir(repoPath, '');
-                console.log(`[tree] Filesystem scan found ${filePaths.length} files`);
             } else {
                 // For git repos, get tracked + untracked non-ignored files
                 const [trackedResult, untrackedResult] = await Promise.all([
@@ -84,18 +79,6 @@ export async function POST(req: Request) {
 
                 // Quick filter for common ignores
                 filePaths = filePaths.filter(p => !shouldQuickIgnore(p));
-
-                // Debug: log any files with "data" in path
-                const dataFiles = filePaths.filter(p => p.toLowerCase().includes('data') || p.toLowerCase().includes('.db') || p.toLowerCase().includes('.sqlite'));
-                if (dataFiles.length > 0) {
-                    console.warn(`[tree] Found data files:`, dataFiles);
-                }
-
-                console.log(`[tree] ${trackedPaths.length} tracked, ${untrackedPaths.length} untracked, ${filePaths.length} total`);
-                console.log(`[tree] First 10 files:`, filePaths.slice(0, 10));
-                if (filePaths.length > 10) {
-                    console.log(`[tree] Last 10 files:`, filePaths.slice(-10));
-                }
             }
 
             // Get metadata WITHOUT reading file content to avoid OOM
@@ -138,7 +121,6 @@ export async function POST(req: Request) {
             // ── Streaming mode: NDJSON with total header ──
             if (stream) {
                 const total = filePaths.length;
-                console.log(`[tree] Streaming ${total} files to client`);
                 const BATCH_SIZE = 50; // Larger batches for better performance
                 const encoder = new TextEncoder();
 
@@ -174,7 +156,6 @@ export async function POST(req: Request) {
             }
 
             // ── Legacy non-streaming mode ──
-            console.log(`[tree] Non-streaming mode: returning ${filePaths.length} files`);
             const files = filePaths.map(getFileMetadata);
             return Response.json({ files, total: files.length });
         } catch (error: any) {
