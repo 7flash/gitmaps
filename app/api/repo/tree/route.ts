@@ -1,6 +1,6 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import { readdirSync, statSync } from 'fs';
+import { readdirSync, statSync, readFileSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
@@ -104,7 +104,8 @@ export async function POST(req: Request) {
                     const SMALL_FILE_THRESHOLD = 100 * 1024; // 100KB
 
                     if (!isBinary && !isImage && !isPdf && size > 0 && size < SMALL_FILE_THRESHOLD) {
-                        const text = file.text();
+                        // Use readFileSync for small files - it's synchronous
+                        const text = readFileSync(fullPath, 'utf-8');
                         content = text;
                         lines = text.split('\n').length;
                     } else if (!isBinary && size > 0 && size < 1024 * 1024) {
