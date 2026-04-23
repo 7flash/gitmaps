@@ -32,8 +32,11 @@ export async function POST(req: Request) {
             const blocked = validateRepoPath(repoPath);
             if (blocked) return blocked;
 
+            console.log(`[tree] Request for repo: ${repoPath}, stream: ${stream}, includeAll: ${includeAll}`);
+
             const git = simpleGit(repoPath);
             const isRepo = await git.checkIsRepo().catch(() => false);
+            console.log(`[tree] isRepo: ${isRepo}`);
 
             let filePaths: string[];
 
@@ -87,6 +90,10 @@ export async function POST(req: Request) {
                 }
 
                 console.log(`[tree] ${trackedPaths.length} tracked, ${untrackedPaths.length} untracked, ${filePaths.length} total`);
+                console.log(`[tree] First 10 files:`, filePaths.slice(0, 10));
+                if (filePaths.length > 10) {
+                    console.log(`[tree] Last 10 files:`, filePaths.slice(-10));
+                }
             }
 
             // Get metadata WITHOUT reading file content to avoid OOM
