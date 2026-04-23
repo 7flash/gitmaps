@@ -37,6 +37,11 @@ const BINARY_EXTENSIONS = new Set([
   ".eot",
 ]);
 
+// Size limits to prevent OOM
+const MAX_TEXT_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_LINES = 10000;
+
 function isLikelyBinary(filePath: string, buffer: Buffer) {
   const ext = path.extname(filePath).toLowerCase();
   if (BINARY_EXTENSIONS.has(ext)) return true;
@@ -61,10 +66,43 @@ export async function POST(req: Request) {
       if (commit && commit !== "__working__") {
         const git = simpleGit(repoPath);
         const content = await git.show([`${commit}:${filePath}`]);
+        // Truncate if too large
+        if (content.length > MAX_TEXT_FILE_SIZE) {
+          return Response.json({
+            content: content.slice(0, MAX_TEXT_FILE_SIZE) + "\n\n--- File truncated, too large to display ---",
+            truncated: true,
+            originalSize: content.length,
+          });
+        }
         return Response.json({ content });
       }
 
       const fullPath = path.join(repoPath, filePath);
+      const file = Bun.file(fullPath);
+      const size = file.size;
+
+      // Check size before reading
+      if (size > MAX_TEXT_FILE_SIZE) {
+        // Read only the first part for large files
+        const buffer = readFileSync(fullPath);
+        const sample = buffer.subarray(0, MAX_TEXT_FILE_SIZE).toString("utf8");
+        const lineCount = sample.split("\n").length;
+        if (lineCount > MAX_LINES) {
+          const lines = sample.split("\n").slice(0, MAX_LINES);
+          return Response.json({
+            content: lines.join("\n") + "\n\n--- Truncated to first " + MAX_LINES + " lines (file is too large) ---",
+            truncated: true,
+            originalSize: size,
+            lineCount: lineCount,
+          });
+        }
+        return Response.json({
+          content: sample + "\n\n--- File truncated, too large to display ---",
+          truncated: true,
+          originalSize: size,
+        });
+      }
+
       const buffer = readFileSync(fullPath);
 
       if (isLikelyBinary(filePath, buffer)) {
@@ -73,7 +111,20 @@ export async function POST(req: Request) {
         });
       }
 
-      return Response.json({ content: buffer.toString("utf8") });
+      const content = buffer.toString("utf8");
+      const lines = content.split("\n");
+
+      // Truncate by line count
+      if (lines.length > MAX_LINES) {
+        return Response.json({
+          content: lines.slice(0, MAX_LINES).join("\n") + "\n\n--- Truncated to first " + MAX_LINES + " lines ---",
+          truncated: true,
+          originalSize: size,
+          lineCount: lines.length,
+        });
+      }
+
+      return Response.json({ content });
     } catch (error: any) {
       console.error("api:repo:file-content:error", error);
       return new Response(`Error: ${error.message}`, { status: 500 });
@@ -105,6 +156,16 @@ export async function GET(req: Request) {
       }
 
       const fullPath = path.join(repoPath, file);
+      const fileObj = Bun.file(fullPath);
+      const size = fileObj.size;
+
+      // Check size before reading
+      if (size > MAX_IMAGE_SIZE) {
+        return new Response(`Image too large (max ${MAX_IMAGE_SIZE / 1024 / 1024}MB)`, {
+          status: 413,
+        });
+      }
+
       const buffer = readFileSync(fullPath);
 
       return new Response(buffer, {
