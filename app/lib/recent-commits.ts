@@ -48,8 +48,10 @@ function dedupeRecentRepos(entries: RecentRepo[]): RecentRepo[] {
   const result: RecentRepo[] = [];
 
   for (const entry of entries) {
-    if (seen.has(entry.path)) continue;
-    seen.add(entry.path);
+    // Normalize path separators for comparison (convert all to forward slashes)
+    const normalizedPath = entry.path.replace(/\\/g, '/');
+    if (seen.has(normalizedPath)) continue;
+    seen.add(normalizedPath);
     result.push(entry);
   }
 
@@ -89,11 +91,15 @@ export function addRecentRepo(path: string, commitCount: number = 0): void {
   const trimmedPath = path?.trim();
   if (!trimmedPath) return;
 
-  const repos = getRecentRepos().filter((r) => r.path !== trimmedPath);
-  const name = trimmedPath.split(/[\\/]/).pop() || trimmedPath;
+  // Normalize path to forward slashes for consistent storage
+  const normalizedPath = trimmedPath.replace(/\\/g, '/');
+
+  // Filter out existing repos by normalized path
+  const repos = getRecentRepos().filter((r) => r.path.replace(/\\/g, '/') !== normalizedPath);
+  const name = normalizedPath.split('/').pop() || normalizedPath;
 
   repos.unshift({
-    path: trimmedPath,
+    path: normalizedPath, // Store with normalized path
     name,
     loadedAt: Date.now(),
     commitCount: Number.isFinite(commitCount) ? commitCount : 0,
@@ -104,7 +110,8 @@ export function addRecentRepo(path: string, commitCount: number = 0): void {
 }
 
 export function removeRecentRepo(path: string): void {
-  const repos = getRecentRepos().filter((r) => r.path !== path);
+  const normalizedPath = path.replace(/\\/g, '/');
+  const repos = getRecentRepos().filter((r) => r.path.replace(/\\/g, '/') !== normalizedPath);
   persistRecentRepos(repos);
   renderRecentCommitsUI();
 }

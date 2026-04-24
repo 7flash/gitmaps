@@ -1,15 +1,14 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import { readdirSync, statSync, readFileSync } from 'fs';
+import { readdirSync, statSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
 const BINARY_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'ogg', 'avi', 'mov', 'zip', 'tar', 'gz', 'rar', '7z', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'exe', 'dll', 'so', 'dylib', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'lock']);
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp']);
 const PDF_EXTS = new Set(['pdf']);
-const MAX_LINES_READ = 100; // Only read first N lines for line count (not full content)
+const MAX_LINES_READ = 100;
 
-// Hardcoded common ignores for performance
 const COMMON_IGNORES = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', 'coverage', '.turbo', '__pycache__', '.tsbuildinfo']);
 
 function shouldQuickIgnore(path: string): boolean {
@@ -38,7 +37,6 @@ export async function POST(req: Request) {
             let filePaths: string[];
 
             if (!isRepo || includeAll) {
-                // Not a git repo or explicit all-files mode: scan filesystem
                 function scanDir(dir: string, prefix: string): string[] {
                     const results: string[] = [];
                     try {
@@ -65,7 +63,6 @@ export async function POST(req: Request) {
                 }
                 filePaths = scanDir(repoPath, '');
             } else {
-                // For git repos, get tracked + untracked non-ignored files
                 const [trackedResult, untrackedResult] = await Promise.all([
                     git.raw(['ls-files']),
                     git.raw(['ls-files', '--others', '--exclude-standard'])
@@ -74,15 +71,12 @@ export async function POST(req: Request) {
                 const trackedPaths = trackedResult.trim().split('\n').filter(p => p);
                 const untrackedPaths = untrackedResult.trim().split('\n').filter(p => p);
 
-                // Combine tracked and untracked
                 filePaths = [...new Set([...trackedPaths, ...untrackedPaths])];
-
-                // Quick filter for common ignores
                 filePaths = filePaths.filter(p => !shouldQuickIgnore(p));
             }
 
-            // Get metadata - load content for small files, lazy load large ones
-            function getFileMetadata(filePath: string) {
+            // Async function to read file metadata
+            async function getFileMetadata(filePath: string) {
                 const parts = filePath.split('/');
                 const name = parts[parts.length - 1];
                 const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
@@ -100,18 +94,17 @@ export async function POST(req: Request) {
                     const file = Bun.file(fullPath);
                     size = file.size;
 
-                    // Load content for small files (under 100KB) to avoid OOM
                     const SMALL_FILE_THRESHOLD = 100 * 1024; // 100KB
 
                     if (!isBinary && !isImage && !isPdf && size > 0 && size < SMALL_FILE_THRESHOLD) {
-                        // Use readFileSync for small files - it's synchronous
-                        const text = readFileSync(fullPath, 'utf-8');
+                        // Async read for small files
+                        const text = await file.text();
                         content = text;
                         lines = text.split('\n').length;
                     } else if (!isBinary && size > 0 && size < 1024 * 1024) {
-                        // For medium files (100KB - 1MB), just estimate line count without loading content
+                        // Estimate line count without loading content
                         const sample = file.slice(0, Math.min(size, 8192));
-                        const text = sample.text();
+                        const text = await sample.text();
                         const newlines = (text.match(/\n/g) || []).length;
                         lines = newlines + 1;
                         if (size > 8192) {
@@ -119,7 +112,7 @@ export async function POST(req: Request) {
                         }
                     }
                 } catch (e) {
-                    // Silently fail for inaccessible files
+                    // Silently fail
                 }
 
                 return { path: filePath, name, ext, type: 'file', content, lines, size, isBinary, isImage, isPdf };
@@ -128,20 +121,21 @@ export async function POST(req: Request) {
             // ── Streaming mode: NDJSON with total header ──
             if (stream) {
                 const total = filePaths.length;
-                const BATCH_SIZE = 50; // Larger batches for better performance
+                const BATCH_SIZE = 50;
                 const encoder = new TextEncoder();
 
                 const readable = new ReadableStream({
-                    start(controller) {
+                    async start(controller) {
                         controller.enqueue(encoder.encode(JSON.stringify({ total }) + '\n'));
 
                         let i = 0;
-                        function nextBatch() {
+                        async function nextBatch() {
                             const end = Math.min(i + BATCH_SIZE, total);
-                            const batch: any[] = [];
-                            for (; i < end; i++) {
-                                batch.push(getFileMetadata(filePaths[i]));
-                            }
+                            // Read batch concurrently with Promise.all
+                            const batch = await Promise.all(
+                                filePaths.slice(i, end).map(fp => getFileMetadata(fp))
+                            );
+                            i = end;
                             controller.enqueue(encoder.encode(JSON.stringify({ files: batch, loaded: i }) + '\n'));
 
                             if (i < total) {
@@ -163,7 +157,7 @@ export async function POST(req: Request) {
             }
 
             // ── Legacy non-streaming mode ──
-            const files = filePaths.map(getFileMetadata);
+            const files = await Promise.all(filePaths.map(fp => getFileMetadata(fp)));
             return Response.json({ files, total: files.length });
         } catch (error: any) {
             console.error('api:repo:tree:error', error);
