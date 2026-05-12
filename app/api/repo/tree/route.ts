@@ -1,167 +1,227 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import { readdirSync, statSync } from 'fs';
+import { readdirSync, statSync, openSync, readSync, closeSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 
-const BINARY_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'ogg', 'avi', 'mov', 'zip', 'tar', 'gz', 'rar', '7z', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'exe', 'dll', 'so', 'dylib', 'woff', 'woff2', 'ttf', 'eot', 'otf', 'lock']);
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp']);
-const PDF_EXTS = new Set(['pdf']);
-const MAX_LINES_READ = 100;
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-const COMMON_IGNORES = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', 'coverage', '.turbo', '__pycache__', '.tsbuildinfo']);
+const BINARY_EXTS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'svg', 'webp',
+  'mp3', 'mp4', 'wav', 'ogg', 'avi', 'mov',
+  'zip', 'tar', 'gz', 'rar', '7z',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt',
+  'exe', 'dll', 'so', 'dylib',
+  'woff', 'woff2', 'ttf', 'eot', 'otf',
+  'lock',
+]);
 
-function shouldQuickIgnore(path: string): boolean {
-    const parts = path.split(/[/\\]/);
-    return parts.some(p => COMMON_IGNORES.has(p));
+const COMMON_IGNORES = new Set([
+  'node_modules', '.git', 'dist', 'build', '.next', '.cache',
+  'coverage', '.turbo', '__pycache__', '.tsbuildinfo',
+]);
+
+const SAMPLE_BYTES = 8192;
+const MAX_SAMPLE_FILE_SIZE = 1024 * 1024; // 1MB
+const STREAM_BATCH_SIZE = 50;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function shouldQuickIgnore(filePath: string): boolean {
+  const parts = filePath.split(/[/\\]/);
+  return parts.some((p) => COMMON_IGNORES.has(p));
 }
 
-export async function POST(req: Request) {
-    return measure('api:repo:tree', async () => {
-        try {
-            const body = await req.json();
-            const repoPath = body.path;
-            const stream = body.stream === true;
-            const includeAll = body.includeAll === true;
+function readFileHeadSync(fullPath: string, maxBytes: number): Buffer | null {
+  let fd: number | null = null;
+  try {
+    fd = openSync(fullPath, 'r');
+    const buf = Buffer.allocUnsafe(maxBytes);
+    const bytesRead = readSync(fd, buf, 0, maxBytes, 0);
+    return buf.subarray(0, bytesRead);
+  } catch (err: any) {
+    return null;
+  } finally {
+    if (fd != null) {
+      try { closeSync(fd); } catch { /* ignore */ }
+    }
+  }
+}
 
-            if (!repoPath) {
-                return new Response('Repository path is required', { status: 400 });
-            }
-
-            const blocked = validateRepoPath(repoPath);
-            if (blocked) return blocked;
-
-            const git = simpleGit(repoPath);
-            const isRepo = await git.checkIsRepo().catch(() => false);
-
-            let filePaths: string[];
-
-            if (!isRepo || includeAll) {
-                function scanDir(dir: string, prefix: string): string[] {
-                    const results: string[] = [];
-                    try {
-                        const entries = readdirSync(dir);
-                        for (const entry of entries) {
-                            if (COMMON_IGNORES.has(entry)) continue;
-                            const fullPath = path.join(dir, entry);
-                            const relativePath = prefix ? `${prefix}/${entry}` : entry;
-                            try {
-                                const stats = statSync(fullPath);
-                                if (stats.isDirectory()) {
-                                    results.push(...scanDir(fullPath, relativePath));
-                                } else if (stats.isFile()) {
-                                    results.push(relativePath);
-                                }
-                            } catch (e: any) {
-                                console.warn(`[tree:scanDir] stat error: ${fullPath}: ${e.message}`);
-                            }
-                        }
-                    } catch (e: any) {
-                        console.warn(`[tree:scanDir] readdir error: ${dir}: ${e.message}`);
-                    }
-                    return results;
-                }
-                filePaths = scanDir(repoPath, '');
-            } else {
-                const [trackedResult, untrackedResult] = await Promise.all([
-                    git.raw(['ls-files']),
-                    git.raw(['ls-files', '--others', '--exclude-standard'])
-                ]);
-
-                const trackedPaths = trackedResult.trim().split('\n').filter(p => p);
-                const untrackedPaths = untrackedResult.trim().split('\n').filter(p => p);
-
-                filePaths = [...new Set([...trackedPaths, ...untrackedPaths])];
-                filePaths = filePaths.filter(p => !shouldQuickIgnore(p));
-            }
-
-            // Async function to read file metadata
-            async function getFileMetadata(filePath: string) {
-                const parts = filePath.split('/');
-                const name = parts[parts.length - 1];
-                const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
-
-                const isBinary = BINARY_EXTS.has(ext);
-                const isImage = IMAGE_EXTS.has(ext);
-                const isPdf = PDF_EXTS.has(ext);
-
-                let size = 0;
-                let lines = 0;
-                let content = null;
-
-                try {
-                    const fullPath = path.join(repoPath, filePath);
-                    const file = Bun.file(fullPath);
-                    size = file.size;
-
-                    const SMALL_FILE_THRESHOLD = 100 * 1024; // 100KB
-
-                    if (!isBinary && !isImage && !isPdf && size > 0 && size < SMALL_FILE_THRESHOLD) {
-                        // Async read for small files
-                        const text = await file.text();
-                        content = text;
-                        lines = text.split('\n').length;
-                    } else if (!isBinary && size > 0 && size < 1024 * 1024) {
-                        // Estimate line count without loading content
-                        const sample = file.slice(0, Math.min(size, 8192));
-                        const text = await sample.text();
-                        const newlines = (text.match(/\n/g) || []).length;
-                        lines = newlines + 1;
-                        if (size > 8192) {
-                            lines = Math.floor(lines * (size / 8192));
-                        }
-                    }
-                } catch (e) {
-                    // Silently fail
-                }
-
-                return { path: filePath, name, ext, type: 'file', content, lines, size, isBinary, isImage, isPdf };
-            }
-
-            // ── Streaming mode: NDJSON with total header ──
-            if (stream) {
-                const total = filePaths.length;
-                const BATCH_SIZE = 50;
-                const encoder = new TextEncoder();
-
-                const readable = new ReadableStream({
-                    async start(controller) {
-                        controller.enqueue(encoder.encode(JSON.stringify({ total }) + '\n'));
-
-                        let i = 0;
-                        async function nextBatch() {
-                            const end = Math.min(i + BATCH_SIZE, total);
-                            // Read batch concurrently with Promise.all
-                            const batch = await Promise.all(
-                                filePaths.slice(i, end).map(fp => getFileMetadata(fp))
-                            );
-                            i = end;
-                            controller.enqueue(encoder.encode(JSON.stringify({ files: batch, loaded: i }) + '\n'));
-
-                            if (i < total) {
-                                setTimeout(nextBatch, 0);
-                            } else {
-                                controller.close();
-                            }
-                        }
-                        nextBatch();
-                    }
-                });
-
-                return new Response(readable, {
-                    headers: {
-                        'Content-Type': 'application/x-ndjson',
-                        'Cache-Control': 'no-cache',
-                    }
-                });
-            }
-
-            // ── Legacy non-streaming mode ──
-            const files = await Promise.all(filePaths.map(fp => getFileMetadata(fp)));
-            return Response.json({ files, total: files.length });
-        } catch (error: any) {
-            console.error('api:repo:tree:error', error);
-            return new Response(`Error: ${error.message}`, { status: 500 });
+function scanDir(root: string): string[] {
+  const results: string[] = [];
+  function walk(dir: string, prefix: string) {
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(dir);
+    } catch (err: any) {
+      return;
+    }
+    for (const entry of entries) {
+      if (COMMON_IGNORES.has(entry)) continue;
+      const fullPath = path.join(dir, entry);
+      const relativePath = prefix ? `${prefix}/${entry}` : entry;
+      try {
+        const stats = statSync(fullPath);
+        if (stats.isDirectory()) {
+          walk(fullPath, relativePath);
+        } else if (stats.isFile()) {
+          results.push(relativePath);
         }
-    });
+      } catch {}
+    }
+  }
+  walk(root, '');
+  return results;
+}
+
+async function listGitFiles(repoPath: string): Promise<string[]> {
+  const git = simpleGit(repoPath);
+  // Using Promise.all to fetch tracked and untracked files
+  const [trackedResult, untrackedResult] = await Promise.all([
+    git.raw(['ls-files']),
+    git.raw(['ls-files', '--others', '--exclude-standard']),
+  ]);
+
+  const tracked = trackedResult.trim().split('\n').filter(Boolean);
+  const untracked = untrackedResult.trim().split('\n').filter(Boolean);
+  
+  return [...new Set([...tracked, ...untracked])].filter((p) => !shouldQuickIgnore(p));
+}
+
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
+type FileMetadata = {
+  path: string;
+  name: string;
+  ext: string;
+  type: 'file';
+  content: null;
+  lines: number;
+  size: number;
+  isBinary: boolean;
+  metaError?: string;
+};
+
+function getFileMetadata(repoPath: string, filePath: string): FileMetadata {
+  const name = path.basename(filePath);
+  const ext = path.extname(name).toLowerCase().replace('.', '');
+  const isBinary = BINARY_EXTS.has(ext);
+
+  let size = 0;
+  let lines = 0;
+  let metaError: string | undefined;
+
+  try {
+    const fullPath = path.join(repoPath, filePath);
+    const stats = statSync(fullPath);
+    size = stats.size;
+
+    if (!isBinary && size > 0 && size < MAX_SAMPLE_FILE_SIZE) {
+      const sample = readFileHeadSync(fullPath, Math.min(size, SAMPLE_BYTES));
+      if (sample) {
+        const text = sample.toString('utf8');
+        const newlines = (text.match(/\n/g) || []).length;
+        lines = newlines + 1;
+        // Estimate total lines if file is larger than sample
+        if (size > SAMPLE_BYTES) {
+          lines = Math.floor(lines * (size / SAMPLE_BYTES));
+        }
+      }
+    }
+  } catch (err: any) {
+    metaError = err?.message;
+  }
+
+  return {
+    path: filePath,
+    name,
+    ext,
+    type: 'file',
+    content: null,
+    lines,
+    size,
+    isBinary,
+    ...(metaError ? { metaError } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// POST Handler
+// ---------------------------------------------------------------------------
+
+export async function POST(req: Request) {
+  return measure('api:repo:tree', async () => {
+    try {
+      const body = await req.json();
+      const repoPath = body.path;
+      const stream = body.stream === true;
+      const includeAll = body.includeAll === true;
+
+      if (!repoPath) return new Response('Path required', { status: 400 });
+      const blocked = validateRepoPath(repoPath);
+      if (blocked) return blocked;
+
+      const git = simpleGit(repoPath);
+      const isRepo = await git.checkIsRepo().catch(() => false);
+
+      // FIX: Ensure no variable shadows the 'listGitFiles' function name
+      let finalFilePaths: string[]; 
+      
+      if (!isRepo || includeAll) {
+        finalFilePaths = await measure('tree:scanDir', async () => scanDir(repoPath));
+      } else {
+        // This is the line that was likely failing
+        finalFilePaths = await measure('tree:listGitFiles', async () => await listGitFiles(repoPath));
+      }
+
+      if (stream) {
+        const total = finalFilePaths.length;
+        const encoder = new TextEncoder();
+
+        const readable = new ReadableStream({
+          start(controller) {
+            // Send header
+            controller.enqueue(encoder.encode(JSON.stringify({ total }) + '\n'));
+
+            let cursor = 0;
+            const pump = () => {
+              const end = Math.min(cursor + STREAM_BATCH_SIZE, total);
+              const batch: FileMetadata[] = [];
+              
+              for (; cursor < end; cursor++) {
+                batch.push(getFileMetadata(repoPath, finalFilePaths[cursor]));
+              }
+
+              controller.enqueue(encoder.encode(JSON.stringify({ files: batch, loaded: cursor }) + '\n'));
+
+              if (cursor < total) {
+                setTimeout(pump, 0);
+              } else {
+                controller.close();
+              }
+            };
+            pump();
+          },
+        });
+
+        return new Response(readable, {
+          headers: { 'Content-Type': 'application/x-ndjson' },
+        });
+      }
+
+      const files = finalFilePaths.map((fp) => getFileMetadata(repoPath, fp));
+      return Response.json({ files, total: files.length });
+
+    } catch (error: any) {
+      console.error('api:repo:tree:error', error);
+      return new Response(`Error: ${error.message}`, { status: 500 });
+    }
+  });
 }

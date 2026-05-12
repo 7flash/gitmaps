@@ -792,9 +792,6 @@ export function setupPillInteraction(ctx: CanvasContext) {
         if (!pill) return;
         if (e.ctrlKey || e.metaKey) return;
 
-        e.preventDefault();
-        e.stopPropagation();
-
         const path = pill.dataset.path || '';
         if (!path) return;
 
@@ -803,7 +800,19 @@ export function setupPillInteraction(ctx: CanvasContext) {
         const height = parseFloat(pill.style.height) || 700;
         const current = getSavedScrollTop(ctx, path);
         const maxScroll = estimatePreviewMaxScroll(file, height, zoom);
+
+        // Only prevent default if the pill actually has scrollable content
+        // and the scroll direction is valid (not at bounds)
         const next = Math.max(0, Math.min(maxScroll, current + e.deltaY));
+
+        // If there's no scrollable content or we're at the bounds, let the canvas scroll
+        if (maxScroll <= 0 || (current === 0 && e.deltaY < 0) || (current >= maxScroll && e.deltaY > 0)) {
+            return; // Let the event propagate to canvas
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
         if (next === current) return;
 
         const key = `scroll:${path}`;

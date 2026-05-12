@@ -12,6 +12,6 @@ serve(createAppRouter({
     globalCss: path.join(appDir, 'globals.css'),
     hotReload: false,
 }), {
-    port: parseInt(process.env.PORT || process.env.BUN_PORT || "3335"),
+    port: 3338,
     hotReload: false,
 });
