@@ -9,6 +9,7 @@ const appDir = path.join(import.meta.dir, 'app');
 
 const requestedPort =
   process.env.BUN_PORT || process.env.PORT || process.env.GITMAPS_PORT;
+const resolvedPort = requestedPort ? parseInt(requestedPort, 10) : undefined;
 
 serve(
   createAppRouter({
@@ -16,9 +17,9 @@ serve(
     globalCss: path.join(appDir, 'globals.css'),
     hotReload: false,
   }),
-  requestedPort
+  resolvedPort !== undefined
     ? {
-        port: parseInt(requestedPort, 10),
+        port: resolvedPort,
         hotReload: false,
       }
     : {
