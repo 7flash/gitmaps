@@ -1,3 +1,4 @@
+/** @jsxImportSource tradjs/client */
 /**
  * Root Layout — JSX server component
  *

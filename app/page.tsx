@@ -1,3 +1,4 @@
+/** @jsxImportSource tradjs/client */
 /**
  * Home Page — JSX server component
  *

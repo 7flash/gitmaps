@@ -1,3 +1,4 @@
+/** @jsxImportSource tradjs/client */
 /**
  * Dynamic catch-all slug route — renders the same canvas page as root.
  * URL: /foo, /owner/repo, /group/subgroup/repo, etc.

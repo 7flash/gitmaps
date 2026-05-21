@@ -1,3 +1,4 @@
+/** @jsxImportSource tradjs/client */
 // @ts-nocheck
 /**
  * Loading progress overlay.

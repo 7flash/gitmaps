@@ -1,3 +1,4 @@
+/** @jsxImportSource tradjs/client */
 /**
  * galaxy-canvas route — Aliases root page for /galaxy-canvas path
  */

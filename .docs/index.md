@@ -9,13 +9,14 @@
 - The cloned repo did not run out of the box.
 - Dependency wiring was broken:
   - `tradjs` pointed at `link:../melina.js`, which Bun resolved through a global link instead of the local repo.
-  - `xydraw@0.2.0` is available locally as a workspace package under `packages/galaxydraw`.
+  - `xydraw@0.2.0` was wired as a workspace-only dependency, which breaks `bunx` package-style execution.
 - Two source files in upstream `HEAD` are truncated and cause syntax errors:
   - `app/lib/export-canvas.ts`
   - `app/lib/onboarding-tutorial.ts`
 
 ## Active Work
 - Switch `tradjs` dependency to a stable local `file:` reference.
+- Replace workspace-only `xydraw` packaging with a package-safe local file dependency.
 - Repair the truncated source files with minimal complete implementations.
 - Run `bun install`, `bun run dev`, and verify `http://localhost:3335`.
 
