@@ -6,7 +6,7 @@
 
 const args = process.argv.slice(2);
 let repoPath = process.cwd();
-let port = 3335;
+let port: number | null = null;
 
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--port' && args[i + 1]) {
@@ -22,7 +22,7 @@ Usage:
   npx gitmaps --port 4000      # Custom port
 
 Options:
-  --port <number>    Port to run on (default: 3335)
+  --port <number>    Force a specific port
   --help, -h         Show this help
 `);
         process.exit(0);
@@ -31,13 +31,20 @@ Options:
     }
 }
 
-process.env.BUN_PORT = String(port);
 process.env.GITMAPS_REPO = repoPath;
+if (port !== null) {
+    process.env.BUN_PORT = String(port);
+}
 
 console.log(`🪐 GitMaps starting...`);
 console.log(`   Repo: ${repoPath}`);
-console.log(`   Port: ${port}`);
-console.log(`   URL:  http://localhost:${port}`);
+if (port !== null) {
+    console.log(`   Port: ${port}`);
+    console.log(`   URL:  http://localhost:${port}`);
+} else {
+    console.log(`   Port: auto`);
+    console.log(`   URL:  http://localhost:(auto)`);
+}
 console.log();
 
 // Import and run the server

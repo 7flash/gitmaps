@@ -267,4 +267,5 @@
 - [x] **Fix package-mode dependency wiring** — Switched packaged runtime dependencies to publish-safe values: `tradjs` from npm and no unnecessary root `xydraw` dependency.
 - [x] **Repair truncated upstream source files** — Replaced the broken tails in `app/lib/export-canvas.ts` and `app/lib/onboarding-tutorial.ts` with complete minimal implementations so the app can boot again.
 - [x] **Boot local dev server on expected port** — Verified the app responds on `http://localhost:3335/` after dependency and source repair.
+- [x] **Fix default port behavior** — `bunx gitmaps` now only forces a port when `--port` is provided; otherwise it lets `tradjs` choose any available port instead of hard-failing on busy `3335`.
 - [ ] **Understand Bun installer crash** — `bun install` currently panics with a stack overflow on this workspace; `npm install` works as a practical fallback and produces a runnable app.
