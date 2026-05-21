@@ -12,7 +12,7 @@
  *   6. No toasts — visual feedback only (glows, highlights, labels)
  */
 import { measure } from 'measure-fn';
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import type { CanvasContext } from './context';
 import { escapeHtml } from './utils';
 import { updateCanvasTransform, updateZoomUI } from './canvas';

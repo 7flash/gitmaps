@@ -248,8 +248,6 @@ export function createExportUI(ctx: CanvasContext): HTMLElement {
  * Show export options dialog
  */
 async function showExportDialog(ctx: CanvasContext): Promise<void> {
-  const { render } = await import('melina/client');
-  
   const dialog = document.createElement('div');
   dialog.className = 'export-dialog';
   dialog.innerHTML = `
@@ -284,4 +282,52 @@ async function showExportDialog(ctx: CanvasContext): Promise<void> {
       </div>
       <div class="export-actions">
         <button class="btn-ghost" id="exportCancel">Cancel</button>
-     
+        <button class="btn-primary" id="exportConfirm">Export</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  const removeDialog = () => {
+    dialog.remove();
+  };
+
+  dialog
+    .querySelector('.export-backdrop')
+    ?.addEventListener('click', removeDialog);
+  dialog
+    .querySelector('#exportCancel')
+    ?.addEventListener('click', removeDialog);
+  dialog
+    .querySelector('#exportConfirm')
+    ?.addEventListener('click', async () => {
+      const format =
+        (dialog.querySelector('#exportFormat') as HTMLSelectElement | null)
+          ?.value ?? 'png';
+      const scale = Number(
+        (dialog.querySelector('#exportScale') as HTMLSelectElement | null)
+          ?.value ?? '2',
+      );
+      const includeBackground =
+        (
+          dialog.querySelector('#exportBackground') as HTMLInputElement | null
+        )?.checked ?? true;
+      const visibleOnly =
+        (
+          dialog.querySelector('#exportVisibleOnly') as HTMLInputElement | null
+        )?.checked ?? false;
+
+      try {
+        await exportCanvasToImage(ctx, {
+          format: format as ExportOptions['format'],
+          quality: format === 'jpeg' ? 0.92 : 1,
+          scale,
+          includeBackground,
+          visibleOnly,
+        });
+      } finally {
+        removeDialog();
+      }
+    });
+}

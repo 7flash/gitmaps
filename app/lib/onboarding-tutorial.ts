@@ -1,12 +1,5 @@
 /**
  * Interactive Onboarding Tutorial — Guide new users through GitMaps
- * 
- * Features:
- * - Step-by-step interactive tour
- * - Highlights UI elements as it explains them
- * - Keyboard shortcuts cheat sheet
- * - Skip/resume anytime
- * - Persists completion state
  */
 
 import type { CanvasContext } from './context';
@@ -24,70 +17,46 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to GitMaps! 🎉',
-    description: 'Explore codebases on an infinite canvas. Let\'s take a quick tour of the features.',
+    description:
+      "Explore codebases on an infinite canvas. Let's take a quick tour of the main controls.",
     highlightSelector: '#app',
     position: 'bottom',
   },
   {
     id: 'repo-selector',
     title: 'Repository Selector',
-    description: 'Select any loaded repository from the dropdown. Import new repos from GitHub with the button.',
+    description:
+      'Choose a loaded repository here, or import a new one from GitHub.',
     highlightSelector: '#repoSelect',
     position: 'bottom',
   },
   {
     id: 'commit-timeline',
     title: 'Commit Timeline',
-    description: 'Browse through commit history. Click any commit to see what changed. Use ← → arrow keys to navigate.',
+    description:
+      'Walk through history and inspect changes over time. Arrow keys work here too.',
     highlightSelector: '#commitTimeline',
     position: 'right',
   },
   {
     id: 'canvas-area',
     title: 'Infinite Canvas',
-    description: 'Your code lives here! Each file is a card. Pan with Space+Drag or middle-click. Scroll to zoom.',
+    description:
+      'Pan, zoom, and arrange file cards spatially to understand a repository at a glance.',
     highlightSelector: '#canvasViewport',
     position: 'top',
   },
   {
-    id: 'file-cards',
-    title: 'File Cards',
-    description: 'Each card shows a file with code preview. Green/red markers show additions/deletions. Hover to see full preview.',
-    highlightSelector: '.file-card',
-    position: 'bottom',
-  },
-  {
     id: 'minimap',
     title: 'Minimap',
-    description: 'Never get lost! The minimap shows your entire canvas. Click to jump to any area.',
+    description: 'Use the minimap to jump around large canvases quickly.',
     highlightSelector: '#minimap',
     position: 'top',
   },
   {
-    id: 'arrange-toolbar',
-    title: 'Arrange Tools',
-    description: 'Organize cards with H (row), V (column), or G (grid). W fits all cards on screen.',
-    highlightSelector: '#arrangeToolbar',
-    position: 'bottom',
-  },
-  {
-    id: 'zoom-controls',
-    title: 'Zoom Controls',
-    description: 'Fine-tune zoom with the slider or +/- keys. Current zoom level shown in percentage.',
-    highlightSelector: '#zoomSlider',
-    position: 'top',
-  },
-  {
-    id: 'shortcuts',
-    title: 'Keyboard Shortcuts',
-    description: 'Press ? anytime to see all shortcuts. Power users love Ctrl+F (search), Ctrl+G (dependency graph), and Ctrl+O (find file).',
-    highlightSelector: '#hotkeyToggle',
-    position: 'bottom',
-  },
-  {
     id: 'done',
-    title: 'You\'re Ready! 🚀',
-    description: 'Start exploring! Import a repo, arrange cards your way, and enjoy spatial code exploration.',
+    title: "You're Ready! 🚀",
+    description: 'Start exploring. You can always reopen onboarding later.',
     highlightSelector: '#app',
     position: 'bottom',
     action: () => {
@@ -98,35 +67,24 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 
 let currentStep = 0;
 let tutorialOverlay: HTMLElement | null = null;
+let activeContext: CanvasContext | null = null;
 
-/**
- * Check if user has completed onboarding
- */
 export function hasCompletedOnboarding(): boolean {
   return localStorage.getItem('gitcanvas:onboardingComplete') === 'true';
 }
 
-/**
- * Reset onboarding progress
- */
 export function resetOnboarding(): void {
   localStorage.removeItem('gitcanvas:onboardingComplete');
   currentStep = 0;
 }
 
-/**
- * Start the onboarding tutorial
- */
 export function startOnboarding(ctx: CanvasContext): void {
   if (tutorialOverlay) return;
-  
+  activeContext = ctx;
   currentStep = 0;
   showTutorialStep(ctx, currentStep);
 }
 
-/**
- * Show a specific tutorial step
- */
 function showTutorialStep(ctx: CanvasContext, stepIndex: number): void {
   if (stepIndex < 0 || stepIndex >= TUTORIAL_STEPS.length) {
     hideTutorial();
@@ -134,8 +92,7 @@ function showTutorialStep(ctx: CanvasContext, stepIndex: number): void {
   }
 
   const step = TUTORIAL_STEPS[stepIndex];
-  
-  // Create overlay if needed
+
   if (!tutorialOverlay) {
     tutorialOverlay = document.createElement('div');
     tutorialOverlay.className = 'tutorial-overlay';
@@ -156,11 +113,11 @@ function showTutorialStep(ctx: CanvasContext, stepIndex: number): void {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(tutorialOverlay);
-    
-    // Add styles
+
     const style = document.createElement('style');
+    style.dataset.gitmapsTutorial = 'true';
     style.textContent = `
       .tutorial-overlay {
         position: fixed;
@@ -169,23 +126,21 @@ function showTutorialStep(ctx: CanvasContext, stepIndex: number): void {
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: fadeIn 0.2s ease;
       }
       .tutorial-backdrop {
         position: absolute;
         inset: 0;
-        background: rgba(10, 10, 15, 0.85);
+        background: rgba(10, 10, 15, 0.82);
         backdrop-filter: blur(4px);
       }
       .tutorial-content {
         position: relative;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-primary);
-        border-radius: 12px;
+        max-width: 460px;
         padding: 24px;
-        max-width: 450px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        animation: slideUp 0.3s ease;
+        border-radius: 14px;
+        background: var(--bg-secondary, #111827);
+        border: 1px solid var(--border-primary, #334155);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
       }
       .tutorial-header {
         display: flex;
@@ -196,83 +151,132 @@ function showTutorialStep(ctx: CanvasContext, stepIndex: number): void {
       .tutorial-title {
         margin: 0;
         font-size: 18px;
-        font-weight: 600;
-        background: linear-gradient(135deg, #a78bfa, #60a5fa);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-weight: 700;
       }
       .tutorial-close {
-        background: none;
         border: none;
-        color: var(--text-muted);
+        background: none;
+        color: inherit;
         font-size: 24px;
         cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
-        transition: all 0.2s;
-      }
-      .tutorial-close:hover {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
       }
       .tutorial-description {
-        color: var(--text-primary);
         font-size: 14px;
         line-height: 1.6;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
       }
       .tutorial-progress {
-        margin-bottom: 20px;
-      }
-      .tutorial-step-count {
+        margin-bottom: 18px;
+        opacity: 0.8;
         font-size: 12px;
-        color: var(--text-muted);
       }
       .tutorial-actions {
         display: flex;
-        gap: 8px;
+        align-items: center;
         justify-content: space-between;
+        gap: 12px;
       }
       .tutorial-actions button {
-        padding: 10px 20px;
-        border-radius: 8px;
+        padding: 10px 18px;
+        border-radius: 10px;
         border: none;
-        font-size: 13px;
-        font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
       }
       .btn-primary {
-        background: linear-gradient(135deg, #7c3aed, #3b82f6);
         color: white;
+        background: linear-gradient(135deg, #7c3aed, #3b82f6);
       }
-      .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @keyframes slideUp {
-        from { transform: translateY(20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+      .tutorial-highlight {
+        outline: 2px solid #8b5cf6;
+        outline-offset: 4px;
+        border-radius: 10px;
       }
     `;
     document.head.appendChild(style);
-    
-    // Wire up buttons
-    tutorialOverlay.querySelector('#tutorialClose')?.addEventListener('click', hideTutorial);
-    tutorialOverlay.querySelector('#tutorialSkip')?.addEventListener('click', () => {
-      hideTutorial();
-      localStorage.setItem('gitcanvas:onboardingComplete', 'true');
+
+    tutorialOverlay
+      .querySelector('#tutorialClose')
+      ?.addEventListener('click', hideTutorial);
+    tutorialOverlay
+      .querySelector('#tutorialSkip')
+      ?.addEventListener('click', () => {
+        localStorage.setItem('gitcanvas:onboardingComplete', 'true');
+        hideTutorial();
+      });
+    tutorialOverlay
+      .querySelector('#tutorialNext')
+      ?.addEventListener('click', advanceTutorial);
+
+    document.addEventListener('keydown', handleTutorialKeydown);
+  }
+
+  const titleEl = tutorialOverlay.querySelector('.tutorial-title');
+  const descriptionEl = tutorialOverlay.querySelector('.tutorial-description');
+  const countEl = tutorialOverlay.querySelector('.tutorial-step-count');
+  const nextBtn = tutorialOverlay.querySelector('#tutorialNext');
+
+  if (titleEl) titleEl.textContent = step.title;
+  if (descriptionEl) descriptionEl.textContent = step.description;
+  if (countEl) {
+    countEl.textContent = `Step ${stepIndex + 1} of ${TUTORIAL_STEPS.length}`;
+  }
+  if (nextBtn) {
+    nextBtn.textContent =
+      stepIndex >= TUTORIAL_STEPS.length - 1 ? 'Finish' : 'Next →';
+  }
+
+  highlightElement(step.highlightSelector);
+  activeContext = ctx;
+}
+
+function advanceTutorial(): void {
+  const step = TUTORIAL_STEPS[currentStep];
+  step?.action?.();
+  currentStep += 1;
+  if (activeContext) {
+    showTutorialStep(activeContext, currentStep);
+  } else {
+    hideTutorial();
+  }
+}
+
+function highlightElement(selector: string): void {
+  document
+    .querySelectorAll('.tutorial-highlight')
+    .forEach((el) => el.classList.remove('tutorial-highlight'));
+
+  const target = document.querySelector(selector);
+  if (target instanceof HTMLElement) {
+    target.classList.add('tutorial-highlight');
+    target.scrollIntoView({
+      block: 'center',
+      inline: 'center',
+      behavior: 'smooth',
     });
-    tutorialOverlay.querySelector('#tutorialNext')?.addEventListener('click', () => {
-      const step = TUTORIAL_STEPS[currentStep];
-      if (step.action) step.action();
-      currentStep++;
-      showTutorialStep(ctx, currentStep);
-    });
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', ha
+  }
+}
+
+function handleTutorialKeydown(event: KeyboardEvent): void {
+  if (!tutorialOverlay) return;
+
+  if (event.key === 'Escape') {
+    hideTutorial();
+    return;
+  }
+
+  if (event.key === 'Enter' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    advanceTutorial();
+  }
+}
+
+function hideTutorial(): void {
+  document
+    .querySelectorAll('.tutorial-highlight')
+    .forEach((el) => el.classList.remove('tutorial-highlight'));
+
+  tutorialOverlay?.remove();
+  tutorialOverlay = null;
+  activeContext = null;
+  document.removeEventListener('keydown', handleTutorialKeydown);
+}

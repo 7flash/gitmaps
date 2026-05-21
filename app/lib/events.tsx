@@ -20,7 +20,7 @@
  *   Delete/Backspace → hide selected
  */
 import { measure } from 'measure-fn';
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import type { CanvasContext } from './context';
 import { showToast, escapeHtml } from './utils';
 import { createLayer, getActiveLayer, addSectionToLayer } from './layers';

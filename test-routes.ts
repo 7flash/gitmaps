@@ -1,4 +1,4 @@
-import { discoverRoutes } from 'melina/dist/src/server/router.js';
+import { discoverRoutes } from 'tradjs/server';
 
 const routes = await discoverRoutes('./app');
 console.log('Discovered routes:');

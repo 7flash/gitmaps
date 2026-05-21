@@ -3,7 +3,7 @@
  * Settings Modal — gear icon opens a premium settings panel
  * with organized toggle switches and sliders.
  */
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import { getCanvasContext } from './context';
 import { getCardManager } from './xydraw-bridge';
 import { getDefaultCardAspectRatio, getDefaultCardHeight, getDefaultCardWidth, MAX_CARD_ASPECT_RATIO, MIN_CARD_ASPECT_RATIO, getSettings, updateSettings, resetSettings, type GitCanvasSettings } from './settings';

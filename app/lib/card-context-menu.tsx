@@ -3,7 +3,7 @@
  * Card context menu — right-click menu for file cards.
  * Extracted from cards.tsx for modularity.
  */
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import type { CanvasContext } from './context';
 import { showToast } from './utils';
 import { hideSelectedFiles } from './hidden-files';

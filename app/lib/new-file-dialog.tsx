@@ -4,7 +4,7 @@
  * Opens a dialog to enter the file path, creates the file via API,
  * then adds a card and opens it in edit mode.
  */
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import type { CanvasContext } from './context';
 import { showToast, escapeHtml } from './utils';
 

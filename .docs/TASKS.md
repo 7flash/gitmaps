@@ -261,3 +261,9 @@
 - **URL routing**: Path-based (`/slug`) with `[slug]/page.tsx` dynamic route. Legacy `#slug` auto-migrates.
 - **Storage**: All client state in localStorage (positions, connections, layers, hidden files)
 - **Script execution**: `/api/repo/run-script` launches runnable `.ts` files through `bgrun`; `/api/repo/script-output` tails repo-local `.gout/*.stdout.log` + `.stderr.log`; `/api/repo/script-control` exposes stop/restart actions for the deterministic per-script bgrun process.
+## 2026-05-21 Runtime Recovery
+
+- [x] **Fix local framework dependency wiring** — Switched `tradjs` from Bun `link:` resolution to a stable local `file:../melina.js` dependency and kept `xydraw` on the local workspace package.
+- [x] **Repair truncated upstream source files** — Replaced the broken tails in `app/lib/export-canvas.ts` and `app/lib/onboarding-tutorial.ts` with complete minimal implementations so the app can boot again.
+- [x] **Boot local dev server on expected port** — Verified the app responds on `http://localhost:3335/` after dependency and source repair.
+- [ ] **Understand Bun installer crash** — `bun install` currently panics with a stack overflow on this workspace; `npm install` works as a practical fallback and produces a runnable app.

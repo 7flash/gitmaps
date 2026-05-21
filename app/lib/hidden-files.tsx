@@ -4,7 +4,7 @@
  * Uses melina/client JSX + render instead of innerHTML.
  */
 import { measure } from 'measure-fn';
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import type { CanvasContext } from './context';
 
 

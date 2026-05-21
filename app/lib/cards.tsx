@@ -4,7 +4,7 @@
  * selection, arrangement, and the file modal.
  */
 import { measure } from "measure-fn";
-import { render } from "melina/client";
+import { render } from "tradjs/client";
 import type { CanvasContext } from "./context";
 import { escapeHtml, getFileIcon, getFileIconClass, showToast } from "./utils";
 import { hideSelectedFiles } from "./hidden-files";

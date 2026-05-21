@@ -3,7 +3,7 @@
  * Loading progress overlay.
  * Uses melina/client JSX + render.
  */
-import { render } from "melina/client";
+import { render } from "tradjs/client";
 import type { CanvasContext } from "./context";
 
 function LoadingOverlayContent({

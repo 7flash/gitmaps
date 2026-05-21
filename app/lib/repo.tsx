@@ -3,7 +3,7 @@
  * Repository management — load, commit timeline, select commit, all-files.
  */
 import { measure } from "measure-fn";
-import { render } from "melina/client";
+import { render } from "tradjs/client";
 import type { CanvasContext } from "./context";
 import { escapeHtml, formatDate, showToast } from "./utils";
 import {

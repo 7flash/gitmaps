@@ -1,4 +1,4 @@
-import { render } from 'melina/client';
+import { render } from 'tradjs/client';
 import type { CanvasContext } from './context';
 import { updateCanvasTransform } from './canvas';
 
