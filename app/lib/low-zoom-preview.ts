@@ -288,26 +288,31 @@ export const getPreviewRenderableLines = measureFn(
       return [];
     }
 
-    // Content is intentionally not loaded yet (lazy fetch). Show a placeholder
-    // instead of rendering nothing — distinguishes "not loaded" from "broken".
-    if (file.content == null) {
+    const previewContent =
+      typeof file.content === 'string'
+        ? file.content
+        : typeof file.previewContent === 'string'
+          ? file.previewContent
+          : null;
+
+    if (previewContent == null) {
       return [LOADING_LINE];
     }
 
-    if (typeof file.content !== 'string') {
+    if (typeof previewContent !== 'string') {
       previewLog('warn', 'getPreviewRenderableLines:bail', {
         reason: 'content_not_string',
         path: file.path,
-        contentType: typeof file.content,
-        constructor: (file.content as any)?.constructor?.name ?? null,
+        contentType: typeof previewContent,
+        constructor: (previewContent as any)?.constructor?.name ?? null,
         keys:
-          typeof file.content === 'object' && file.content !== null
-            ? Object.keys(file.content as object).slice(0, 10)
+          typeof previewContent === 'object' && previewContent !== null
+            ? Object.keys(previewContent as object).slice(0, 10)
             : null,
       });
       return [];
     }
-    if (file.content.length === 0) {
+    if (previewContent.length === 0) {
       previewLog('debug', 'getPreviewRenderableLines:bail', { reason: 'empty_content', path: file.path });
       return [];
     }
@@ -323,7 +328,7 @@ export const getPreviewRenderableLines = measureFn(
       return [];
     }
 
-    const normalized = file.content.replace(/\t/g, '  ');
+    const normalized = previewContent.replace(/\t/g, '  ');
     const lines = normalized.split('\n');
     const approxLineHeight = 20;
 
@@ -368,8 +373,8 @@ export const getPreviewRenderableLines = measureFn(
         result.length === 0 &&
         file &&
         !file.isBinary &&
-        typeof file.content === 'string' &&
-        file.content.length > 0
+        (typeof file.content === 'string' && file.content.length > 0) ||
+        (typeof file.previewContent === 'string' && file.previewContent.length > 0)
       ) {
         return 'returned_empty_for_nonempty_file';
       }

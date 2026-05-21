@@ -25,6 +25,9 @@ const COMMON_IGNORES = new Set([
 
 const SAMPLE_BYTES = 8192;
 const MAX_SAMPLE_FILE_SIZE = 1024 * 1024; // 1MB
+const MAX_INLINE_PREVIEW_FILE_SIZE = 256 * 1024; // 256KB
+const MAX_INLINE_PREVIEW_LINES = 120;
+const MAX_INLINE_PREVIEW_CHARS = 4000;
 const STREAM_BATCH_SIZE = 50;
 
 // ---------------------------------------------------------------------------
@@ -103,6 +106,7 @@ type FileMetadata = {
   ext: string;
   type: 'file';
   content: null;
+  previewContent?: string;
   lines: number;
   size: number;
   isBinary: boolean;
@@ -116,6 +120,7 @@ function getFileMetadata(repoPath: string, filePath: string): FileMetadata {
 
   let size = 0;
   let lines = 0;
+  let previewContent: string | undefined;
   let metaError: string | undefined;
 
   try {
@@ -133,6 +138,13 @@ function getFileMetadata(repoPath: string, filePath: string): FileMetadata {
         if (size > SAMPLE_BYTES) {
           lines = Math.floor(lines * (size / SAMPLE_BYTES));
         }
+        if (size <= MAX_INLINE_PREVIEW_FILE_SIZE) {
+          previewContent = text
+            .split('\n')
+            .slice(0, MAX_INLINE_PREVIEW_LINES)
+            .join('\n')
+            .slice(0, MAX_INLINE_PREVIEW_CHARS);
+        }
       }
     }
   } catch (err: any) {
@@ -145,6 +157,7 @@ function getFileMetadata(repoPath: string, filePath: string): FileMetadata {
     ext,
     type: 'file',
     content: null,
+    ...(previewContent ? { previewContent } : {}),
     lines,
     size,
     isBinary,

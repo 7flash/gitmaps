@@ -4,6 +4,8 @@
  * Usage: npx gitmaps [path] [--port 3335]
  */
 
+import net from 'node:net';
+
 const args = process.argv.slice(2);
 let repoPath = process.cwd();
 let port: number | null = null;
@@ -32,19 +34,39 @@ Options:
 }
 
 process.env.GITMAPS_REPO = repoPath;
+
+async function isPortAvailable(candidate: number): Promise<boolean> {
+    return await new Promise((resolve) => {
+        const server = net.createServer();
+        server.unref();
+        server.once('error', () => resolve(false));
+        server.listen(candidate, '127.0.0.1', () => {
+            server.close(() => resolve(true));
+        });
+    });
+}
+
+async function findAvailablePort(startPort: number, attempts = 50): Promise<number> {
+    for (let offset = 0; offset < attempts; offset++) {
+        const candidate = startPort + offset;
+        if (await isPortAvailable(candidate)) {
+            return candidate;
+        }
+    }
+    throw new Error(`No free port found in range ${startPort}-${startPort + attempts - 1}`);
+}
+
 if (port !== null) {
+    process.env.BUN_PORT = String(port);
+} else {
+    port = await findAvailablePort(3335);
     process.env.BUN_PORT = String(port);
 }
 
 console.log(`🪐 GitMaps starting...`);
 console.log(`   Repo: ${repoPath}`);
-if (port !== null) {
-    console.log(`   Port: ${port}`);
-    console.log(`   URL:  http://localhost:${port}`);
-} else {
-    console.log(`   Port: auto`);
-    console.log(`   URL:  http://localhost:(auto)`);
-}
+console.log(`   Port: ${port}`);
+console.log(`   URL:  http://localhost:${port}`);
 console.log();
 
 // Import and run the server
