@@ -1,6 +1,6 @@
 {
   "name": "gitmaps",
-  "version": "1.1.28",
+  "version": "1.1.29",
   "type": "module",
   "bin": {
     "gitmaps": "cli.ts"
@@ -70,10 +70,9 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.16",
     "@lezer/highlight": "^1.2.3",
-    "xydraw": "file:packages/galaxydraw",
     "jsx-ai": "0.1.2",
     "measure-fn": "3.10.1",
-    "tradjs": "file:../melina.js",
+    "tradjs": "^4.0.0",
     "pixi.js": "^8.17.0",
     "simple-git": "^3.30.0",
     "sqlite-zod-orm": "^3.26.0",

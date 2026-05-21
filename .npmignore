@@ -1,0 +1,9 @@
+node_modules/
+packages/galaxydraw/node_modules/
+demo/
+*.tgz
+*.log
+*.txt
+app/*.db
+app/*.db-shm
+app/*.db-wal
