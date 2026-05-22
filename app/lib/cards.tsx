@@ -57,7 +57,7 @@ const CORNER_CURSORS = {
 // Files with more lines than this will show a truncated view until expanded with F.
 // This is the #1 performance optimization — a 10K-line file produces 10K <span> elements
 // which all participate in layout during pan/zoom, crushing frame rate.
-const VISIBLE_LINE_LIMIT = 120;
+const VISIBLE_LINE_LIMIT = Number.POSITIVE_INFINITY;
 
 const cardFileData = new WeakMap<HTMLElement, any>();
 
@@ -697,10 +697,6 @@ export function createFileCard(
   if (ctx.positions.has(posKey)) {
     const pos = ctx.positions.get(posKey);
     if (pos.width) card.style.width = `${pos.width}px`;
-    if (pos.height) {
-      card.style.height = `${pos.height}px`;
-      card.style.maxHeight = `${pos.height}px`;
-    }
   }
 
   const ext = file.name.split(".").pop().toLowerCase();
@@ -910,9 +906,9 @@ export function createFileCard(
   return card;
 }
 
-// ─── Build file content HTML with optional line limiting ─
-// When isExpanded=false, only render VISIBLE_LINE_LIMIT lines to keep DOM small.
-// When isExpanded=true (F key), render all lines for full scrolling.
+// ─── Build file content HTML ─
+// Cards now render the full visible file text instead of a truncated inner-scroll
+// preview window.
 export function _buildFileContentHTML(
   content: string,
   layerSections: any,
@@ -929,7 +925,7 @@ export function _buildFileContentHTML(
   );
   const lines = content.split("\n");
   const totalVisible = Array.from(visibleLineIndices).length;
-  const limit = isExpanded ? Infinity : VISIBLE_LINE_LIMIT;
+  const limit = VISIBLE_LINE_LIMIT;
   let code = "";
   let renderedCount = 0;
 
@@ -956,13 +952,7 @@ export function _buildFileContentHTML(
     renderedCount++;
   }
 
-  const hiddenCount = totalVisible - renderedCount;
-  // Invisible sentinel for IntersectionObserver auto-loading (no visible text)
-  const truncNote =
-    hiddenCount > 0
-      ? `<span class="more-lines" data-auto-expand="true" style="display:block;height:1px;"></span>`
-      : "";
-  return `<div class="file-content-preview"><pre><code>${code}</code></pre>${truncNote}</div>`;
+  return `<div class="file-content-preview"><pre><code>${code}</code></pre></div>`;
 }
 
 function buildPdfThumbUrl(repoPath: string, filePath: string, page: number) {
@@ -1095,8 +1085,6 @@ export function createAllFileCard(
 
   if (savedSize) {
     card.style.width = `${savedSize.width}px`;
-    card.style.height = `${savedSize.height}px`;
-    card.style.maxHeight = `${savedSize.height}px`;
   }
 
   const ext = file.ext || "";
@@ -1119,7 +1107,7 @@ export function createAllFileCard(
 
   let contentHTML = "";
   let canvasOptions: any = null;
-  const useAdvancedRenderer = ctx.textRendererMode === 'canvas' || ctx.textRendererMode === 'webgl';
+  const useAdvancedRenderer = false;
 
   const IMAGE_EXTS = new Set([
     "png",
@@ -1458,65 +1446,6 @@ export function createAllFileCard(
   }
 
   const body = card.querySelector(".file-card-body") as HTMLElement;
-  if (body) {
-    body.addEventListener("scroll", () => {
-      debounceSaveScroll(ctx, file.path, body.scrollTop);
-      scheduleRenderConnections(ctx);
-    });
-  }
-
-  // ── Auto-load truncated lines when scrolled into view ──
-  const moreLinesEl = card.querySelector(
-    ".more-lines[data-auto-expand]",
-  ) as HTMLElement;
-  if (moreLinesEl && file.content && !file.isBinary) {
-    const pre = card.querySelector(".file-content-preview pre") as HTMLElement;
-    if (pre) {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting) {
-              observer.disconnect();
-              // Re-render with all lines (expanded)
-              const newHTML = _buildFileContentHTML(
-                file.content,
-                file.layerSections,
-                addedLines,
-                deletedBeforeLine,
-                isAllAdded,
-                isAllDeleted,
-                true,
-                file.lines,
-              );
-              const preview = card.querySelector(".file-content-preview");
-              if (preview) preview.outerHTML = newHTML;
-            }
-          }
-        },
-        { root: pre, rootMargin: "200px" },
-      );
-      observer.observe(moreLinesEl);
-    }
-  }
-
-  // ── Diff marker strip (scrollbar annotations for changed lines) ──
-  // Skip when advanced renderer mode is active — renders its own gutter
-  if (
-    (addedLines.size > 0 || deletedBeforeLine.size > 0) &&
-    !isAllAdded &&
-    file.content &&
-    !useAdvancedRenderer
-  ) {
-    const totalLines = file.content.split("\n").length;
-    _buildDiffMarkerStrip(
-      card,
-      body,
-      addedLines,
-      totalLines,
-      deletedBeforeLine,
-      file.hunks,
-    );
-  }
 
   // ── Deleted lines hover overlay ──
   if (deletedBeforeLine.size > 0) {

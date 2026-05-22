@@ -24,10 +24,13 @@
 - Let GitMaps itself probe from `3335` upward unless `--port` is explicitly provided.
 - Stream bounded inline preview text with tree metadata so visible cards can render real content immediately instead of permanent placeholders.
 - Render streamed `previewContent` directly inside file cards so cards stop waiting on explicit file-content fetches just to show code.
+- Remove card-body inner scroll behavior and render full file text directly in cards.
+- Change selected-commit rendering from `parent(commit) -> commit` to `commit -> current working state`.
 - Repair the truncated source files with minimal complete implementations.
 - Run `bun install`, `bun run dev`, and verify startup both with an explicit port and with auto-port fallback.
 
 ## Next Steps
 - Finish `bunx gitmaps` validation once npm `latest` points at the fixed release.
 - Verify the repo-open path in the browser now renders real preview text instead of placeholder-only cards, both in normal cards and low-zoom previews.
+- Verify selected-commit mode now shows a live diff from the chosen commit to the current repo state, using current file content with green/red diff lines.
 - Start the larger no-scroll virtual-sections rewrite from [.docs/prds/01-virtual-sections-no-scroll-canvas.md](C:/Code/gitmaps/.docs/prds/01-virtual-sections-no-scroll-canvas.md:1).

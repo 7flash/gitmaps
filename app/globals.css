@@ -1305,7 +1305,7 @@ body.landing-placeholder-visible .sticky-zoom-pill {
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow: visible;
   transition:
     box-shadow var(--transition-fast),
     transform var(--transition-fast),
@@ -1442,13 +1442,12 @@ body.landing-placeholder-visible .sticky-zoom-pill {
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-muted);
-  overflow-y: auto;
+  overflow: visible;
   cursor: default;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  /* When card has explicit height from resize, body fills remaining space */
+  flex: 0 0 auto;
+  min-height: auto;
 }
 
 /* Styled scrollbar for file preview content (all-files mode) */
@@ -1480,9 +1479,9 @@ body.landing-placeholder-visible .sticky-zoom-pill {
   text-overflow: ellipsis;
   padding: 8px 14px;
   border-bottom: 1px solid var(--border-subtle);
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  position: relative;
+  top: auto;
+  z-index: auto;
   flex-shrink: 0;
 }
 

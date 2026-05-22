@@ -644,11 +644,11 @@ body {
 .file-card {
     position: absolute;
     width: 580px;
-    max-height: 700px;
+    max-height: none;
     background: var(--bg-card);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    overflow: visible;
     transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
     user-select: none;
     backdrop-filter: blur(10px);
@@ -759,12 +759,12 @@ body {
     font-size: 13px;
     line-height: 1.5;
     color: var(--text-muted);
-    overflow-y: auto;
+    overflow: visible;
     cursor: default;
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
+    flex: 0 0 auto;
+    min-height: auto;
 }
 
 /* Styled scrollbar inside file cards */
@@ -788,9 +788,8 @@ body {
 /* Canvas text mode scrollbar */
 .canvas-container {
     scrollbar-width: none;
-    /* Hide native scrollbar — CanvasTextRenderer has its own */
-    overflow: auto !important;
-    overscroll-behavior: contain;
+    overflow: visible !important;
+    overscroll-behavior: auto;
 }
 
 .canvas-container::-webkit-scrollbar {
@@ -808,9 +807,9 @@ body {
     text-overflow: ellipsis;
     padding: 8px 14px;
     border-bottom: 1px solid var(--border-subtle);
-    position: sticky;
-    top: 0;
-    z-index: 5;
+    position: relative;
+    top: auto;
+    z-index: auto;
     flex-shrink: 0;
 }
 

@@ -270,6 +270,8 @@
 - [x] **Fix default port behavior** — `bunx gitmaps` now probes from `3335` upward itself and passes the first free port into `tradjs`; `--port` still forces a specific port.
 - [x] **Fix low-zoom placeholder dead-end** — repo tree streaming now includes bounded `previewContent` for small text files, and low-zoom previews consume that instead of showing permanent `Loading…` cards.
 - [x] **Fix normal card placeholder dead-end** — `app/lib/cards.tsx` now renders streamed `previewContent` when full file content is absent, and `app/api/repo/tree/route.ts` now emits bounded preview text consistently for sampled text files instead of only a narrow size band.
+- [x] **Remove inner-scroll file cards** — file cards now stop honoring persisted heights for body scrolling, stop truncating to a scroll sentinel, and render the full visible file body inline instead of a card-local scroll pane.
+- [x] **Diff selected commit against current state** — `/api/repo/files` now compares `selected commit -> current working tree` instead of `parent(selected commit) -> selected commit`, so commit mode reflects current divergence from that historical snapshot.
 - [x] **Fix direct server fallback port** — `server.ts` itself now probes from `3335` upward when no explicit port is provided, instead of silently falling back to busy `3000`.
 - [ ] **Understand Bun installer crash** — `bun install` currently panics with a stack overflow on this workspace; `npm install` works as a practical fallback and produces a runnable app.
 - [ ] **Rewrite canvas around virtual sections, not scrollable files** — start from `.docs/prds/01-virtual-sections-no-scroll-canvas.md`.
