@@ -269,6 +269,7 @@
 - [x] **Boot local dev server on expected port** — Verified the app responds on `http://localhost:3335/` after dependency and source repair.
 - [x] **Fix default port behavior** — `bunx gitmaps` now probes from `3335` upward itself and passes the first free port into `tradjs`; `--port` still forces a specific port.
 - [x] **Fix low-zoom placeholder dead-end** — repo tree streaming now includes bounded `previewContent` for small text files, and low-zoom previews consume that instead of showing permanent `Loading…` cards.
+- [x] **Fix normal card placeholder dead-end** — `app/lib/cards.tsx` now renders streamed `previewContent` when full file content is absent, and `app/api/repo/tree/route.ts` now emits bounded preview text consistently for sampled text files instead of only a narrow size band.
 - [x] **Fix direct server fallback port** — `server.ts` itself now probes from `3335` upward when no explicit port is provided, instead of silently falling back to busy `3000`.
 - [ ] **Understand Bun installer crash** — `bun install` currently panics with a stack overflow on this workspace; `npm install` works as a practical fallback and produces a runnable app.
 - [ ] **Rewrite canvas around virtual sections, not scrollable files** — start from `.docs/prds/01-virtual-sections-no-scroll-canvas.md`.

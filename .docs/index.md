@@ -8,7 +8,9 @@
 ## Current Findings
 - The cloned repo did not run out of the box.
 - The CLI previously hard-forced port `3335`, then later delegated too much to `tradjs` and could fall back to `3000` unexpectedly.
-- Low-zoom preview cards were also stuck on placeholder text because the repo tree stream only shipped metadata with `content: null`, so visible cards had nothing real to render until an explicit file-content fetch.
+- Preview surfaces could still get stuck on placeholder text because two paths were incomplete:
+  - the repo tree stream only emitted bounded `previewContent` for a narrow subset of text files
+  - file cards ignored `previewContent` and only rendered inline code after a full file-content fetch
 - Dependency wiring was broken:
   - `tradjs` pointed at `link:../melina.js`, which Bun resolved through a global link instead of the local repo.
   - `xydraw@0.2.0` was wired as a workspace-only/root dependency even though GitMaps uses bundled relative imports, which broke `bunx` package-style execution.
@@ -21,10 +23,11 @@
 - Publish against npm `tradjs` and remove the unnecessary root `xydraw` dependency so the packaged CLI can install cleanly from npm.
 - Let GitMaps itself probe from `3335` upward unless `--port` is explicitly provided.
 - Stream bounded inline preview text with tree metadata so visible cards can render real content immediately instead of permanent placeholders.
+- Render streamed `previewContent` directly inside file cards so cards stop waiting on explicit file-content fetches just to show code.
 - Repair the truncated source files with minimal complete implementations.
 - Run `bun install`, `bun run dev`, and verify startup both with an explicit port and with auto-port fallback.
 
 ## Next Steps
 - Finish `bunx gitmaps` validation once npm `latest` points at the fixed release.
-- Verify the repo-open path in the browser now renders real preview text instead of placeholder-only cards.
+- Verify the repo-open path in the browser now renders real preview text instead of placeholder-only cards, both in normal cards and low-zoom previews.
 - Start the larger no-scroll virtual-sections rewrite from [.docs/prds/01-virtual-sections-no-scroll-canvas.md](C:/Code/gitmaps/.docs/prds/01-virtual-sections-no-scroll-canvas.md:1).

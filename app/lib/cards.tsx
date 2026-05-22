@@ -1107,6 +1107,13 @@ export function createAllFileCard(
 
   const deletedBeforeLine: Map<number, string[]> =
     file.deletedBeforeLine || new Map();
+  const inlineContent =
+    typeof file.content === "string" && file.content.length > 0
+      ? file.content
+      : typeof file.previewContent === "string"
+        ? file.previewContent
+        : "";
+  const hasInlineContent = inlineContent.length > 0;
 
   // All files are now same fixed size - no expand persistence
 
@@ -1139,16 +1146,16 @@ export function createAllFileCard(
     contentHTML = buildPdfPreviewHTML(ctx.snap().context.repoPath || "", file);
   } else if (file.isBinary) {
     contentHTML = `<div class="file-content-preview"><pre><code><span class="error-notice">Binary file</span></code></pre></div>`;
-  } else if (file.content) {
+  } else if (hasInlineContent) {
     if (useAdvancedRenderer) {
       canvasOptions = {
-        content: file.content,
+        content: inlineContent,
         addedLines,
         deletedBeforeLine,
         isAllAdded,
         isAllDeleted,
         visibleLineIndices: filterFileContentByLayer(
-          file.content,
+          inlineContent,
           file.layerSections,
         ).visibleLineIndices,
         filePath: file.path,
@@ -1156,14 +1163,16 @@ export function createAllFileCard(
       contentHTML = `<div class="file-content-preview canvas-container" style="position:relative; height: 100%; overflow: auto; background: var(--bg-card);"></div>`;
     } else {
       contentHTML = _buildFileContentHTML(
-        file.content,
+        inlineContent,
         file.layerSections,
         addedLines,
         deletedBeforeLine,
         isAllAdded,
         isAllDeleted,
         false,
-        file.lines,
+        typeof file.content === "string" && file.content.length > 0
+          ? file.lines
+          : Math.max(1, inlineContent.split("\n").length),
       );
     }
   } else {
