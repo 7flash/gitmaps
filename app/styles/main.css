@@ -759,7 +759,10 @@ body {
     font-size: 13px;
     line-height: 1.5;
     color: var(--text-muted);
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
     cursor: default;
     display: flex;
     flex-direction: column;
@@ -767,29 +770,16 @@ body {
     min-height: auto;
 }
 
-/* Styled scrollbar inside file cards */
 .file-card-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.file-card-body::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.file-card-body::-webkit-scrollbar-thumb {
-    background: rgba(124, 58, 237, 0.3);
-    border-radius: 3px;
-}
-
-.file-card-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(124, 58, 237, 0.5);
+    width: 0;
+    height: 0;
 }
 
 /* Canvas text mode scrollbar */
 .canvas-container {
     scrollbar-width: none;
-    overflow: visible !important;
-    overscroll-behavior: auto;
+    overflow: auto !important;
+    overscroll-behavior: contain;
 }
 
 .canvas-container::-webkit-scrollbar {

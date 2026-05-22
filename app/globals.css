@@ -1442,7 +1442,10 @@ body.landing-placeholder-visible .sticky-zoom-pill {
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-muted);
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
   cursor: default;
   display: flex;
   flex-direction: column;
@@ -1450,23 +1453,9 @@ body.landing-placeholder-visible .sticky-zoom-pill {
   min-height: auto;
 }
 
-/* Styled scrollbar for file preview content (all-files mode) */
-.file-content-preview pre::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.file-content-preview pre::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.file-content-preview pre::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.18);
-  border-radius: 3px;
-}
-
-.file-content-preview pre::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.4);
+.file-card-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .file-path {
