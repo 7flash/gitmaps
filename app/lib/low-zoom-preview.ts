@@ -193,6 +193,11 @@ type PreviewRenderableLine = {
   sourceLine?: number;
 };
 
+type PreviewSamplingResult = {
+  lines: PreviewRenderableLine[];
+  stride: number;
+};
+
 type DiffMaps = {
   addedLines: Set<number>;
   deletedBeforeLine: Map<number, string[]>;
@@ -385,6 +390,48 @@ export const getPreviewRenderableLines = measureFn(
 
 export function getLowZoomPreviewText(file: any, scrollTop: number): string {
   return getPreviewRenderableLines(file, scrollTop).map((line) => line.text).join('\n').trim();
+}
+
+function getPreviewLineStride(zoom: number): number {
+  if (zoom <= 0.12) return 8;
+  if (zoom <= 0.18) return 4;
+  if (zoom <= 0.28) return 2;
+  return 1;
+}
+
+function samplePreviewLinesForZoom(lines: PreviewRenderableLine[], zoom: number): PreviewSamplingResult {
+  const stride = getPreviewLineStride(zoom);
+  if (stride <= 1 || lines.length <= 2) {
+    return { lines, stride: 1 };
+  }
+
+  const sampled: PreviewRenderableLine[] = [];
+  let skipping = false;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const shouldKeep =
+      i === 0 ||
+      i === lines.length - 1 ||
+      line.tone !== 'normal' ||
+      (i % stride === 0);
+
+    if (shouldKeep) {
+      if (skipping) {
+        sampled.push({ text: '…', tone: 'normal' });
+        skipping = false;
+      }
+      sampled.push(line);
+    } else {
+      skipping = true;
+    }
+  }
+
+  if (sampled.length === 0) {
+    return { lines: lines.slice(0, 1), stride };
+  }
+
+  return { lines: sampled, stride };
 }
 
 // ---------------------------------------------------------------------------
@@ -589,7 +636,8 @@ export const renderLowZoomPreviewCanvas = measureFn(
     ctx.fillText(trimToWidth(ctx, subtitle, maxTextWidth), leftInset, subtitleY);
 
     const previewY = subtitleY + subtitleFont + scale.gap;
-    const previewLines = getPreviewRenderableLines(file, scrollTop);
+    const rawPreviewLines = getPreviewRenderableLines(file, scrollTop);
+    const { lines: previewLines, stride } = samplePreviewLinesForZoom(rawPreviewLines, zoom);
     const maxCharsPerLine = estimatePreviewCharsPerLine(width, zoom);
     const maxVisibleLines = estimatePreviewLineCapacity(height, zoom);
     const wrapped: Array<{ text: string; tone: 'normal' | 'added' | 'deleted' }> = [];
@@ -608,6 +656,8 @@ export const renderLowZoomPreviewCanvas = measureFn(
         path,
         reason: previewLines.length === 0 ? 'no_renderable_lines' : 'wrap_produced_nothing',
         previewLineCount: previewLines.length,
+        rawPreviewLineCount: rawPreviewLines.length,
+        stride,
         maxCharsPerLine,
         maxVisibleLines,
         width,
