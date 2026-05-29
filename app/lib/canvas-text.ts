@@ -410,7 +410,7 @@ export class CanvasTextRenderer {
     }
 
     /** Build a DOM-based change gutter alongside the scrollbar */
-    private _buildChangeGutter(container: HTMLElement) {
+    private _buildChangeGutter(container: HTMLElement) {`r`n        if (!document.body.classList.contains("show-diff-highlights")) return;
         if (this.hunkRanges.length === 0) return;
 
         const totalLines = this.drawnLines.length;
@@ -683,7 +683,7 @@ export class CanvasTextRenderer {
 
             let popupHTML = '';
 
-            if (hasDelBefore) {
+            if (showDiff && hasDelBefore) {
                 const delLines = this.options.deletedBeforeLine!.get(lineData.num)!;
                 popupHTML += `<div style="color: #f87171; font-size: 10px; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">${delLines.length} deleted line${delLines.length > 1 ? 's' : ''}</div>`;
                 popupHTML += delLines.map(l =>
@@ -777,7 +777,7 @@ export class CanvasTextRenderer {
         }
 
         // Hoist hot lookups outside the loop
-        const { isAllAdded, isAllDeleted, addedLines, deletedBeforeLine } = this.options;
+        const { isAllAdded, isAllDeleted, addedLines, deletedBeforeLine } = this.options;`r`n        const showDiff = document.body.classList.contains("show-diff-highlights");
         const lh = this.lineHeight;
         const cx = this.contentX;
         const scrollTop = this.scrollTop;
@@ -793,12 +793,12 @@ export class CanvasTextRenderer {
             const hasDelBefore = deletedBeforeLine && deletedBeforeLine.has(lineNum);
 
             // Background highlight
-            if (isAdded) {
+            if (showDiff && isAdded) {
                 this.ctx.fillStyle = 'rgba(46, 160, 67, 0.15)';
                 this.ctx.fillRect(0, y, w, lh);
                 this.ctx.fillStyle = 'rgba(46, 160, 67, 0.8)';
                 this.ctx.fillRect(0, y, diffGutterW, lh);
-            } else if (isAllDeleted) {
+            } else if (showDiff && isAllDeleted) {
                 this.ctx.fillStyle = 'rgba(248, 81, 73, 0.15)';
                 this.ctx.fillRect(0, y, w, lh);
                 this.ctx.fillStyle = 'rgba(248, 81, 73, 0.8)';
@@ -814,7 +814,7 @@ export class CanvasTextRenderer {
             }
 
             // Deleted-before marker (red triangle indicator)
-            if (hasDelBefore) {
+            if (showDiff && hasDelBefore) {
                 this.ctx.fillStyle = 'rgba(248, 81, 73, 1)';
                 this.ctx.fillRect(0, y, diffGutterW, 3);
                 this.ctx.fillStyle = 'rgba(248, 81, 73, 0.4)';
@@ -842,3 +842,4 @@ export class CanvasTextRenderer {
         }
     }
 }
+

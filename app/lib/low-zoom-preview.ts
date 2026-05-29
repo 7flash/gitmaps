@@ -672,7 +672,7 @@ export const renderLowZoomPreviewCanvas = measureFn(
 
     const fadeStart = Math.max(previewY, height - scale.bodyLineHeight * 2.2);
     const bodyHeight = Math.max(scale.bodyLineHeight * 2, height - previewY - scale.padding);
-    const fadeRatio = Math.max(0, (fadeStart - previewY) / Math.max(1, bodyHeight));
+    const fadeRatio = Math.max(0, (fadeStart - previewY) / Math.max(1, bodyHeight));`r`n    const showDiff = document.body.classList.contains("show-diff-highlights");
 
     wrapped.forEach((line, index) => {
       const y = previewY + index * scale.bodyLineHeight;
@@ -681,11 +681,11 @@ export const renderLowZoomPreviewCanvas = measureFn(
       const t = Math.max(0, Math.min(1, (y - previewY) / Math.max(1, bodyHeight)));
       const alpha = t <= fadeRatio ? 1 : Math.max(0, 1 - ((t - fadeRatio) / Math.max(0.0001, 1 - fadeRatio)));
 
-      if (line.tone === 'added') {
+      if (showDiff && line.tone === "added") {
         ctx.fillStyle = `rgba(34,197,94,${0.12 * alpha})`;
         ctx.fillRect(leftInset - 4, y, maxTextWidth + 4, scale.bodyLineHeight - 1);
         ctx.fillStyle = `rgba(134,239,172,${0.98 * alpha})`;
-      } else if (line.tone === 'deleted') {
+      } else if (showDiff && line.tone === "deleted") {
         ctx.fillStyle = `rgba(239,68,68,${0.1 * alpha})`;
         ctx.fillRect(leftInset - 4, y, maxTextWidth + 4, scale.bodyLineHeight - 1);
         ctx.fillStyle = `rgba(252,165,165,${0.96 * alpha})`;
@@ -703,7 +703,7 @@ export const renderLowZoomPreviewCanvas = measureFn(
       height: params.height,
       zoom: params.zoom,
       scrollTop: params.scrollTop,
-      file: summarizeFile(params.file),
+      file: summarizeFile(params.file),`r`n      showDiff: document.body.classList.contains("show-diff-highlights"),
     }),
   },
 );
@@ -731,3 +731,4 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
   ctx.arcTo(x, y, x + width, y, r);
   ctx.closePath();
 }
+

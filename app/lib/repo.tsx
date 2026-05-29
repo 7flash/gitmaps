@@ -1164,6 +1164,7 @@ export function switchView(ctx: CanvasContext, mode: string) {
   const currentHash = ctx.snap().context.currentCommitHash;
   const showDiff = mode === "commits" && !!currentHash && currentHash !== WORKING_TREE_HASH;
   setDiffVisualMode(showDiff);
+  rerenderCurrentView(ctx);
 }
 
 // ─── Re-render current view ──────────────────────────────

@@ -96,7 +96,7 @@ export class WebGLTextRenderer {
     const numDigits = Math.max(3, lines.length.toString().length);
     this.lineNumWidth = numDigits * 8 + 20;
     
-    // Create line numbers and text
+    const showDiff = document.body.classList.contains("show-diff-highlights");`r`n    // Create line numbers and text
     for (let i = 0; i < lines.length; i++) {
       // Line number
       const lineNum = new PIXI.Text((i + 1).toString(), {
@@ -121,9 +121,9 @@ export class WebGLTextRenderer {
       this.lines.push(lineText);
       
       // Apply diff coloring
-      if (options.addedLines?.has(i + 1)) {
+      if (showDiff && options.addedLines?.has(i + 1)) {
         lineText.style.fill = 0x22c55e;
-      } else if (options.deletedBeforeLine?.has(i + 1)) {
+      } else if (showDiff && options.deletedBeforeLine?.has(i + 1)) {
         lineText.style.fill = 0xef4444;
       }
     }
@@ -187,3 +187,4 @@ export class WebGLTextRenderer {
     this.app.canvas.remove();
   }
 }
+

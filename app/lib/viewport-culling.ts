@@ -275,7 +275,7 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
     const metrics = getPreviewScrollMetrics(file, h, zoom, scrollTop);
 
     if (diffOverlay) {
-        if (!ENABLE_PREVIEW_DIFF_MARKERS) {
+        const showDiff = document.body.classList.contains("show-diff-highlights");`r`n        if (!ENABLE_PREVIEW_DIFF_MARKERS || !showDiff) {
             diffOverlay.innerHTML = '';
             diffOverlay.style.pointerEvents = 'none';
         } else {
@@ -1008,4 +1008,5 @@ export function updatePillSelectionHighlights(ctx: CanvasContext) {
     const { updateSelectionHighlights } = require('./cards');
     updateSelectionHighlights(ctx);
 }
+
 
