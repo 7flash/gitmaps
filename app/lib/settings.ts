@@ -45,6 +45,8 @@ export interface GitCanvasSettings {
     heatmapDays: number;
     /** Fixed text size used by map/preview cards (screen px) */
     previewFontPx: number;
+    /** JSON array defining context-menu file actions */
+    fileActionsJson: string;
 }
 
 const DEFAULTS: GitCanvasSettings = {
@@ -62,6 +64,15 @@ const DEFAULTS: GitCanvasSettings = {
     heatmapEnabled: false,
     heatmapDays: 90,
     previewFontPx: 10,
+    fileActionsJson: JSON.stringify([
+        {
+            id: "patch-resolve",
+            label: "Patch Resolve Preview",
+            command: "bunx patch-resolve \"{file}\"",
+            extensions: [".md"],
+            openInModal: true,
+        },
+    ], null, 2),
 };
 
 let _settings: GitCanvasSettings | null = null;

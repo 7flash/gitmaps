@@ -8,6 +8,8 @@
  */
 import { escapeHtml } from './utils';
 
+const ENABLE_DIFF_MARKERS = false;
+
 // ─── Scroll to line helper ──────────────────────────────
 export function scrollToLine(body: HTMLElement, lineNum: number, totalLines: number) {
     // Canvas-text mode: container has .canvas-container class, no .diff-line elements
@@ -65,6 +67,7 @@ function mergeIntoRegions(lineNums: number[], gap = 4): { start: number; end: nu
 
 // ─── Diff marker strip (scrollbar annotations) ─────────
 export function buildDiffMarkerStrip(card: HTMLElement, body: HTMLElement, addedLines: Set<number>, totalLines: number, deletedBeforeLine?: Map<number, string[]>, fileHunks?: any[]) {
+    if (!ENABLE_DIFF_MARKERS) return;
     if (!body || totalLines === 0) return;
 
     const strip = document.createElement('div');

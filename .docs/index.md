@@ -2,11 +2,13 @@
 
 ## Current Status
 - Project: `gitmaps`
-- Updated: `2026-05-23`
+- Updated: `2026-05-25`
 - Published npm version: `1.1.35`
 - Goal: spatial code explorer with low-zoom previews, commit-vs-current diffs, and no inner file-card scroll panes
 
 ## What Changed Recently
+- Right-click file actions are now settings-driven (JSON) and can run tools like `patch-resolve` per file type
+- File-action output now opens in the same file preview modal flow, so users can review and copy output immediately
 - File cards no longer use individual inner scroll areas
 - Selected-commit mode now compares `selected commit -> current working tree`, not `parent(commit) -> commit`
 - Placeholder-only low-zoom previews were fixed by streaming and consuming bounded `previewContent`
@@ -27,6 +29,13 @@
 ## PRDs
 - [01-local-runtime-recovery.md](C:/Code/gitmaps/.docs/prds/01-local-runtime-recovery.md)
 - [01-virtual-sections-no-scroll-canvas.md](C:/Code/gitmaps/.docs/prds/01-virtual-sections-no-scroll-canvas.md)
+- [02-context-file-actions-and-preview.md](C:/Code/gitmaps/.docs/prds/02-context-file-actions-and-preview.md)
+
+## Decisions (ADRs)
+- [001-layout-corruption-recovery.md](C:/Code/gitmaps/.docs/decisions/001-layout-corruption-recovery.md)
+- [002-notes-over-connections.md](C:/Code/gitmaps/.docs/decisions/002-notes-over-connections.md)
+- [003-script-execution-via-bgrun.md](C:/Code/gitmaps/.docs/decisions/003-script-execution-via-bgrun.md)
+- [004-file-actions-from-context-menu.md](C:/Code/gitmaps/.docs/decisions/004-file-actions-from-context-menu.md)
 
 ## Task Tracker
 - [.docs/TASKS.md](C:/Code/gitmaps/.docs/TASKS.md)

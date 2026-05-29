@@ -27,6 +27,8 @@ import { collectPreviewDiffMarkers, estimatePreviewMaxScroll, getLowZoomScale, g
 import { getDefaultCardHeight, getDefaultCardWidth } from './settings';
 import { materializeViewport } from './xydraw-bridge';
 
+const ENABLE_PREVIEW_DIFF_MARKERS = false;
+
 // ── Culling state ──────────────────────────────────────────
 let _cullRafPending = false;
 let _cullEnabled = true;
@@ -273,6 +275,10 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
     const metrics = getPreviewScrollMetrics(file, h, zoom, scrollTop);
 
     if (diffOverlay) {
+        if (!ENABLE_PREVIEW_DIFF_MARKERS) {
+            diffOverlay.innerHTML = '';
+            diffOverlay.style.pointerEvents = 'none';
+        } else {
         const markers = collectPreviewDiffMarkers(file, metrics.totalLines);
         diffOverlay.innerHTML = '';
         diffOverlay.style.top = `${metrics.trackPadding}px`;
@@ -308,6 +314,7 @@ function updatePillCardLayout(ctx: CanvasContext, pill: HTMLElement, zoom: numbe
                 updatePillCardLayout(ctx, pill, zoom, changed);
             });
             diffOverlay.appendChild(btn);
+        }
         }
     }
 

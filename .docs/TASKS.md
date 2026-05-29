@@ -1,6 +1,7 @@
 # Galaxy Canvas — Tasks
 
 ## ✅ Completed
+- [x] ~~**Right-click file actions from Settings + modal preview output**~~ — ✅ DONE. Added configurable JSON-driven file actions in Settings (`fileActionsJson`), a new file-card context submenu (`⚙ Run file action`) filtered by extension, backend execution endpoint `/api/repo/file-action-run`, and modal preview opening of action output (same preview modal flow as normal file open). Default action ships with `patch-resolve` for `.md` files.
 - [x] 🟢 **Remote repo cloning** — Clone URL input + /api/repo/clone endpoint with shallow clone + caching
 - [x] 🟢 **SaaS vs local mode** — /api/repo/mode detects NODE_ENV; SaaS hides local path picker
 - [x] 🟡 **Clone UI styling** — Gradient clone button, status indicators, input styling

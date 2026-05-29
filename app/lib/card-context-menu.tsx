@@ -9,6 +9,7 @@ import { showToast } from './utils';
 import { hideSelectedFiles } from './hidden-files';
 import { layerState, createLayer, moveFilesToLayer, moveFileToLayer, addFileToLayer, removeFileFromLayer, getActiveLayer } from './layers';
 import { isPinned, togglePinCard } from './viewport-culling';
+import { getFileActionsForPath, type FileAction } from './file-actions';
 
 // These are imported lazily to avoid circular deps
 let _updateSelectionHighlights: any;
@@ -29,15 +30,17 @@ function lazyLoad() {
 }
 
 // ─── Context Menu JSX component ─────────────────────
-function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer, pinned, filePath, canRunScript, selectedCount }: {
+function ContextMenu({ onAction, onActionLayer, onFileAction, onSelectFolder, isInActiveLayer, pinned, filePath, canRunScript, selectedCount, fileActions }: {
     onAction: (action: string) => void;
     onActionLayer: (layerId: string) => void;
+    onFileAction: (action: FileAction) => void;
     onSelectFolder: (dir: string) => void;
     isInActiveLayer: boolean;
     pinned: boolean;
     filePath: string;
     canRunScript: boolean;
     selectedCount: number;
+    fileActions: FileAction[];
 }) {
     const customLayers = layerState.layers.filter(l => l.id !== 'default');
 
@@ -83,6 +86,18 @@ function ContextMenu({ onAction, onActionLayer, onSelectFolder, isInActiveLayer,
                     <button type="button" className="ctx-item" onClick={() => onAction('run-script')}>▶ Run with bgrun</button>
                     <button type="button" className="ctx-item" onClick={() => onAction('script-output')}>📟 View script output</button>
                 </>
+            )}
+            {fileActions.length > 0 && (
+                <div className="ctx-item ctx-dropdown">
+                    <span>⚙ Run file action ▸</span>
+                    <div className="ctx-dropdown-content">
+                        {fileActions.map(action => (
+                            <button type="button" key={action.id} className="ctx-item" onClick={() => onFileAction(action)}>
+                                {action.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             )}
             <button type="button" className="ctx-item" onClick={() => onAction('connect')}>🔗 Connect to...</button>
             <button type="button" className="ctx-item" onClick={() => onAction('fit-content')}>📏 Fit content</button>
@@ -177,6 +192,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
 
     const filePath = card.dataset.path;
     const canRunScript = !!filePath && filePath.endsWith('.ts') && !filePath.endsWith('.d.ts');
+    const fileActions = getFileActionsForPath(filePath);
     const menu = document.createElement('div');
     menu.className = 'card-context-menu';
     menu.style.left = `${x}px`;
@@ -281,6 +297,38 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
         }
     }
 
+    async function handleFileAction(action: FileAction) {
+        menu.remove();
+        const state = ctx.snap().context;
+        if (!state.repoPath) {
+            showToast('Load a repository first', 'error');
+            return;
+        }
+        try {
+            const res = await fetch('/api/repo/file-action-run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path: state.repoPath,
+                    filePath,
+                    action,
+                }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            const virtualFile = {
+                path: data.virtualPath || `.gitmaps/actions/${action.id}.txt`,
+                name: (data.virtualPath || `${action.id}.txt`).split('/').pop(),
+                content: data.output || '',
+                lines: (data.output || '').split('\n').length,
+            };
+            _openFileModal(ctx, virtualFile, 'full');
+            showToast(`${action.label} executed`, 'success');
+        } catch (err: any) {
+            showToast(`Action failed: ${err.message}`, 'error');
+        }
+    }
+
     function handleActionLayer(layerId: string) {
         menu.remove();
         const filesToMove = contextSelection;
@@ -317,7 +365,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     }
 
     const pinned = isPinned(filePath);
-    render(<ContextMenu onAction={handleAction} onActionLayer={handleActionLayer} onSelectFolder={handleSelectFolder} isInActiveLayer={isInActiveLayer} pinned={pinned} filePath={filePath} canRunScript={canRunScript} selectedCount={contextSelection.length} />, menu);
+    render(<ContextMenu onAction={handleAction} onActionLayer={handleActionLayer} onFileAction={handleFileAction} onSelectFolder={handleSelectFolder} isInActiveLayer={isInActiveLayer} pinned={pinned} filePath={filePath} canRunScript={canRunScript} selectedCount={contextSelection.length} fileActions={fileActions} />, menu);
     document.body.appendChild(menu);
 
     requestAnimationFrame(() => {

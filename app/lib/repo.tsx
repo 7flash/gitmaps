@@ -64,6 +64,11 @@ let _repoLoadRequestId = 0;
 const LARGE_REPO_AUTO_COMMIT_THRESHOLD = 1000;
 const WORKING_TREE_HASH = '__working__';
 
+function setDiffVisualMode(enabled: boolean) {
+  document.body.classList.toggle("show-diff-highlights", enabled);
+  document.body.classList.toggle("hide-diff-highlights", !enabled);
+}
+
 // ─── Load repository ─────────────────────────────────────
 export async function loadRepository(ctx: CanvasContext, repoPath: string) {
   if (!repoPath) return;
@@ -627,6 +632,8 @@ export async function selectCommit(ctx: CanvasContext, hash: string) {
     const state = ctx.snap().context;
     const commit = state.commits.find((c) => c.hash === hash);
     const isWorkingTree = hash === WORKING_TREE_HASH;
+    const inCommitsView = ctx.snap().value?.view === "commits";
+    setDiffVisualMode(inCommitsView && !isWorkingTree);
 
     // Show non-blocking inline progress bar (not overlay)
     const indexedFiles = ctx.allFilesData?.length || 0;
@@ -792,6 +799,9 @@ export function renderAllFilesOnCanvas(ctx: CanvasContext, files: any[]) {
     if (ctx.commitFilesData) {
       ctx.commitFilesData.forEach((f) => changedFileDataMap.set(f.path, f));
     }
+    const currentHash = ctx.snap().context.currentCommitHash;
+    const shouldRenderDiffDecorations =
+      !!currentHash && currentHash !== WORKING_TREE_HASH;
 
     let layerFiles = visibleFiles;
     const activeLayer = getActiveLayer();
@@ -890,7 +900,11 @@ export function renderAllFilesOnCanvas(ctx: CanvasContext, files: any[]) {
           activeLayer.files[fileWithDiff.path].sections;
       }
 
-      if (isChanged && changedFileDataMap.has(fileWithDiff.path)) {
+      if (
+        shouldRenderDiffDecorations &&
+        isChanged &&
+        changedFileDataMap.has(fileWithDiff.path)
+      ) {
         const diffData = changedFileDataMap.get(fileWithDiff.path);
 
         // Use full content from diff data if available (has the latest version)
@@ -1146,6 +1160,10 @@ export function switchView(ctx: CanvasContext, mode: string) {
       });
     }
   }
+
+  const currentHash = ctx.snap().context.currentCommitHash;
+  const showDiff = mode === "commits" && !!currentHash && currentHash !== WORKING_TREE_HASH;
+  setDiffVisualMode(showDiff);
 }
 
 // ─── Re-render current view ──────────────────────────────

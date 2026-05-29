@@ -762,7 +762,7 @@ body {
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: none;
+    scrollbar-width: auto;
     cursor: default;
     display: flex;
     flex-direction: column;
@@ -771,13 +771,55 @@ body {
 }
 
 .file-card-body::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+    width: 10px;
+    height: 10px;
+}
+
+/* Force visible native scrollbars in file cards */
+.file-card-body,
+.file-content-preview pre,
+.hunk-pane {
+    scrollbar-width: auto !important;
+}
+
+.file-card-body::-webkit-scrollbar,
+.file-content-preview pre::-webkit-scrollbar,
+.hunk-pane::-webkit-scrollbar {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+/* Always reserve vertical scrollbar gutter so unchanged files keep a stable rail */
+.file-card-body {
+    overflow-y: scroll !important;
+}
+
+/* Default mode (working tree / all-files): no diff color emphasis */
+body:not(.show-diff-highlights) .diff-line.diff-add,
+body:not(.show-diff-highlights) .diff-line.diff-del,
+body:not(.show-diff-highlights) .diff-line.diff-ctx {
+    color: var(--text-secondary) !important;
+    background: transparent !important;
+}
+
+/* Historical commit mode: enable diff emphasis */
+body.show-diff-highlights .diff-line.diff-add {
+    color: #4ade80 !important;
+    background: rgba(74, 222, 128, 0.15) !important;
+}
+
+body.show-diff-highlights .diff-line.diff-del {
+    color: #f87171 !important;
+    background: rgba(248, 113, 113, 0.15) !important;
+}
+
+body.show-diff-highlights .diff-line.diff-ctx {
+    color: var(--text-muted) !important;
 }
 
 /* Canvas text mode scrollbar */
 .canvas-container {
-    scrollbar-width: none;
+    scrollbar-width: auto;
     overflow: auto !important;
     overscroll-behavior: contain;
 }

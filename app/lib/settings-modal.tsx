@@ -148,6 +148,29 @@ function SettingsPanel({ settings }: { settings: GitCanvasSettings }) {
                             min={4} max={28} step={1} value={settings.previewFontPx} suffix="px" />
                     </SettingsRow>
                 </SettingsSection>
+                <SettingsSection title="File Actions">
+                    <SettingsRow
+                        label="Right-click scripts"
+                        desc='JSON array. Use "{file}" and "{repo}" placeholders in command.'
+                    >
+                        <textarea
+                            id="settingFileActionsJson"
+                            style={{
+                                width: '100%',
+                                minHeight: '160px',
+                                resize: 'vertical',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                lineHeight: '1.4',
+                                borderRadius: '10px',
+                                border: '1px solid var(--line)',
+                                background: 'rgba(8,12,20,0.75)',
+                                color: 'var(--text)',
+                                padding: '10px',
+                            }}
+                        >{settings.fileActionsJson}</textarea>
+                    </SettingsRow>
+                </SettingsSection>
 
                 <SettingsSection title="Card Shape Preview">
                     <div className="settings-dimension-preview" id="settingsDimensionPreview">
@@ -310,6 +333,11 @@ export function openSettingsModal(ctx?: any) {
         previewFontValue.textContent = `${previewFontSlider.value}px`;
         updateSettings({ previewFontPx: parseInt(previewFontSlider.value) });
         window.dispatchEvent(new CustomEvent('gitcanvas:preview-settings-changed'));
+    });
+
+    const fileActionsJson = _modal.querySelector('#settingFileActionsJson') as HTMLTextAreaElement;
+    fileActionsJson?.addEventListener('change', () => {
+        updateSettings({ fileActionsJson: fileActionsJson.value });
     });
 
 
