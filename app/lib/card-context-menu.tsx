@@ -10,6 +10,7 @@ import { hideSelectedFiles } from './hidden-files';
 import { layerState, createLayer, moveFilesToLayer, moveFileToLayer, addFileToLayer, removeFileFromLayer, getActiveLayer } from './layers';
 import { isPinned, togglePinCard } from './viewport-culling';
 import { getFileActionsForPath, type FileAction } from './file-actions';
+import { openFileHistoryComparison } from './file-history-compare';
 
 // These are imported lazily to avoid circular deps
 let _updateSelectionHighlights: any;
@@ -103,7 +104,7 @@ function ContextMenu({ onAction, onActionLayer, onFileAction, onSelectFolder, is
             <button type="button" className="ctx-item" onClick={() => onAction('fit-content')}>📏 Fit content</button>
             <button type="button" className="ctx-item" onClick={() => onAction('fit-screen')}>📺 Fit screen</button>
             <div className="ctx-divider"></div>
-            <button type="button" className="ctx-item" onClick={() => onAction('history')}>🕰️ File history</button>
+            <button type="button" className="ctx-item" onClick={() => onAction('history')}>🕰️ History{selectedCount > 1 ? ` (${selectedCount} files)` : ''}</button>
             <div className="ctx-item ctx-dropdown">
                 <span>📦 Move to Layer ▸</span>
                 <div className="ctx-dropdown-content">
@@ -190,8 +191,10 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     lazyLoad();
     document.querySelector('.card-context-menu')?.remove();
 
-    const filePath = card.dataset.path;
-    const canRunScript = !!filePath && filePath.endsWith('.ts') && !filePath.endsWith('.d.ts');
+    const filePath = card.dataset.path || '';
+    if (!filePath) return;
+
+    const canRunScript = filePath.endsWith('.ts') && !filePath.endsWith('.d.ts');
     const fileActions = getFileActionsForPath(filePath);
     const menu = document.createElement('div');
     menu.className = 'card-context-menu';
@@ -202,7 +205,12 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     const activeLayer = getActiveLayer();
     const isInActiveLayer = !!(activeLayer && activeLayer.files[filePath]);
     const selectedCards = ctx.snap().context.selectedCards || [];
-    const contextSelection = selectedCards.length > 1 ? selectedCards : [filePath];
+    // A context action targets the current multi-selection only when the
+    // right-clicked card is one of those selected files.
+    const contextSelection =
+        selectedCards.length > 1 && selectedCards.includes(filePath)
+            ? selectedCards
+            : [filePath];
 
     function handleAction(action: string) {
         menu.remove();
@@ -271,7 +279,7 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
             _updateSelectionHighlights(ctx);
             _fitScreenSize(ctx);
         } else if (action === 'history') {
-            showFileHistory(ctx, filePath);
+            openFileHistoryComparison(ctx, contextSelection);
         } else if (action === 'connect') {
             // Start connection from this file
             import('./connections').then(({ startConnectionFrom }) => {
@@ -383,77 +391,10 @@ export function showCardContextMenu(ctx: CanvasContext, card: HTMLElement, x: nu
     setTimeout(() => document.addEventListener('mousedown', closeMenu), 0);
 }
 
-// ─── File history panel (JSX) ───────────────────────
-function FileHistoryContent({ fileName, commits, error, loading, onClose, onSelect }: {
-    fileName: string; commits: any[]; error?: string; loading: boolean;
-    onClose: () => void; onSelect: (hash: string) => void;
-}) {
-    return (
-        <>
-            <div className="panel-header">
-                <span className="panel-title">History: {fileName}</span>
-                <button className="btn-ghost btn-xs" onClick={onClose}>✕</button>
-            </div>
-            <div className="file-history-list">
-                {loading ? (
-                    <div style="padding: 16px; color: var(--text-muted); font-size: 0.75rem;">Loading...</div>
-                ) : error ? (
-                    <div style="padding: 16px; color: var(--error); font-size: 0.75rem;">Error: {error}</div>
-                ) : commits.length === 0 ? (
-                    <div style="padding: 16px; color: var(--text-muted); font-size: 0.75rem;">No commits found for this file</div>
-                ) : (
-                    commits.map(c => (
-                        <div key={c.hash} className="file-history-item" onClick={() => onSelect(c.hash)}>
-                            <span className="file-history-hash">{c.shortHash}</span>
-                            <span className="file-history-msg">{c.message}</span>
-                            <span className="file-history-date">{new Date(c.date).toLocaleDateString()}</span>
-                        </div>
-                    ))
-                )}
-            </div>
-        </>
-    );
-}
-
-export async function showFileHistory(ctx: CanvasContext, filePath: string) {
-    const state = ctx.snap().context;
-    if (!state.repoPath) {
-        console.warn('No repository loaded');
-        return;
-    }
-
-    document.querySelector('.file-history-panel')?.remove();
-
-    const panel = document.createElement('div');
-    panel.className = 'file-history-panel';
-    const fileName = filePath.split('/').pop() || filePath;
-
-    function closePanel() { panel.remove(); }
-    function selectCommitHash(hash: string) {
-        import('./repo').then(({ selectCommit }) => {
-            selectCommit(ctx, hash);
-            panel.remove();
-        });
-    }
-
-    // Initial loading state
-    render(<FileHistoryContent fileName={fileName} commits={[]} loading={true} onClose={closePanel} onSelect={selectCommitHash} />, panel);
-    document.querySelector('.canvas-area')?.appendChild(panel);
-
-    try {
-        const response = await fetch('/api/repo/file-history', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: state.repoPath, filePath, limit: 30 })
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch history');
-        const data = await response.json();
-
-        render(<FileHistoryContent fileName={fileName} commits={data.commits} loading={false} onClose={closePanel} onSelect={selectCommitHash} />, panel);
-    } catch (err) {
-        render(<FileHistoryContent fileName={fileName} commits={[]} error={err.message} loading={false} onClose={closePanel} onSelect={selectCommitHash} />, panel);
-    }
+// ─── File history comparison modal ─────────────────────
+// Preserve the old exported function because cards.tsx re-exports it.
+export function showFileHistory(ctx: CanvasContext, filePath: string) {
+    openFileHistoryComparison(ctx, [filePath]);
 }
 
 function ScriptOutputPanel({

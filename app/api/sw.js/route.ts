@@ -22,41 +22,46 @@ self.addEventListener('activate', (e) => {
     self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-    const url = new URL(e.request.url);
 
-    // Skip non-GET, WebSocket, and API requests (except manifest)
-    if (e.request.method !== 'GET') return;
-    if (url.protocol === 'ws:' || url.protocol === 'wss:') return;
-    if (url.pathname.startsWith('/api/') && !url.pathname.includes('manifest')) return;
+self.addEventListener("fetch", (e) => {
+  const url = new URL(e.request.url);
 
-    // Network-first for HTML pages (always get fresh content)
-    if (e.request.headers.get('accept')?.includes('text/html')) {
-        e.respondWith(
-            fetch(e.request)
-                .then(res => {
-                    const clone = res.clone();
-                    caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-                    return res;
-                })
-                .catch(() => caches.match(e.request))
-        );
-        return;
-    }
+  if (e.request.method !== "GET") return;
 
-    // Cache-first for static assets (CSS, JS, fonts, images)
+  // Critical fix: Cache API only supports http/https requests.
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
+  if (url.protocol === "ws:" || url.protocol === "wss:") return;
+  if (url.pathname.startsWith("/api/") && !url.pathname.includes("manifest")) return;
+
+  if (e.request.headers.get("accept")?.includes("text/html")) {
     e.respondWith(
-        caches.match(e.request).then(cached => {
-            if (cached) return cached;
-            return fetch(e.request).then(res => {
-                if (res.ok && res.status === 200) {
-                    const clone = res.clone();
-                    caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-                }
-                return res;
-            });
+      fetch(e.request)
+        .then((res) => {
+          if (res.ok && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
+          }
+          return res;
         })
+        .catch(() => caches.match(e.request))
     );
+    return;
+  }
+
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(e.request).then((res) => {
+        if (res.ok && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
+        }
+        return res;
+      });
+    })
+  );
 });
 `;
 
