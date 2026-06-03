@@ -132,3 +132,23 @@ export async function clone(url: string, onProgress: (message: string) => void):
 
   throw new Error('Clone finished without a repository path.');
 }
+
+export async function listRepositories(signal?: AbortSignal): Promise<Array<{ name: string; path: string }>> {
+  const response = await fetch('/api/repo/list', {
+    method: 'GET',
+    signal,
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error((await response.text().catch(() => '')) || `${response.status} ${response.statusText}`);
+  }
+
+  const result = await response.json() as { repos?: Array<{ name: string; path: string }> };
+  return Array.isArray(result.repos) ? result.repos : [];
+}
+
+export async function resolveSlug(slug: string, signal?: AbortSignal): Promise<string | null> {
+  const result = await post<{ path?: string | null }>('/api/repo/resolve-slug', { slug }, signal);
+  return typeof result.path === 'string' && result.path.trim() ? result.path : null;
+}

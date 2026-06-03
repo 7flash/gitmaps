@@ -1,18 +1,28 @@
 /** @jsxImportSource tradjs/client */
 
 import { render } from 'tradjs/client';
-import { changedFiles, clone, fileContent, historyCompare, loadRepository, streamTree, upload } from './api';
-import { CanvasSurface, ContextMenuView, ModalView, TimelineView, ToastView, type CanvasActions } from './components';
+import { changedFiles, clone, fileContent, historyCompare, listRepositories, loadRepository, resolveSlug, streamTree, upload } from './api';
+import { ContextMenuView, ModalView, TimelineView, ToastView, type CanvasActions } from './components';
 import { CanvasModel } from './model';
 import { WORKING_TREE, type DomRoots, type FileRecord, type Position } from './types';
-import { bindRoots, clamp, fileName, listen } from './utils';
+import { bindRoots, clamp, fileName, listen, parentPath } from './utils';
 
 const CARD_WIDTH = 450;
 const CARD_HEIGHT = 360;
 const CARD_GAP = 22;
+const RECENT_REPOS_KEY = 'gitmaps:jsx-canvas:recent-repos';
+const LAST_REPO_KEY = 'gitmaps:jsx-canvas:last-repo';
+const LEGACY_RECENT_REPO_KEYS = [
+  RECENT_REPOS_KEY,
+  'gitmaps:plain-canvas:recent-repos',
+  'gitmaps:recentRepos',
+  'gitcanvas:recentRepos',
+  'gitmaps:recentRepositories',
+];
 
 export class CanvasApplication {
   private readonly model = new CanvasModel();
+  private readonly cardElements = new Map<string, HTMLElement>();
   private roots!: DomRoots;
   private disposers: Array<() => void> = [];
   private unsubscribe: (() => void) | null = null;
@@ -45,9 +55,7 @@ export class CanvasApplication {
     this.bindShell();
     this.bindViewport();
     this.render();
-
-    const initial = this.roots.repoPath?.value?.trim() || this.roots.repoSelect?.value?.trim();
-    if (initial) void this.openRepository(initial);
+    void this.bootstrapRepositories();
   }
 
   dispose(): void {
@@ -65,7 +73,7 @@ export class CanvasApplication {
   private render(): void {
     const snapshot = this.model.state;
 
-    render(<CanvasSurface snapshot={snapshot} actions={this.actions} />, this.roots.canvas);
+    this.renderCanvas(snapshot);
     render(<ContextMenuView snapshot={snapshot} actions={this.actions} />, this.roots.menu);
     render(<ModalView snapshot={snapshot} actions={this.actions} />, this.roots.modal);
     render(<ToastView snapshot={snapshot} />, this.roots.toast);
@@ -83,6 +91,123 @@ export class CanvasApplication {
     if (this.roots.commitCount) this.roots.commitCount.textContent = String(snapshot.commits.length);
     this.renderCommitHeader();
     this.applyTransform();
+  }
+
+  private renderCanvas(snapshot: CanvasModel['state']): void {
+    const visibleFiles = snapshot.files.filter(file => !snapshot.hidden.has(file.path));
+    const visiblePaths = new Set(visibleFiles.map(file => file.path));
+
+    for (const [path, element] of this.cardElements) {
+      if (!visiblePaths.has(path)) {
+        element.remove();
+        this.cardElements.delete(path);
+      }
+    }
+
+    const fragment = document.createDocumentFragment();
+    visibleFiles.forEach((file, index) => {
+      const position = snapshot.positions.get(file.path) || this.ensurePosition(file.path, index);
+      const element = this.cardElements.get(file.path) || this.createCardElement(file.path);
+      this.updateCardElement(element, file, position, snapshot.selected.has(file.path));
+      this.cardElements.set(file.path, element);
+      fragment.appendChild(element);
+    });
+
+    this.roots.canvas.replaceChildren(fragment);
+  }
+
+  private createCardElement(path: string): HTMLElement {
+    const card = document.createElement('article');
+    card.dataset.filePath = path;
+
+    const header = document.createElement('header');
+    header.className = 'plain-card__header';
+    header.addEventListener('pointerdown', event => this.actions.startCardDrag(event, path));
+
+    const dot = document.createElement('span');
+    dot.className = 'plain-card__dot';
+
+    const name = document.createElement('span');
+    name.className = 'plain-card__name';
+
+    const status = document.createElement('span');
+    status.className = 'plain-card__status';
+
+    header.append(dot, name, status);
+
+    const cardPath = document.createElement('div');
+    cardPath.className = 'plain-card__path';
+
+    const body = document.createElement('div');
+    body.className = 'plain-card__body';
+
+    card.append(header, cardPath, body);
+
+    card.addEventListener('click', event => {
+      if ((event.target as HTMLElement).closest('.plain-card__body')) return;
+      this.actions.select(path, event.shiftKey || event.ctrlKey || event.metaKey);
+    });
+
+    card.addEventListener('dblclick', () => {
+      void this.openFile(path);
+    });
+
+    card.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      this.actions.openMenu(event, path);
+    });
+
+    return card;
+  }
+
+  private updateCardElement(element: HTMLElement, file: FileRecord, position: Position, selected: boolean): void {
+    element.className = `plain-card status-${file.status || 'unmodified'}${selected ? ' is-selected' : ''}`;
+    element.style.left = `${position.x}px`;
+    element.style.top = `${position.y}px`;
+    element.style.width = `${position.width}px`;
+    element.style.height = `${position.height}px`;
+    element.dataset.filePath = file.path;
+
+    const [header, pathNode, body] = Array.from(element.children) as [HTMLElement, HTMLElement, HTMLElement];
+    const [, nameNode, statusNode] = Array.from(header.children) as [HTMLElement, HTMLElement, HTMLElement];
+
+    nameNode.textContent = file.name || fileName(file.path);
+    nameNode.title = file.path;
+    statusNode.textContent = file.status || file.ext || '';
+    pathNode.textContent = parentPath(file.path);
+    pathNode.title = file.path;
+
+    this.renderCardBody(body, file);
+  }
+
+  private renderCardBody(body: HTMLElement, file: FileRecord): void {
+    let nextTag = 'div';
+    let nextClass = 'plain-card__message';
+    let nextText = 'Loading file…';
+
+    if (file.isBinary) {
+      nextText = 'Binary file';
+    } else if (file.contentError || file.metaError) {
+      nextText = file.contentError || file.metaError || 'Unable to load file';
+    } else if (typeof file.content === 'string') {
+      nextTag = 'pre';
+      nextClass = '';
+      nextText = file.content;
+    } else if (file.previewContent) {
+      nextTag = 'pre';
+      nextClass = '';
+      nextText = file.previewContent;
+    }
+
+    const existing = body.firstElementChild as HTMLElement | null;
+    const needsReplace = !existing || existing.tagName.toLowerCase() !== nextTag || (nextClass && existing.className !== nextClass) || (!nextClass && existing.className);
+    const content = needsReplace ? document.createElement(nextTag) : existing;
+
+    if (nextClass) content.className = nextClass;
+    else content.removeAttribute('class');
+    content.textContent = nextText;
+
+    if (needsReplace) body.replaceChildren(content);
   }
 
   private renderCommitHeader(): void {
@@ -104,6 +229,8 @@ export class CanvasApplication {
   private async openRepository(path: string): Promise<void> {
     this.beginLoad();
     this.model.beginRepository(path);
+    this.rememberRepository(path);
+    this.selectRepositoryOption(path);
     this.setLoading('Loading repository history…');
     if (this.roots.repoPath) this.roots.repoPath.value = path;
 
@@ -347,7 +474,8 @@ export class CanvasApplication {
   private bindShell(): void {
     listen(this.disposers, this.roots.repoSelect, 'change', (() => {
       const value = this.roots.repoSelect!.value;
-      if (value && !value.startsWith('__')) void this.openRepository(value);
+      if (!value) return;
+      if (!value.startsWith('__')) void this.openRepository(value);
       if (value.startsWith('__')) this.roots.folderPicker?.click();
     }) as EventListener);
 
@@ -451,5 +579,123 @@ export class CanvasApplication {
       this.model.state.toast = null;
       this.model.emit();
     }, 3200);
+  }
+
+  private async bootstrapRepositories(): Promise<void> {
+    this.populateRepoSelect(this.readRecentRepositories());
+
+    try {
+      const discovered = await listRepositories();
+      const merged = this.mergeRepositories(this.readRecentRepositories(), discovered.map(repo => repo.path));
+      this.populateRepoSelect(merged);
+    } catch {
+      // Repo discovery is best-effort; recent repos are enough to stay usable.
+    }
+
+    const routePath = await this.getInitialPathFromRoute();
+    if (routePath) {
+      await this.openRepository(routePath);
+      return;
+    }
+
+    const initial = this.roots.repoPath?.value?.trim() || this.roots.repoSelect?.value?.trim();
+    if (initial && !initial.startsWith('__')) {
+      await this.openRepository(initial);
+    }
+  }
+
+  private async getInitialPathFromRoute(): Promise<string | null> {
+    const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (pathname === '/' || pathname === '/galaxy-canvas') return null;
+
+    const slug = pathname.replace(/^\/+/, '');
+    if (!slug) return null;
+    return await resolveSlug(slug).catch(() => null);
+  }
+
+  private readRecentRepositories(): string[] {
+    const values: string[] = [];
+
+    for (const key of LEGACY_RECENT_REPO_KEYS) {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+        if (!Array.isArray(parsed)) continue;
+        for (const item of parsed) {
+          const path = typeof item === 'string' ? item : item?.path;
+          if (typeof path === 'string' && path.trim()) values.push(this.normalizeRepositoryPath(path));
+        }
+      } catch {
+        // Ignore malformed old storage payloads.
+      }
+    }
+
+    try {
+      const last = localStorage.getItem(LAST_REPO_KEY);
+      if (last?.trim()) values.unshift(this.normalizeRepositoryPath(last));
+    } catch {
+      // Storage is optional.
+    }
+
+    return Array.from(new Set(values.filter(Boolean)));
+  }
+
+  private rememberRepository(path: string): void {
+    const normalized = this.normalizeRepositoryPath(path);
+    const recent = [normalized, ...this.readRecentRepositories().filter(value => value !== normalized)].slice(0, 12);
+
+    try {
+      localStorage.setItem(LAST_REPO_KEY, normalized);
+      localStorage.setItem(RECENT_REPOS_KEY, JSON.stringify(recent));
+    } catch {
+      // Storage is optional.
+    }
+
+    this.populateRepoSelect(recent);
+  }
+
+  private populateRepoSelect(paths: string[]): void {
+    const select = this.roots.repoSelect;
+    if (!select) return;
+
+    const current = select.value;
+    select.replaceChildren();
+
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = 'Select a repository...';
+    select.appendChild(blank);
+
+    for (const path of paths) {
+      const option = document.createElement('option');
+      option.value = path;
+      option.textContent = fileName(path);
+      option.title = path;
+      select.appendChild(option);
+    }
+
+    const browse = document.createElement('option');
+    browse.value = '__browse__';
+    browse.textContent = '＋ Open folder…';
+    select.appendChild(browse);
+
+    if (current && paths.includes(current)) select.value = current;
+  }
+
+  private mergeRepositories(current: string[], incoming: string[]): string[] {
+    return Array.from(new Set([...current, ...incoming.map(path => this.normalizeRepositoryPath(path))].filter(Boolean)));
+  }
+
+  private selectRepositoryOption(path: string): void {
+    const select = this.roots.repoSelect;
+    if (!select) return;
+
+    const normalized = this.normalizeRepositoryPath(path);
+    const existing = Array.from(select.options).some(option => option.value === normalized);
+    if (!existing) this.populateRepoSelect(this.mergeRepositories(this.readRecentRepositories(), [normalized]));
+    select.value = normalized;
+  }
+
+  private normalizeRepositoryPath(path: string): string {
+    return path.trim().replace(/\\/g, '/');
   }
 }

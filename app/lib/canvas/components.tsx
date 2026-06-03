@@ -20,16 +20,17 @@ export function CanvasSurface({ snapshot, actions }: { snapshot: CanvasSnapshot;
   const files = snapshot.files.filter(file => !snapshot.hidden.has(file.path));
 
   return (
-    <>
+    <div className="plain-canvas-layer" style={{ display: 'contents' }}>
       {files.map((file, index) => (
         <FileCard
+          key={file.path}
           file={file}
           position={snapshot.positions.get(file.path) || autoPosition(index)}
           selected={snapshot.selected.has(file.path)}
           actions={actions}
         />
       ))}
-    </>
+    </div>
   );
 }
 
@@ -108,6 +109,7 @@ export function TimelineView({
     <>
       {commits.map(commit => (
         <button
+          key={commit.hash}
           type="button"
           className={`plain-timeline${snapshot.ref === commit.hash ? ' active' : ''}`}
           onClick={() => actions.selectCommit(commit.hash)}
@@ -209,7 +211,7 @@ function HistoryTable({ result }: { result: HistoryResponse }) {
           </div>
         ))}
         {result.rows.map(row => (
-          <>
+          <div className="plain-history__row" style={{ display: 'contents' }} key={row.path}>
             <div className="plain-history__file">
               {row.name}
               <span>{row.path}</span>
@@ -224,7 +226,7 @@ function HistoryTable({ result }: { result: HistoryResponse }) {
                 )}
               </div>
             ))}
-          </>
+          </div>
         ))}
       </div>
     </div>
