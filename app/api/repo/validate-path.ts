@@ -25,7 +25,10 @@ export function validateRepoPath(repoPath: string): Response | null {
     if (!IS_PRODUCTION) return null; // Allow everything in dev
 
     const resolved = path.resolve(repoPath);
-    const isAllowed = ALLOWED_ROOTS.some(root => resolved.startsWith(root + path.sep) || resolved === root);
+    const isAllowed = ALLOWED_ROOTS.some(root => {
+        const rel = path.relative(root, resolved);
+        return rel === '' || (!!rel && !rel.startsWith('..') && !path.isAbsolute(rel));
+    });
 
     if (!isAllowed) {
         console.warn(`[security] Blocked access to path outside allowed roots: ${resolved}`);

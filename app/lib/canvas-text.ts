@@ -842,4 +842,3 @@ export class CanvasTextRenderer {
         }
     }
 }
-

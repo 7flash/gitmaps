@@ -1,21 +1,44 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import path from 'path';
+import { readFileSync } from 'fs';
 import { validateRepoPath } from '../validate-path';
+import { resolveInsideRepo } from '../path-safety';
 
 const WORKING_TREE_HASH = '__working__';
+const EMPTY_TREE_HASH = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
 interface DiffLine { type: string; content: string }
-interface DiffHunk { oldStart: number; oldCount: number; newStart: number; newCount: number; context: string; lines: DiffLine[] }
+interface DiffHunk {
+    oldStart: number;
+    oldCount: number;
+    newStart: number;
+    newCount: number;
+    context: string;
+    lines: DiffLine[];
+}
 
-type WorkingTreeEntry = {
+type ChangedFile = {
     path: string;
-    oldPath?: string | null;
-    indexStatus: string;
-    workTreeStatus: string;
+    name: string;
+    type: 'file';
     status: string;
-    staged: boolean;
-    unstaged: boolean;
+    content: null;
+    hunks: DiffHunk[];
+    contentError: string | null;
+    lines: number;
+    oldPath?: string | null;
+    similarity?: number | null;
+    staged?: boolean;
+    unstaged?: boolean;
+};
+
+type NameStatusEntry = {
+    path: string;
+    oldPath: string | null;
+    status: string;
+    similarity: number | null;
+    staged?: boolean;
+    unstaged?: boolean;
 };
 
 export async function POST(req: Request) {
@@ -33,12 +56,13 @@ export async function POST(req: Request) {
             const git = simpleGit(repoPath);
 
             if (commit === WORKING_TREE_HASH) {
-                const files = await getWorkingTreeFiles(git, repoPath);
-                return Response.json({ files, totalChanged: files.length });
+                const files = await getWorkingTreeDiffFiles(git, repoPath);
+                return Response.json({ files, totalChanged: files.length, diffBase: 'HEAD', diffCompare: WORKING_TREE_HASH });
             }
 
-            const files = await getFilesComparedToCurrent(git, repoPath, commit);
-            return Response.json({ files, totalChanged: files.length });
+            const parent = await getPrimaryParentOrEmptyTree(git, commit);
+            const files = await getCommitDiffFiles(git, parent, commit);
+            return Response.json({ files, totalChanged: files.length, diffBase: parent, diffCompare: commit });
         } catch (error: any) {
             console.error('api:repo:files:error', error);
             return new Response(`Error: ${error.message}`, { status: 500 });
@@ -46,230 +70,101 @@ export async function POST(req: Request) {
     });
 }
 
-async function getFilesComparedToCurrent(
-    git: ReturnType<typeof simpleGit>,
-    repoPath: string,
-    commit: string,
-) {
-    let diffResult = '';
+async function getPrimaryParentOrEmptyTree(git: ReturnType<typeof simpleGit>, commit: string): Promise<string> {
     try {
-        diffResult = await git.raw(['diff', '--name-status', '-M30%', commit, '--']);
-    } catch (e) { /* ignore */ }
-
-    const changedFiles = [];
-    const seenPaths = new Set<string>();
-    const lines = diffResult.trim().split('\n').filter(Boolean);
-
-    for (const line of lines) {
-        const parts = line.split('\t');
-        const statusCode = parts[0];
-        if (!statusCode || parts.length < 2) continue;
-
-        const isRename = statusCode.startsWith('R');
-        const isCopy = statusCode.startsWith('C');
-
-        let filePath: string;
-        let oldPath: string | null = null;
-        let fileStatus: string;
-        let similarity: number | null = null;
-
-        if (isRename || isCopy) {
-            oldPath = parts[1];
-            filePath = parts[2];
-            fileStatus = isRename ? 'renamed' : 'copied';
-            similarity = parseInt(statusCode.substring(1)) || null;
-        } else {
-            filePath = parts[1];
-            fileStatus = statusCode === 'A' ? 'added'
-                : statusCode === 'D' ? 'deleted'
-                    : statusCode === 'M' ? 'modified'
-                        : statusCode;
-        }
-
-        seenPaths.add(filePath);
-        changedFiles.push(await buildChangedFileAgainstCurrent(git, repoPath, commit, filePath, fileStatus, oldPath, similarity));
+        const row = (await git.raw(['rev-list', '--parents', '-n', '1', commit])).trim();
+        const parts = row.split(/\s+/).filter(Boolean);
+        return parts[1] || EMPTY_TREE_HASH;
+    } catch {
+        return `${commit}~1`;
     }
-
-    const porcelain = await git.raw(['status', '--porcelain=v1', '--untracked-files=all']);
-    const entries = parseWorkingTreeStatus(porcelain).filter((entry) => entry.indexStatus === '?' && entry.workTreeStatus === '?');
-    for (const entry of entries) {
-        if (seenPaths.has(entry.path)) continue;
-        changedFiles.push(await buildChangedFileAgainstCurrent(git, repoPath, commit, entry.path, 'added', null, null));
-    }
-
-    return changedFiles;
 }
 
-async function getCommitFiles(git: ReturnType<typeof simpleGit>, commit: string) {
-    // Get files CHANGED in this specific commit
-    // -M detects renames, -C detects copies
-    // Use --root for initial commits that have no parent
-    let diffResult = '';
-    try {
-        diffResult = await git.raw(['diff-tree', '--no-commit-id', '--name-status', '-M30%', '-r', commit]);
-    } catch (e) { /* ignore */ }
-    // If empty (root commit), try with --root
-    if (!diffResult.trim()) {
-        try {
-            diffResult = await git.raw(['diff-tree', '--root', '--no-commit-id', '--name-status', '-M30%', '-r', commit]);
-        } catch (e) { /* ignore */ }
-    }
-
-    const changedFiles = [];
-    const lines = diffResult.trim().split('\n').filter(Boolean);
-
-    for (const line of lines) {
-        const parts = line.split('\t');
-        const statusCode = parts[0];
-        if (!statusCode || parts.length < 2) continue;
-
-        const isRename = statusCode.startsWith('R');
-        const isCopy = statusCode.startsWith('C');
-
-        let filePath: string;
-        let oldPath: string | null = null;
-        let fileStatus: string;
-        let similarity: number | null = null;
-
-        if (isRename || isCopy) {
-            oldPath = parts[1];
-            filePath = parts[2];
-            fileStatus = isRename ? 'renamed' : 'copied';
-            similarity = parseInt(statusCode.substring(1)) || null;
-        } else {
-            filePath = parts[1];
-            fileStatus = statusCode === 'A' ? 'added'
-                : statusCode === 'D' ? 'deleted'
-                    : statusCode === 'M' ? 'modified'
-                        : statusCode;
-        }
-
-        changedFiles.push(await buildChangedFileFromCommit(git, commit, filePath, fileStatus, oldPath, similarity));
-    }
-
-    return changedFiles;
-}
-
-async function buildChangedFileFromCommit(
-    git: ReturnType<typeof simpleGit>,
-    commit: string,
-    filePath: string,
-    fileStatus: string,
-    oldPath: string | null,
-    similarity: number | null,
-) {
-    const name = filePath.split('/').pop()!;
-    let content = null;
-    let hunks: DiffHunk[] = [];
-    let error = null;
-
-    if (fileStatus === 'added') {
-        try { content = await git.show([`${commit}:${filePath}`]); } catch (e: any) { error = e.message; }
-    } else if (fileStatus === 'deleted') {
-        try { content = await git.show([`${commit}~1:${filePath}`]); } catch (e: any) { error = e.message; }
-    } else if (fileStatus === 'modified') {
-        try {
-            const rawDiff = await git.raw(['diff', '-U3', `${commit}~1`, commit, '--', filePath]);
-            hunks = parseHunks(rawDiff);
-        } catch (e: any) { error = e.message; }
-        try { content = await git.show([`${commit}:${filePath}`]); } catch (e: any) { /* ignore */ }
-    } else if (fileStatus === 'renamed' || fileStatus === 'copied') {
-        try {
-            const rawDiff = await git.raw([
-                'diff', '-U3', '-M',
-                `${commit}~1`, commit,
-                '--', oldPath!, filePath
-            ]);
-            hunks = parseHunks(rawDiff);
-        } catch (e: any) { error = e.message; }
-        try { content = await git.show([`${commit}:${filePath}`]); } catch (e: any) { /* ignore */ }
-    }
-
-    return {
-        path: filePath,
-        name,
-        type: 'file',
-        status: fileStatus,
-        content,
-        hunks,
-        contentError: error,
-        lines: content ? content.split('\n').length : 0,
-        ...(oldPath ? { oldPath } : {}),
-        ...(similarity != null ? { similarity } : {}),
-    };
-}
-
-async function buildChangedFileAgainstCurrent(
-    git: ReturnType<typeof simpleGit>,
-    repoPath: string,
-    commit: string,
-    filePath: string,
-    fileStatus: string,
-    oldPath: string | null,
-    similarity: number | null,
-) {
-    const name = filePath.split('/').pop()!;
-    let content = null;
-    let hunks: DiffHunk[] = [];
-    let error = null;
-
-    if (fileStatus === 'added') {
-        try { content = await readWorkingTreeFile(repoPath, filePath); } catch (e: any) { error = e.message; }
-    } else if (fileStatus === 'deleted') {
-        try { content = await git.show([`${commit}:${oldPath || filePath}`]); } catch (e: any) { error = e.message; }
-    } else if (fileStatus === 'modified' || fileStatus === 'renamed' || fileStatus === 'copied') {
-        try {
-            const diffArgs = oldPath
-                ? ['diff', '-U3', '-M', commit, '--', oldPath, filePath]
-                : ['diff', '-U3', commit, '--', filePath];
-            const rawDiff = await git.raw(diffArgs);
-            hunks = parseHunks(rawDiff);
-        } catch (e: any) { error = e.message; }
-        try { content = await readWorkingTreeFile(repoPath, filePath); } catch (e: any) { if (!error) error = e.message; }
-    }
-
-    return {
-        path: filePath,
-        name,
-        type: 'file',
-        status: fileStatus,
-        content,
-        hunks,
-        contentError: error,
-        lines: content ? content.split('\n').length : 0,
-        ...(oldPath ? { oldPath } : {}),
-        ...(similarity != null ? { similarity } : {}),
-    };
-}
-
-async function getWorkingTreeFiles(git: ReturnType<typeof simpleGit>, repoPath: string) {
-    const porcelain = await git.raw(['status', '--porcelain=v1', '--untracked-files=all']);
-    const entries = parseWorkingTreeStatus(porcelain);
-    const changedFiles = [];
+async function getCommitDiffFiles(git: ReturnType<typeof simpleGit>, base: string, commit: string): Promise<ChangedFile[]> {
+    const rawNameStatus = await git.raw(['diff', '--name-status', '-M30%', base, commit, '--']);
+    const entries = parseNameStatus(rawNameStatus);
+    const files: ChangedFile[] = [];
 
     for (const entry of entries) {
-        changedFiles.push(await buildChangedFileFromWorkingTree(git, repoPath, entry));
+        files.push(await buildDiffFile(git, base, commit, entry));
     }
 
-    return changedFiles;
+    return files;
 }
 
-function parseWorkingTreeStatus(raw: string): WorkingTreeEntry[] {
-    const entries: WorkingTreeEntry[] = [];
+async function getWorkingTreeDiffFiles(git: ReturnType<typeof simpleGit>, repoPath: string): Promise<ChangedFile[]> {
+    const rawNameStatus = await git.raw(['diff', '--name-status', '-M30%', 'HEAD', '--']).catch(() => '');
+    const entries = parseNameStatus(rawNameStatus);
+    const byPath = new Map(entries.map((entry) => [entry.path, entry]));
 
+    const porcelain = await git.raw(['status', '--porcelain=v1', '--untracked-files=all']);
+    const statusEntries = parseWorkingTreeStatus(porcelain);
+    for (const statusEntry of statusEntries) {
+        const existing = byPath.get(statusEntry.path);
+        if (existing) {
+            existing.staged = statusEntry.staged;
+            existing.unstaged = statusEntry.unstaged;
+            continue;
+        }
+        byPath.set(statusEntry.path, statusEntry);
+    }
+
+    const files: ChangedFile[] = [];
+    for (const entry of byPath.values()) {
+        if (entry.status === 'added' && entry.staged !== true) {
+            files.push(await buildUntrackedFileDiff(repoPath, entry));
+        } else {
+            files.push(await buildDiffFile(git, 'HEAD', WORKING_TREE_HASH, entry));
+        }
+    }
+    return files;
+}
+
+function parseNameStatus(raw: string): NameStatusEntry[] {
+    const entries: NameStatusEntry[] = [];
     for (const line of raw.split('\n')) {
         if (!line.trim()) continue;
-        if (line.length < 3) continue;
+        const parts = line.split('\t');
+        const statusCode = parts[0];
+        if (!statusCode || parts.length < 2) continue;
 
-        const indexStatus = line[0];
-        const workTreeStatus = line[1];
+        const isRename = statusCode.startsWith('R');
+        const isCopy = statusCode.startsWith('C');
+        const similarity = (isRename || isCopy) ? parseInt(statusCode.slice(1), 10) || null : null;
+        const oldPath = (isRename || isCopy) ? parts[1] : null;
+        const filePath = (isRename || isCopy) ? parts[2] : parts[1];
+        if (!filePath) continue;
+
+        entries.push({
+            path: unquoteGitPath(filePath),
+            oldPath: oldPath ? unquoteGitPath(oldPath) : null,
+            status: isRename ? 'renamed'
+                : isCopy ? 'copied'
+                    : statusCode === 'A' ? 'added'
+                        : statusCode === 'D' ? 'deleted'
+                            : statusCode === 'M' ? 'modified'
+                                : statusCode,
+            similarity,
+        });
+    }
+    return entries;
+}
+
+function parseWorkingTreeStatus(raw: string): NameStatusEntry[] {
+    const entries: NameStatusEntry[] = [];
+
+    for (const line of raw.split('\n')) {
+        if (!line.trim() || line.length < 3) continue;
+
+        const indexStatus = line[0] || ' ';
+        const workTreeStatus = line[1] || ' ';
         let rawPath = line.slice(3).trim();
         let oldPath: string | null = null;
         let filePath = rawPath;
 
         if (rawPath.includes(' -> ')) {
             const parts = rawPath.split(' -> ');
-            oldPath = parts[0];
+            oldPath = unquoteGitPath(parts[0]);
             filePath = parts[1];
         }
 
@@ -277,24 +172,17 @@ function parseWorkingTreeStatus(raw: string): WorkingTreeEntry[] {
         const unstaged = workTreeStatus !== ' ' && workTreeStatus !== '?';
 
         let status = 'modified';
-        if (indexStatus === '?' && workTreeStatus === '?') {
-            status = 'added';
-        } else if (indexStatus === 'D' || workTreeStatus === 'D') {
-            status = 'deleted';
-        } else if (indexStatus === 'R' || workTreeStatus === 'R') {
-            status = 'renamed';
-        } else if (indexStatus === 'C' || workTreeStatus === 'C') {
-            status = 'copied';
-        } else if (indexStatus === 'A' || workTreeStatus === 'A') {
-            status = 'added';
-        }
+        if (indexStatus === '?' && workTreeStatus === '?') status = 'added';
+        else if (indexStatus === 'D' || workTreeStatus === 'D') status = 'deleted';
+        else if (indexStatus === 'R' || workTreeStatus === 'R') status = 'renamed';
+        else if (indexStatus === 'C' || workTreeStatus === 'C') status = 'copied';
+        else if (indexStatus === 'A' || workTreeStatus === 'A') status = 'added';
 
         entries.push({
-            path: filePath,
+            path: unquoteGitPath(filePath),
             oldPath,
-            indexStatus,
-            workTreeStatus,
             status,
+            similarity: null,
             staged,
             unstaged,
         });
@@ -303,65 +191,94 @@ function parseWorkingTreeStatus(raw: string): WorkingTreeEntry[] {
     return entries;
 }
 
-async function buildChangedFileFromWorkingTree(
+async function buildDiffFile(
     git: ReturnType<typeof simpleGit>,
-    repoPath: string,
-    entry: WorkingTreeEntry,
-) {
-    const filePath = entry.path;
-    const name = filePath.split('/').pop()!;
-    let content = null;
+    base: string,
+    compare: string,
+    entry: NameStatusEntry,
+): Promise<ChangedFile> {
+    const name = entry.path.split('/').pop() || entry.path;
     let hunks: DiffHunk[] = [];
-    let error = null;
+    let error: string | null = null;
 
     try {
-        if (entry.status === 'added') {
-            content = await readWorkingTreeFile(repoPath, filePath);
-        } else if (entry.status === 'deleted') {
-            const headPath = entry.oldPath || filePath;
-            try {
-                content = await git.show([`HEAD:${headPath}`]);
-            } catch (e: any) {
-                error = e.message;
-            }
-        } else {
-            try {
-                const diffArgs = entry.oldPath
-                    ? ['diff', '-U3', '-M', 'HEAD', '--', entry.oldPath, filePath]
-                    : ['diff', '-U3', 'HEAD', '--', filePath];
-                const rawDiff = await git.raw(diffArgs);
-                hunks = parseHunks(rawDiff);
-            } catch (e: any) {
-                error = e.message;
-            }
-            try {
-                content = await readWorkingTreeFile(repoPath, filePath);
-            } catch (e: any) {
-                if (!error) error = e.message;
-            }
-        }
+        const pathArgs = entry.oldPath ? [entry.oldPath, entry.path] : [entry.path];
+        const compareArgs = compare === WORKING_TREE_HASH
+            ? ['diff', '-U3', '-M30%', base, '--', ...pathArgs]
+            : ['diff', '-U3', '-M30%', base, compare, '--', ...pathArgs];
+        const rawDiff = await git.raw(compareArgs);
+        hunks = parseHunks(rawDiff);
     } catch (e: any) {
         error = e.message;
     }
 
     return {
-        path: filePath,
+        path: entry.path,
         name,
         type: 'file',
         status: entry.status,
-        content,
+        content: null,
         hunks,
         contentError: error,
-        lines: content ? content.split('\n').length : 0,
-        staged: entry.staged,
-        unstaged: entry.unstaged,
+        lines: countHunkDisplayLines(hunks),
         ...(entry.oldPath ? { oldPath: entry.oldPath } : {}),
+        ...(entry.similarity != null ? { similarity: entry.similarity } : {}),
+        ...(entry.staged !== undefined ? { staged: entry.staged } : {}),
+        ...(entry.unstaged !== undefined ? { unstaged: entry.unstaged } : {}),
     };
 }
 
-async function readWorkingTreeFile(repoPath: string, filePath: string): Promise<string> {
-    const fullPath = path.join(repoPath, ...filePath.split('/'));
-    return await Bun.file(fullPath).text();
+async function buildUntrackedFileDiff(repoPath: string, entry: NameStatusEntry): Promise<ChangedFile> {
+    const name = entry.path.split('/').pop() || entry.path;
+    let hunks: DiffHunk[] = [];
+    let error: string | null = null;
+
+    try {
+        const { absPath } = resolveInsideRepo(repoPath, entry.path);
+        const content = readFileSync(absPath, 'utf8');
+        hunks = synthesizeAddedFileHunks(content);
+    } catch (e: any) {
+        error = e.message;
+    }
+
+    return {
+        path: entry.path,
+        name,
+        type: 'file',
+        status: 'added',
+        content: null,
+        hunks,
+        contentError: error,
+        lines: countHunkDisplayLines(hunks),
+        staged: !!entry.staged,
+        unstaged: entry.unstaged !== false,
+    };
+}
+
+function synthesizeAddedFileHunks(content: string): DiffHunk[] {
+    const lines = content.split('\n');
+    return [{
+        oldStart: 0,
+        oldCount: 0,
+        newStart: 1,
+        newCount: lines.length,
+        context: '',
+        lines: lines.map((line) => ({ type: 'add', content: line })),
+    }];
+}
+
+function countHunkDisplayLines(hunks: DiffHunk[]): number {
+    return hunks.reduce((sum, hunk) => sum + hunk.lines.length + 1, 0);
+}
+
+function unquoteGitPath(value: string): string {
+    const trimmed = value.trim();
+    if (!(trimmed.startsWith('"') && trimmed.endsWith('"'))) return trimmed;
+    try {
+        return JSON.parse(trimmed);
+    } catch {
+        return trimmed.slice(1, -1);
+    }
 }
 
 function parseHunks(rawDiff: string): DiffHunk[] {
@@ -379,13 +296,17 @@ function parseHunks(rawDiff: string): DiffHunk[] {
                 newStart: parseInt(hunkMatch[3]),
                 newCount: parseInt(hunkMatch[4] || '1'),
                 context: hunkMatch[5]?.trim() || '',
-                lines: []
+                lines: [],
             };
             continue;
         }
 
-        if (line.startsWith('diff ') || line.startsWith('index ') || line.startsWith('---') || line.startsWith('+++')
-            || line.startsWith('similarity ') || line.startsWith('rename ') || line.startsWith('copy ')) continue;
+        if (line.startsWith('diff ') || line.startsWith('index ') ||
+            line.startsWith('---') || line.startsWith('+++') ||
+            line.startsWith('similarity ') || line.startsWith('rename ') ||
+            line.startsWith('copy ') || line.startsWith('new file mode') ||
+            line.startsWith('deleted file mode') || line.startsWith('old mode') ||
+            line.startsWith('new mode')) continue;
 
         if (!currentHunk) continue;
 
@@ -394,7 +315,7 @@ function parseHunks(rawDiff: string): DiffHunk[] {
         } else if (line.startsWith('-')) {
             currentHunk.lines.push({ type: 'del', content: line.substring(1) });
         } else if (line.startsWith('\\')) {
-            // "\ No newline at end of file" — skip
+            // skip "\ No newline at end of file"
         } else {
             currentHunk.lines.push({ type: 'ctx', content: line.startsWith(' ') ? line.substring(1) : line });
         }

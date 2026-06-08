@@ -1,6 +1,7 @@
 import { measure } from 'measure-fn';
 import path from 'path';
 import fs from 'fs';
+import { parseSafeGitUrl } from '../git-url';
 
 
 const CLONES_DIR = path.join(process.cwd(), 'git-canvas', 'repos');
@@ -18,26 +19,14 @@ const CLONES_DIR = path.join(process.cwd(), 'git-canvas', 'repos');
 export async function POST(req: Request) {
     const { url } = await req.json() as { url: string };
 
-    if (!url || typeof url !== 'string') {
-        return Response.json({ error: 'url is required' }, { status: 400 });
+    let safe;
+    try {
+        safe = parseSafeGitUrl(url);
+    } catch (err: any) {
+        return Response.json({ error: err.message }, { status: 400 });
     }
-
-    const isGitUrl = url.startsWith('git@') || url.startsWith('https://') || url.startsWith('http://') || url.endsWith('.git');
-    if (!isGitUrl) {
-        return Response.json({ error: 'Invalid git URL. Use https:// or git@ format.' }, { status: 400 });
-    }
-
-    const repoName = url
-        .replace(/\.git$/, '')
-        .split('/')
-        .pop()!
-        .split(':')
-        .pop()!
-        .replace(/[^a-zA-Z0-9._-]/g, '_');
-
-    if (!repoName) {
-        return Response.json({ error: 'Could not determine repository name from URL' }, { status: 400 });
-    }
+    const repoName = safe.repoName;
+    const cloneUrl = safe.url;
 
     fs.mkdirSync(CLONES_DIR, { recursive: true });
     const targetPath = path.join(CLONES_DIR, repoName);
@@ -57,7 +46,7 @@ export async function POST(req: Request) {
     }
 
     // ── Stream clone progress via SSE ──
-    console.log(`[clone-stream] Cloning ${url} → ${targetPath}`);
+    console.log(`[clone-stream] Cloning ${cloneUrl} → ${targetPath}`);
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -69,7 +58,7 @@ export async function POST(req: Request) {
 
             sendSSE('progress', { message: `Starting clone of ${repoName}...`, percent: 0 });
 
-            const gitProc = Bun.spawn(['git', 'clone', '--depth', '100', '--progress', url, targetPath], {
+            const gitProc = Bun.spawn(['git', 'clone', '--depth', '100', '--progress', cloneUrl, targetPath], {
                 stdio: ['ignore', 'pipe', 'pipe']
             });
 

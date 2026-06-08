@@ -9,6 +9,7 @@ import type { CanvasContext } from './context';
 import { savePosition, setPathExpandedInPositions } from './positions';
 import { updateMinimap } from './canvas';
 import { renderConnections } from './connections';
+import { applyFontSizeToCard, applyFontSizeToAllCards, getFileCodeFontSize, getGlobalCodeFontSize, setFileCodeFontSize, setGlobalCodeFontSize } from './font-size';
 
 // Re-use card data store and content builder from cards.tsx (lazy import to avoid circular)
 function getCardsDeps() {
@@ -29,17 +30,18 @@ export function updateHiddenLinesIndicator(_card: HTMLElement, _totalLines?: num
 // ─── Change card font size (Ctrl +/-) ─────────────────
 export function changeCardsFontSize(ctx: CanvasContext, delta: number) {
     const selected = ctx.snap().context.selectedCards;
-    const targets = selected.length > 0 ? selected : Array.from(ctx.fileCards.keys());
 
-    targets.forEach(path => {
+    if (selected.length === 0) {
+        setGlobalCodeFontSize(getGlobalCodeFontSize() + delta);
+        applyFontSizeToAllCards(ctx);
+        return;
+    }
+
+    selected.forEach(path => {
         const card = ctx.fileCards.get(path);
         if (!card) return;
-        const pre = card.querySelector('.file-content-preview pre') as HTMLElement;
-        if (!pre) return;
-        const current = parseFloat(getComputedStyle(pre).fontSize) || 8.5;
-        const newSize = Math.max(5, Math.min(24, current + delta));
-        pre.style.fontSize = `${newSize}px`;
-        pre.style.lineHeight = '1.1';
+        setFileCodeFontSize(ctx, path, getFileCodeFontSize(ctx, path) + delta);
+        applyFontSizeToCard(ctx, card, path);
         updateHiddenLinesIndicator(card, 0);
     });
 }

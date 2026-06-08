@@ -1,12 +1,17 @@
 import type { CanvasContext } from './context';
 import { handoffRepoLoad } from './repo-handoff';
+import { decodeRepoPathFromRouteSlug, getRepoPathFromUrlSearch } from './repo-route';
 
-export function getCurrentRouteSlug(pathname = window.location.pathname): string {
-  return decodeURIComponent(pathname.replace(/^\//, ''));
+export function getCurrentRouteSlug(pathname = window.location.pathname, search = window.location.search): string {
+  const queryRepoPath = getRepoPathFromUrlSearch(search);
+  if (queryRepoPath) return queryRepoPath;
+  const encodedSlug = pathname.replace(/^\//, '');
+  return decodeRepoPathFromRouteSlug(encodedSlug);
 }
 
 export function resolveMappedRepoPath(slug: string): string {
-  return localStorage.getItem(`gitcanvas:slug:${slug}`) || slug;
+  const decoded = decodeRepoPathFromRouteSlug(slug);
+  return localStorage.getItem(`gitcanvas:slug:${slug}`) || localStorage.getItem(`gitcanvas:slug:${decoded}`) || decoded;
 }
 
 export function handlePopstateRepoEntry(

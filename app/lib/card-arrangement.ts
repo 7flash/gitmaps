@@ -137,7 +137,7 @@ export function arrangeRow(ctx: CanvasContext) {
         const commitHash = ctx.snap().context.currentCommitHash || 'allfiles';
         infos.forEach(info => {
             applyPosition(ctx, info, curX, startY);
-            savePosition(ctx, commitHash, info.path, curX, startY);
+            savePosition(ctx, commitHash, info.path, curX, startY, info.w, info.h);
             curX += info.w + gap;
         });
         flushPositions(ctx); // Force immediate save — don't rely on debounce for batch arrange
@@ -158,7 +158,7 @@ export function arrangeColumn(ctx: CanvasContext) {
         const commitHash = ctx.snap().context.currentCommitHash || 'allfiles';
         infos.forEach(info => {
             applyPosition(ctx, info, startX, curY);
-            savePosition(ctx, commitHash, info.path, startX, curY);
+            savePosition(ctx, commitHash, info.path, startX, curY, info.w, info.h);
             curY += info.h + gap;
         });
         flushPositions(ctx);
@@ -176,6 +176,8 @@ export function arrangeGrid(ctx: CanvasContext) {
         const startX = Math.min(...infos.map(i => i.x));
         const startY = Math.min(...infos.map(i => i.y));
         const gapX = 40, gapY = 40;
+        const defaultWidth = getDefaultCardWidth();
+        const defaultHeight = getDefaultCardHeight();
 
         const colWidths: number[] = [];
         const rowHeights: number[] = [];
@@ -195,7 +197,7 @@ export function arrangeGrid(ctx: CanvasContext) {
             let y = startY;
             for (let r = 0; r < row; r++) y += (rowHeights[r] || defaultHeight) + gapY;
             applyPosition(ctx, info, x, y);
-            savePosition(ctx, commitHash, info.path, x, y);
+            savePosition(ctx, commitHash, info.path, x, y, info.w, info.h);
         });
 
         flushPositions(ctx);

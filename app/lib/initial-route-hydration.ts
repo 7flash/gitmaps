@@ -3,26 +3,32 @@ import { loadSavedPositions } from './positions';
 import { restoreViewport, updateCanvasTransform, updateZoomUI } from './canvas';
 import { initLayers, renderLayersUI } from './layers';
 import { handoffRepoLoad, syncRepoSelection } from './repo-handoff';
+import { decodeRepoPathFromRouteSlug, getRepoPathFromUrlSearch, isLikelyLocalRepoPath, encodeRepoPathForRoute } from './repo-route';
 
 export interface InitialRouteParts {
   rawPath: string;
   pathSlug: string;
   hashSlug: string;
+  queryRepoPath: string;
   urlSlug: string;
 }
 
 export function getInitialRouteParts(
   pathname = window.location.pathname,
   hash = window.location.hash,
+  search = window.location.search,
 ): InitialRouteParts {
-  const rawPath = decodeURIComponent(pathname.replace(/^\//, ''));
-  const pathSlug = rawPath.replace(/^galaxy-canvas\/?/, '');
+  const encodedPathSlug = pathname.replace(/^\//, '').replace(/^galaxy-canvas\/?/, '');
+  const rawPath = decodeURIComponent(encodedPathSlug);
+  const pathSlug = decodeRepoPathFromRouteSlug(encodedPathSlug || rawPath);
   const hashSlug = decodeURIComponent(hash.replace('#', ''));
+  const queryRepoPath = getRepoPathFromUrlSearch(search) || '';
   return {
     rawPath,
     pathSlug,
     hashSlug,
-    urlSlug: pathSlug || hashSlug,
+    queryRepoPath,
+    urlSlug: queryRepoPath || pathSlug || hashSlug,
   };
 }
 
@@ -40,7 +46,11 @@ export async function resolveInitialRepoPath(
   if (!urlSlug) return null;
 
   if (!isGithubOwnerRepoSlug(urlSlug)) {
-    return localStorage.getItem(`gitcanvas:slug:${urlSlug}`) || urlSlug;
+    const routedPath = decodeRepoPathFromRouteSlug(urlSlug);
+    const cached = localStorage.getItem(`gitcanvas:slug:${urlSlug}`) || localStorage.getItem(`gitcanvas:slug:${routedPath}`);
+    if (cached) return cached;
+    if (isLikelyLocalRepoPath(routedPath)) return routedPath;
+    return routedPath;
   }
 
   const cached = localStorage.getItem(`gitcanvas:slug:${urlSlug}`);
@@ -90,7 +100,7 @@ export function hideInitialRouteLanding() {
 }
 
 export function migrateLegacyHashRoute(hashSlug: string) {
-  window.history.replaceState(null, '', '/' + encodeURIComponent(hashSlug));
+  window.history.replaceState(null, '', encodeRepoPathForRoute(hashSlug));
 }
 
 export function showInitialRouteCloneStart(slug: string) {

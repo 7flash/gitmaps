@@ -1,20 +1,13 @@
 {
-    "compilerOptions": {
-        "jsx": "react-jsx",
-        "jsxImportSource": "tradjs/client",
-        "target": "ESNext",
-        "module": "ESNext",
-        "moduleResolution": "bundler",
-        "strict": true,
-        "noEmit": true,
-        "skipLibCheck": true,
-        "baseUrl": "."
-    },
-    "include": [
-        "app/**/*",
-        "server.ts"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": false,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["node"]
+  },
+  "include": ["app/**/*.ts", "app/**/*.tsx", "server.ts", "cli.ts", "scripts/**/*.ts"]
 }

@@ -85,16 +85,14 @@ export async function GET(req: Request) {
         const token = createSession(user.id);
 
         // 5. Redirect to app with session cookie
+        const headers = new Headers();
+        headers.set('Location', '/');
+        headers.append('Set-Cookie', sessionCookie(token));
+        headers.append('Set-Cookie', 'gc_oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+
         return new Response(null, {
             status: 302,
-            headers: {
-                'Location': '/',
-                'Set-Cookie': [
-                    sessionCookie(token),
-                    // Clear OAuth state cookie
-                    'gc_oauth_state=; Path=/; HttpOnly; Max-Age=0',
-                ].join(', '),
-            },
+            headers,
         });
     } catch (err: any) {
         console.error('[auth] OAuth callback error:', err.message);

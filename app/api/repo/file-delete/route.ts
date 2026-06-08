@@ -2,6 +2,7 @@ import { measure } from 'measure-fn';
 import { validateRepoPath } from '../validate-path';
 import * as path from 'path';
 import * as fs from 'fs';
+import { resolveInsideRepo } from '../path-safety';
 import simpleGit from 'simple-git';
 
 export async function POST(req: Request) {
@@ -17,11 +18,7 @@ export async function POST(req: Request) {
             if (blocked) return blocked;
 
             // Resolve absolute path and ensure it's within the repo
-            const absPath = path.resolve(repoPath, filePath);
-            const absRepo = path.resolve(repoPath);
-            if (!absPath.startsWith(absRepo)) {
-                return new Response('File path must be within the repository', { status: 403 });
-            }
+            const { absPath, absRepo, safeRelPath } = resolveInsideRepo(repoPath, filePath);
 
             // Check file exists
             if (!fs.existsSync(absPath)) {
@@ -31,7 +28,7 @@ export async function POST(req: Request) {
             if (gitRm) {
                 // Use git rm to stage the deletion
                 const git = simpleGit(repoPath);
-                await git.rm(filePath);
+                await git.rm(safeRelPath);
             } else {
                 // Just delete the file
                 fs.unlinkSync(absPath);
@@ -39,7 +36,9 @@ export async function POST(req: Request) {
 
             // Clean up empty parent directories
             let dir = path.dirname(absPath);
-            while (dir !== absRepo && dir.startsWith(absRepo)) {
+            while (dir !== absRepo) {
+                const relToRepo = path.relative(absRepo, dir);
+                if (relToRepo.startsWith('..') || path.isAbsolute(relToRepo)) break;
                 const entries = fs.readdirSync(dir);
                 if (entries.length === 0) {
                     fs.rmdirSync(dir);
@@ -51,7 +50,7 @@ export async function POST(req: Request) {
 
             return Response.json({
                 success: true,
-                path: filePath,
+                path: safeRelPath,
                 gitRm: !!gitRm,
             });
         } catch (error: any) {

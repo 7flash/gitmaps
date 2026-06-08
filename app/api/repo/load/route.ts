@@ -79,32 +79,39 @@ export async function POST(req: Request) {
             try {
                 const porcelain = await git.raw(['status', '--porcelain=v1', '--untracked-files=all']);
                 const workingTreeLines = porcelain.split('\n').filter(line => line.trim());
-                if (workingTreeLines.length > 0) {
-                    let stagedCount = 0;
-                    let unstagedCount = 0;
-                    for (const line of workingTreeLines) {
-                        const indexStatus = line[0] || ' ';
-                        const workTreeStatus = line[1] || ' ';
-                        if (indexStatus !== ' ' && indexStatus !== '?') stagedCount++;
-                        if (workTreeStatus !== ' ' && workTreeStatus !== '?') unstagedCount++;
-                        if (indexStatus === '?' && workTreeStatus === '?') unstagedCount++;
-                    }
-                    const summaryBits = [];
-                    if (stagedCount > 0) summaryBits.push(`${stagedCount} staged`);
-                    if (unstagedCount > 0) summaryBits.push(`${unstagedCount} unstaged`);
-                    commits.unshift({
-                        hash: WORKING_TREE_HASH,
-                        parents: commits[0] ? [commits[0].hash] : [],
-                        message: summaryBits.length > 0 ? `Working tree · ${summaryBits.join(' · ')}` : 'Working tree',
-                        author: 'Uncommitted',
-                        email: '',
-                        date: new Date().toISOString(),
-                        refs: ['WORKTREE'],
-                        isVirtual: true,
-                    });
+                let stagedCount = 0;
+                let unstagedCount = 0;
+                for (const line of workingTreeLines) {
+                    const indexStatus = line[0] || ' ';
+                    const workTreeStatus = line[1] || ' ';
+                    if (indexStatus !== ' ' && indexStatus !== '?') stagedCount++;
+                    if (workTreeStatus !== ' ' && workTreeStatus !== '?') unstagedCount++;
+                    if (indexStatus === '?' && workTreeStatus === '?') unstagedCount++;
                 }
+                const summaryBits = [];
+                if (stagedCount > 0) summaryBits.push(`${stagedCount} staged`);
+                if (unstagedCount > 0) summaryBits.push(`${unstagedCount} unstaged`);
+                commits.unshift({
+                    hash: WORKING_TREE_HASH,
+                    parents: commits[0] ? [commits[0].hash] : [],
+                    message: summaryBits.length > 0 ? `Working tree · ${summaryBits.join(' · ')}` : 'Working tree · clean',
+                    author: 'Uncommitted',
+                    email: '',
+                    date: new Date().toISOString(),
+                    refs: ['WORKTREE'],
+                    isVirtual: true,
+                });
             } catch {
-                // Ignore status failures — commit history still loads
+                commits.unshift({
+                    hash: WORKING_TREE_HASH,
+                    parents: commits[0] ? [commits[0].hash] : [],
+                    message: 'Working tree',
+                    author: 'Uncommitted',
+                    email: '',
+                    date: new Date().toISOString(),
+                    refs: ['WORKTREE'],
+                    isVirtual: true,
+                });
             }
 
             let canonicalSlug: string | null = null;

@@ -4,6 +4,8 @@
  * Initiates the GitHub OAuth flow by redirecting to GitHub's authorize URL.
  * Requires GITHUB_CLIENT_ID env var (from GitHub OAuth App settings).
  */
+import { shortLivedCookie } from '../../../lib/auth';
+
 export async function GET(req: Request) {
     const clientId = process.env.GITHUB_CLIENT_ID;
     if (!clientId) {
@@ -26,7 +28,7 @@ export async function GET(req: Request) {
         status: 302,
         headers: {
             'Location': githubUrl.toString(),
-            'Set-Cookie': `gc_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`,
+            'Set-Cookie': shortLivedCookie('gc_oauth_state', state, 600),
         },
     });
 }

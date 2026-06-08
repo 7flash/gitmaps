@@ -9,6 +9,7 @@ import { scheduleViewportCulling, markTransformActive, clearAllPills } from './v
 import { clearVirtualCards } from './virtual-files';
 import { getGalaxyDrawState } from './xydraw-bridge';
 import { getDefaultCardWidth } from './settings';
+import { encodeRepoPathForRoute } from './repo-route';
 
 // ─── Minimap cached state (avoids full rebuild on every pan/zoom) ──
 let _mmCache: {
@@ -90,7 +91,8 @@ export function getShareableLink(ctx: CanvasContext): string {
     const z = state.zoom.toFixed(3);
     const x = Math.round(state.offsetX);
     const y = Math.round(state.offsetY);
-    return `${window.location.origin}${window.location.pathname}#z=${z}&x=${x}&y=${y}`;
+    const path = state.repoPath ? encodeRepoPathForRoute(state.repoPath) : window.location.pathname;
+    return `${window.location.origin}${path}#z=${z}&x=${x}&y=${y}`;
 }
 
 // ─── Update canvas CSS transform from state ─────────────

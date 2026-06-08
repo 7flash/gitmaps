@@ -971,7 +971,8 @@ export function setupPillInteraction(ctx: CanvasContext) {
                     card.style.top = `${newY}px`;
                 }
 
-                savePosition(ctx, 'allfiles', info.path, newX, newY);
+                const commitHash = ctx.snap().context.currentCommitHash || 'allfiles';
+                savePosition(ctx, commitHash, info.path, newX, newY);
             });
             pillMoveInfos = [];
             // Force minimap rebuild so dot positions reflect the drag result
@@ -1008,5 +1009,3 @@ export function updatePillSelectionHighlights(ctx: CanvasContext) {
     const { updateSelectionHighlights } = require('./cards');
     updateSelectionHighlights(ctx);
 }
-
-

@@ -221,4 +221,3 @@ function navigateToFile(ctx: CanvasContext, filePath: string) {
         openFileModal(ctx, fileData);
     });
 }
-

@@ -187,4 +187,3 @@ export class WebGLTextRenderer {
     this.app.canvas.remove();
   }
 }
-

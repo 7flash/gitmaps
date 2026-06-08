@@ -50,4 +50,3 @@ export function getFileActionsForPath(filePath: string): FileAction[] {
         return action.extensions.includes(extMatch);
     });
 }
-

@@ -3,6 +3,7 @@ import { validateRepoPath } from '../validate-path';
 import * as path from 'path';
 import * as fs from 'fs';
 import simpleGit from 'simple-git';
+import { resolveInsideRepo } from '../path-safety';
 
 export async function POST(req: Request) {
     return measure('api:repo:file-rename', async () => {
@@ -16,22 +17,13 @@ export async function POST(req: Request) {
             const blocked = validateRepoPath(repoPath);
             if (blocked) return blocked;
 
-            // Normalize paths
-            const normalizedOld = oldPath.replace(/\\/g, '/').replace(/^\/+/, '');
-            const normalizedNew = newPath.replace(/\\/g, '/').replace(/^\/+/, '');
-
-            // Validate paths are within repo
-            const absOld = path.resolve(repoPath, normalizedOld);
-            const absNew = path.resolve(repoPath, normalizedNew);
-            const absRepo = path.resolve(repoPath);
-
-            if (!absOld.startsWith(absRepo) || !absNew.startsWith(absRepo)) {
-                return new Response('Paths must be within the repository', { status: 403 });
-            }
-
-            if (normalizedNew.includes('..')) {
-                return new Response('Invalid path — cannot use ..', { status: 400 });
-            }
+            const oldResolved = resolveInsideRepo(repoPath, oldPath);
+            const newResolved = resolveInsideRepo(repoPath, newPath);
+            const normalizedOld = oldResolved.safeRelPath;
+            const normalizedNew = newResolved.safeRelPath;
+            const absOld = oldResolved.absPath;
+            const absNew = newResolved.absPath;
+            const absRepo = oldResolved.absRepo;
 
             // Check source exists
             if (!fs.existsSync(absOld)) {
@@ -60,7 +52,9 @@ export async function POST(req: Request) {
 
             // Clean up empty parent directories
             let dir = path.dirname(absOld);
-            while (dir !== absRepo && dir.startsWith(absRepo)) {
+            while (dir !== absRepo) {
+                const relToRepo = path.relative(absRepo, dir);
+                if (relToRepo.startsWith('..') || path.isAbsolute(relToRepo)) break;
                 const entries = fs.readdirSync(dir);
                 if (entries.length === 0) {
                     fs.rmdirSync(dir);

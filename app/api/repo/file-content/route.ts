@@ -3,6 +3,7 @@ import simpleGit from "simple-git";
 import { readFileSync } from "fs";
 import path from "path";
 import { validateRepoPath } from "../validate-path";
+import { normalizeRepoFilePath, resolveInsideRepo } from "../path-safety";
 
 const MIME_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
 
       if (commit && commit !== "__working__") {
         const git = simpleGit(repoPath);
-        const content = await git.show([`${commit}:${filePath}`]);
+        const safeRelPath = normalizeRepoFilePath(filePath);
+        const content = await git.show([`${commit}:${safeRelPath}`]);
         // Truncate if too large
         if (content.length > MAX_TEXT_FILE_SIZE) {
           return Response.json({
@@ -77,7 +79,7 @@ export async function POST(req: Request) {
         return Response.json({ content });
       }
 
-      const fullPath = path.join(repoPath, filePath);
+      const { absPath: fullPath, safeRelPath } = resolveInsideRepo(repoPath, filePath);
       const file = Bun.file(fullPath);
       const size = file.size;
 
@@ -105,7 +107,7 @@ export async function POST(req: Request) {
 
       const buffer = readFileSync(fullPath);
 
-      if (isLikelyBinary(filePath, buffer)) {
+      if (isLikelyBinary(safeRelPath, buffer)) {
         return new Response("Binary file cannot be copied as text", {
           status: 415,
         });
@@ -155,7 +157,7 @@ export async function GET(req: Request) {
         return new Response("Not an image file", { status: 400 });
       }
 
-      const fullPath = path.join(repoPath, file);
+      const { absPath: fullPath, safeRelPath } = resolveInsideRepo(repoPath, file);
       const fileObj = Bun.file(fullPath);
       const size = fileObj.size;
 

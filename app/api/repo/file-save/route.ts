@@ -2,6 +2,7 @@ import { measure } from 'measure-fn';
 import { validateRepoPath } from '../validate-path';
 import * as path from 'path';
 import * as fs from 'fs';
+import { resolveInsideRepo } from '../path-safety';
 
 export async function POST(req: Request) {
     return measure('api:repo:file-save', async () => {
@@ -16,11 +17,7 @@ export async function POST(req: Request) {
             if (blocked) return blocked;
 
             // Resolve absolute path and ensure it's within the repo
-            const absPath = path.resolve(repoPath, filePath);
-            const absRepo = path.resolve(repoPath);
-            if (!absPath.startsWith(absRepo)) {
-                return new Response('File path must be within the repository', { status: 403 });
-            }
+            const { absPath, safeRelPath } = resolveInsideRepo(repoPath, filePath);
 
             // Ensure directory exists
             const dir = path.dirname(absPath);
@@ -33,7 +30,7 @@ export async function POST(req: Request) {
 
             return Response.json({
                 success: true,
-                path: filePath,
+                path: safeRelPath,
                 bytes: Buffer.byteLength(content, 'utf-8'),
                 lines: content.split('\n').length,
             });

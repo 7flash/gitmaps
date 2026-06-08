@@ -48,6 +48,11 @@ export function createFileCardPlugin(): CardPlugin {
             const { createAllFileCard } = require('./cards');
             const card = createAllFileCard(ctx, file, data.x, data.y, savedSize, true);
 
+            try {
+                const { applyFontSizeToCard } = require('./font-size');
+                applyFontSizeToCard(ctx, card, file.path);
+            } catch { }
+
             const { isDirCollapsed } = require('./card-groups');
             const fileDir = file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/')) : '.';
             if (isDirCollapsed(fileDir)) {
@@ -111,6 +116,11 @@ export function createDiffCardPlugin(): CardPlugin {
 
             const { createFileCard } = require('./cards');
             const card = createFileCard(ctx, file, data.x, data.y, commitHash, true);
+
+            try {
+                const { applyFontSizeToCard } = require('./font-size');
+                applyFontSizeToCard(ctx, card, file.path);
+            } catch { }
 
             const { isDirCollapsed } = require('./card-groups');
             const fileDir = file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/')) : '.';

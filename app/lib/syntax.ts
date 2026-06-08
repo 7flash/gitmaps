@@ -138,17 +138,7 @@ export function highlightSyntax(content: string, ext: string): string {
 export function buildModalDiffHTML(file: any): string {
     let html = '';
 
-    if (file.status === 'added' && file.content) {
-        const lines = file.content.split('\n');
-        html = lines.map((line: string, i: number) =>
-            `<span class="diff-line diff-add" data-line="${i + 1}"><span class="line-num">${String(i + 1).padStart(4, ' ')}</span>+  ${escapeHtml(line)}</span>`
-        ).join('\n');
-    } else if (file.status === 'deleted' && file.content) {
-        const lines = file.content.split('\n');
-        html = lines.map((line: string, i: number) =>
-            `<span class="diff-line diff-del" data-line="${i + 1}"><span class="line-num">${String(i + 1).padStart(4, ' ')}</span>-  ${escapeHtml(line)}</span>`
-        ).join('\n');
-    } else if (file.status === 'modified' && file.hunks?.length > 0) {
+    if (file.hunks?.length > 0) {
         const hunkSections = file.hunks.map((hunk: any) => {
             const header = `@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context ? ' ' + escapeHtml(hunk.context) : ''}`;
             let oldLine = hunk.oldStart;
