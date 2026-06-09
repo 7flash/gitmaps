@@ -1,4 +1,5 @@
 import { getRecentRepos, type RecentRepo } from './recent-commits';
+import { getRepoPathFromUrlSearch } from './repo-route';
 
 export interface RepoSelectItem {
   path: string;
@@ -6,7 +7,8 @@ export interface RepoSelectItem {
 }
 
 export function normalizeRepoPath(repoPath: string): string {
-  return (repoPath || '').trim().replace(/\\/g, '/');
+  const raw = (repoPath || '').trim();
+  try { return decodeURIComponent(raw); } catch { return raw; }
 }
 
 function getShortRepoName(repoPath: string): string {
@@ -40,7 +42,9 @@ export function populateRepoSelect(
   newOpt.id = 'optNewLocal';
   repoSelect.add(newOpt);
 
-  const hashPath = normalizeRepoPath(options.hashPath ?? decodeURIComponent(location.hash.slice(1)));
+  const routedPath = getRepoPathFromUrlSearch(window.location.search) || '';
+  const routeOrHash = routedPath || decodeURIComponent(location.hash.slice(1));
+  const hashPath = normalizeRepoPath(options.hashPath ?? routeOrHash);
   const knownPaths = recentRepos.map((repo) => normalizeRepoPath(typeof repo === 'string' ? repo : repo.path || ''));
   if (hashPath && knownPaths.includes(hashPath)) {
     repoSelect.value = hashPath;

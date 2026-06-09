@@ -52,3 +52,19 @@ Added `app/lib/font-size.ts`:
 - Clone routes now accept HTTPS git URLs only and restrict hosts by `GITMAPS_ALLOWED_GIT_HOSTS` or default hosts.
 - Production repo root validation now uses `path.relative` instead of string prefix checks.
 - OAuth callback no longer comma-joins multiple `Set-Cookie` headers.
+
+## Patch 2 — reported local UI fixes
+
+Applied after testing feedback:
+
+- `?repo=C:\Code\game` is now read directly by the plain canvas loader via `app/lib/plain-canvas/route.ts`.
+- Selecting an existing repo from the dropdown now calls `history.pushState()` and keeps the URL in sync as `/?repo=<encoded path>`.
+- Current workdir now shows changed-file diffs against `HEAD`; it no longer streams and renders every full file first.
+- Selecting a commit now renders that commit's git diff against its first parent in each card instead of loading full file content.
+- The commit history count now excludes the virtual worktree item, and the timeline container is forced visible/scrollable.
+- Left-drag on the empty canvas now marquee-selects cards instead of panning. Use Space-drag or middle mouse to pan.
+- Ctrl/Meta/Shift-click selects multiple cards, and dragging one selected card header moves the whole selection.
+- Right-click is handled on the whole card including the scrollable file body.
+- The context menu now includes selected-file/global font-size controls.
+
+Targeted TypeScript syntax check passed for `app/lib/plain-canvas/*.ts` with `tsc --noEmit`. A full project check still fails because several unrelated scan-reconstructed files contain syntax errors from the incomplete source scan.

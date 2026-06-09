@@ -1,4 +1,4 @@
-import { loadChangedFiles, loadRepository, streamTree } from './api';
+import { loadChangedFiles, loadRepository } from './api';
 import { CardRenderer } from './cards';
 import { ContextMenu } from './context-menu';
 import { bindCanvasDom } from './dom';
@@ -8,7 +8,7 @@ import { createState, loadPositions, savePositions } from './state';
 import { installStyles } from './styles';
 import { Timeline } from './timeline';
 import { WORKING_TREE } from './types';
-import type { CanvasRefs, FileRecord } from './types';
+import type { CanvasRefs } from './types';
 import { ViewportController } from './viewport';
 import { addListener, clearStatus, statusMessage, toast } from './utils';
 
@@ -89,34 +89,20 @@ export class CanvasApp {
     const signal = this.state.abort!.signal;
 
     try {
-      if (ref === WORKING_TREE) {
-        let total = 0;
-        const changed = loadChangedFiles(this.state.repoPath, WORKING_TREE, signal).catch(() => [] as FileRecord[]);
-
-        await streamTree(
-          this.state.repoPath,
-          signal,
-          count => {
-            total = count;
-            statusMessage(this.refs, `Loading files… 0 / ${count}`, 'loading');
-          },
-          files => {
-            if (loadId !== this.state.loadId) return;
-            this.cards.addBatch(files);
-            statusMessage(this.refs, `Loading files… ${this.state.files.size} / ${total || this.state.files.size}`, 'loading');
-            if (this.state.files.size === files.length) this.viewport.fit();
-          },
+      const files = await loadChangedFiles(this.state.repoPath, ref, signal);
+      if (loadId !== this.state.loadId) return;
+      this.cards.addBatch(files);
+      if (!files.length) {
+        statusMessage(
+          this.refs,
+          ref === WORKING_TREE
+            ? 'Working tree is clean — no changed files to show.'
+            : 'This commit has no file diff to show.',
+          'neutral',
         );
-
-        if (loadId !== this.state.loadId) return;
-        this.cards.applyStatuses(await changed);
-      } else {
-        const files = await loadChangedFiles(this.state.repoPath, ref, signal);
-        if (loadId !== this.state.loadId) return;
-        this.cards.addBatch(files);
       }
 
-      clearStatus(this.refs);
+      if (files.length) clearStatus(this.refs);
       savePositions(this.state);
       if (this.state.cards.size) this.viewport.fit();
     } catch (error: any) {
