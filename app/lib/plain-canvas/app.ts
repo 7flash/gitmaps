@@ -1,4 +1,4 @@
-import { loadChangedFiles, loadRepository } from './api';
+import { loadChangedFiles, loadRepository, streamTree } from './api';
 import { CardRenderer } from './cards';
 import { ContextMenu } from './context-menu';
 import { bindCanvasDom } from './dom';
@@ -89,17 +89,47 @@ export class CanvasApp {
     const signal = this.state.abort!.signal;
 
     try {
+      if (ref === WORKING_TREE) {
+        let total = 0;
+        let rendered = 0;
+        statusMessage(this.refs, 'Loading tracked workdir files…', 'loading');
+        await streamTree(
+          this.state.repoPath,
+          signal,
+          count => {
+            total = count;
+            statusMessage(this.refs, `Loading ${count} tracked workdir files…`, 'loading');
+          },
+          batch => {
+            if (loadId !== this.state.loadId) return;
+            const fullContentFiles = batch.map(file => ({
+              ...file,
+              status: 'workdir',
+              content: null,
+              previewContent: undefined,
+              hunks: undefined,
+            }));
+            rendered += fullContentFiles.length;
+            this.cards.addBatch(fullContentFiles);
+            statusMessage(this.refs, `Rendered ${rendered}/${total || rendered} tracked workdir files…`, 'loading');
+          },
+        );
+        if (loadId !== this.state.loadId) return;
+        if (this.state.cards.size) {
+          clearStatus(this.refs);
+          this.viewport.fit();
+        } else {
+          statusMessage(this.refs, 'No tracked Git files found in this workdir.', 'neutral');
+        }
+        savePositions(this.state);
+        return;
+      }
+
       const files = await loadChangedFiles(this.state.repoPath, ref, signal);
       if (loadId !== this.state.loadId) return;
       this.cards.addBatch(files);
       if (!files.length) {
-        statusMessage(
-          this.refs,
-          ref === WORKING_TREE
-            ? 'Working tree is clean — no changed files to show.'
-            : 'This commit has no file diff to show.',
-          'neutral',
-        );
+        statusMessage(this.refs, 'This commit has no file diff to show.', 'neutral');
       }
 
       if (files.length) clearStatus(this.refs);

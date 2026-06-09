@@ -60,8 +60,22 @@ export async function POST(req: Request) {
             const git = simpleGit(repoPath);
 
             if (commit === WORKING_TREE_HASH) {
-                const files = await getWorkingTreeDiffFiles(git, repoPath);
-                return Response.json({ files, totalChanged: files.length, diffBase: 'HEAD', diffCompare: WORKING_TREE_HASH, repoPath, requestedPath: resolved.inputPath, correctedPath: resolved.corrected, pathResolution: resolved.resolution });
+                // Compatibility behavior for Workdir/Current: render every tracked
+                // Git file as a full-content file card. Do not return a diff here.
+                // Older UI paths still call /api/repo/files for __working__, so
+                // returning [] for a clean repo makes the canvas falsely say
+                // "no changes". Historical commits below remain diff-only.
+                const files = await getWorkingTreeSnapshotFiles(git);
+                return Response.json({
+                    files,
+                    total: files.length,
+                    totalChanged: 0,
+                    mode: 'workdir-full-content',
+                    repoPath,
+                    requestedPath: resolved.inputPath,
+                    correctedPath: resolved.corrected,
+                    pathResolution: resolved.resolution,
+                });
             }
 
             const parent = await getPrimaryParentOrEmptyTree(git, commit);
@@ -94,6 +108,25 @@ async function getCommitDiffFiles(git: ReturnType<typeof simpleGit>, base: strin
     }
 
     return files;
+}
+
+async function getWorkingTreeSnapshotFiles(git: ReturnType<typeof simpleGit>): Promise<ChangedFile[]> {
+    const raw = await git.raw(['ls-files', '-z']);
+    return raw
+        .split('\0')
+        .map((filePath) => filePath.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+        .map((filePath) => ({
+            path: unquoteGitPath(filePath),
+            name: unquoteGitPath(filePath).split('/').pop() || unquoteGitPath(filePath),
+            type: 'file' as const,
+            status: 'workdir',
+            content: null,
+            hunks: undefined as any,
+            contentError: null,
+            lines: 0,
+        }));
 }
 
 async function getWorkingTreeDiffFiles(git: ReturnType<typeof simpleGit>, repoPath: string): Promise<ChangedFile[]> {
