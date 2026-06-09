@@ -19,7 +19,8 @@
     "simple-git": "latest",
     "sqlite-zod-orm": "latest",
     "tradjs": "latest",
-    "xstate": "latest"
+    "xstate": "latest",
+    "@chenglou/pretext": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",

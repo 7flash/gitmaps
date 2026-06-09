@@ -13,6 +13,7 @@ import { pathToFileURL } from 'node:url';
 const rootDir = import.meta.dir;
 const appDir = path.join(rootDir, 'app');
 const clientDir = path.join(appDir, 'client');
+const pretextDistDir = path.join(rootDir, 'node_modules', '@chenglou', 'pretext', 'dist');
 
 async function isPortAvailable(candidate: number): Promise<boolean> {
   return await new Promise((resolve) => {
@@ -36,7 +37,7 @@ async function findAvailablePort(startPort: number, attempts = 50): Promise<numb
 function contentType(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === '.html') return 'text/html; charset=utf-8';
-  if (ext === '.js') return 'text/javascript; charset=utf-8';
+  if (ext === '.js' || ext === '.mjs') return 'text/javascript; charset=utf-8';
   if (ext === '.css') return 'text/css; charset=utf-8';
   if (ext === '.json') return 'application/json; charset=utf-8';
   if (ext === '.png') return 'image/png';
@@ -87,6 +88,14 @@ Bun.serve({
 
     if (pathname.startsWith('/api/')) {
       return dispatchApi(req, pathname);
+    }
+
+    if (pathname.startsWith('/vendor/pretext/')) {
+      const requested = pathname.replace(/^\/vendor\/pretext\//, '');
+      const safe = path.basename(requested);
+      const filePath = path.join(pretextDistDir, safe);
+      if (existsSync(filePath)) return serveFile(filePath);
+      return Response.json({ error: '@chenglou/pretext is not installed. Run bun install.' }, { status: 404 });
     }
 
     if (pathname === '/app.js') return serveFile(path.join(clientDir, 'app.js'));

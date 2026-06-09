@@ -2,8 +2,8 @@
   'use strict';
 
   const WORKING = '__working__';
-  const RECENT_KEY = 'gitmaps:v7:recentRepos';
-  const GLOBAL_FONT_KEY = 'gitmaps:v7:font:global';
+  const RECENT_KEY = 'gitmaps:v8:recentRepos';
+  const GLOBAL_FONT_KEY = 'gitmaps:v8:font:global';
   const DEFAULT_FONT = 12;
 
   const state = {
@@ -18,6 +18,14 @@
     dragging: null,
     marquee: null,
     panning: null,
+    contentCache: new Map(),
+    contentLoading: new Set(),
+    renderedCards: new Map(),
+    fileByPath: new Map(),
+    viewportScheduled: false,
+    pretext: null,
+    pretextReady: false,
+    minimap: { dragging: false, scale: 1, offsetX: 0, offsetY: 0, bounds: null },
     globalFont: Number(localStorage.getItem(GLOBAL_FONT_KEY) || DEFAULT_FONT) || DEFAULT_FONT,
   };
 
@@ -36,7 +44,17 @@
     clearSelectionBtn: document.getElementById('clearSelectionBtn'),
     globalFont: document.getElementById('globalFont'),
     contextMenu: document.getElementById('contextMenu'),
+    minimap: document.getElementById('minimap'),
+    minimapCanvas: document.getElementById('minimapCanvas'),
+    minimapLabel: document.getElementById('minimapLabel'),
   };
+
+  const CARD_WIDTH = 520;
+  const CARD_HEIGHT = 460;
+  const GRID_GAP_X = 560;
+  const GRID_GAP_Y = 500;
+  const VIEWPORT_OVERSCAN = 900;
+  const MAX_RENDERED_CARDS = 140;
 
   function decodeMaybe(value) {
     let out = String(value || '');
@@ -235,7 +253,7 @@
   }
 
   function positionKey() {
-    return `gitmaps:v7:positions:${state.repoPath}:${state.currentCommit}`;
+    return `gitmaps:v8:positions:${state.repoPath}:${state.currentCommit}`;
   }
 
   function loadPositions() {
@@ -248,7 +266,7 @@
   }
 
   function fileFontKey(path) {
-    return `gitmaps:v7:font:file:${state.repoPath}:${path}`;
+    return `gitmaps:v8:font:file:${state.repoPath}:${path}`;
   }
 
   function getFileFont(path) {
@@ -284,6 +302,10 @@
     state.allFiles = [];
     state.changedFileCount = 0;
     state.selected.clear();
+    state.contentCache.clear();
+    state.contentLoading.clear();
+    state.renderedCards.clear();
+    state.fileByPath.clear();
     els.repoStatus.textContent = `Loading ${clean}…`;
     els.workspaceHint.style.display = 'none';
     els.commitList.innerHTML = '<div class="empty-state">Loading commits…</div>';
@@ -353,17 +375,30 @@
     renderCommits();
 
     if (hash === WORKING) {
-      els.canvas.innerHTML = '<div class="empty-state">Loading full tracked workdir files…</div>';
+      els.canvas.innerHTML = '<div class="empty-state">Loading tracked workdir file list…</div>';
       try {
         const treeData = await postJson('/api/repo/tree', { path: state.repoPath, commit: WORKING, trackedOnly: true });
         const treeFiles = Array.isArray(treeData?.files) ? treeData.files : [];
         state.allFiles = treeFiles;
         state.changedFileCount = 0;
-        state.files = await hydrateWorkingFiles(treeFiles);
+        state.contentCache.clear();
+        state.contentLoading.clear();
+        state.files = treeFiles
+          .filter(file => file?.path)
+          .sort((a, b) => String(a.path).localeCompare(String(b.path)))
+          .map(file => ({
+            ...file,
+            status: 'workdir',
+            isWorkingContent: true,
+            isChanged: false,
+            content: null,
+            hunks: [],
+            contentError: file.metaError || null,
+          }));
         renderFiles();
         const active = els.commitList.querySelector(`[data-hash="${CSS.escape(hash)}"]`);
         active?.scrollIntoView({ block: 'nearest' });
-        toast(`Rendered ${state.files.length} tracked workdir files`);
+        toast(`Rendered ${state.files.length} tracked workdir file shells; visible files load lazily`);
       } catch (err) {
         console.error(err);
         els.canvas.innerHTML = `<div class="error-state">${escapeHtml(err.message)}</div>`;
@@ -378,6 +413,8 @@
       const diffFiles = Array.isArray(diffData?.files) ? diffData.files : [];
       state.allFiles = [];
       state.changedFileCount = diffFiles.length;
+      state.contentCache.clear();
+      state.contentLoading.clear();
       state.files = diffFiles.map(file => ({ ...file, isChanged: true, diffOnly: true }));
       renderFiles();
       const active = els.commitList.querySelector(`[data-hash="${CSS.escape(hash)}"]`);
@@ -442,16 +479,14 @@
 
   function defaultPosition(index) {
     const cols = 3;
-    const gapX = 560;
-    const gapY = 500;
-    return { x: 40 + (index % cols) * gapX, y: 40 + Math.floor(index / cols) * gapY };
+    return { x: 40 + (index % cols) * GRID_GAP_X, y: 40 + Math.floor(index / cols) * GRID_GAP_Y };
   }
 
   function resizeCanvasToFit(count) {
     const cols = 3;
     const rows = Math.max(1, Math.ceil((count || 1) / cols));
-    const width = Math.max(5200, 80 + cols * 560);
-    const height = Math.max(3600, 80 + rows * 500);
+    const width = Math.max(5200, 80 + cols * GRID_GAP_X);
+    const height = Math.max(3600, 80 + rows * GRID_GAP_Y);
     els.canvas.style.width = `${width}px`;
     els.canvas.style.height = `${height}px`;
   }
@@ -497,37 +532,184 @@
 
   function renderFiles() {
     els.canvas.innerHTML = '';
+    state.renderedCards.clear();
+    state.fileByPath = new Map();
+
     if (!state.files.length) {
       els.canvas.innerHTML = '<div class="empty-state">No files found. Workdir shows tracked Git files; commits show files changed by that commit.</div>';
+      drawMinimap();
       return;
     }
 
     resizeCanvasToFit(state.files.length);
     state.files.forEach((file, index) => {
-      const pos = state.positions[file.path] || defaultPosition(index);
-      const card = document.createElement('article');
-      card.className = 'file-card';
-      card.dataset.path = file.path;
-      card.style.left = `${pos.x}px`;
-      card.style.top = `${pos.y}px`;
-      card.style.setProperty('--code-font', `${getFileFont(file.path)}px`);
-      card.innerHTML = `
-        <header class="file-card-header">
-          <div class="file-title">
-            <div class="file-name">${escapeHtml(file.name || file.path)}</div>
-            <div class="file-path">${escapeHtml(file.oldPath ? `${file.oldPath} → ${file.path}` : file.path)}</div>
-          </div>
-          <div class="file-actions">
-            <span class="badge ${escapeHtml(file.status || '')}">${escapeHtml(file.status || 'file')}</span>
-            <button data-action="font-down" title="Smaller file font">A−</button>
-            <button data-action="font-up" title="Larger file font">A+</button>
-          </div>
-        </header>
-        <section class="file-body">${renderDiff(file)}</section>
-      `;
-      els.canvas.appendChild(card);
+      if (!file?.path) return;
+      state.fileByPath.set(file.path, file);
+      if (!state.positions[file.path]) state.positions[file.path] = defaultPosition(index);
     });
+    savePositions();
+    scheduleViewportUpdate(true);
+    drawMinimap();
     refreshSelection();
+  }
+
+  function scheduleViewportUpdate(force = false) {
+    if (force) {
+      state.viewportScheduled = false;
+      updateViewportCulling();
+      return;
+    }
+    if (state.viewportScheduled) return;
+    state.viewportScheduled = true;
+    requestAnimationFrame(updateViewportCulling);
+  }
+
+  function updateViewportCulling() {
+    state.viewportScheduled = false;
+    if (!state.files.length) return;
+
+    const view = {
+      left: Math.max(0, els.viewport.scrollLeft - VIEWPORT_OVERSCAN),
+      top: Math.max(0, els.viewport.scrollTop - VIEWPORT_OVERSCAN),
+      right: els.viewport.scrollLeft + els.viewport.clientWidth + VIEWPORT_OVERSCAN,
+      bottom: els.viewport.scrollTop + els.viewport.clientHeight + VIEWPORT_OVERSCAN,
+    };
+
+    const candidates = [];
+    for (const file of state.files) {
+      const pos = state.positions[file.path] || defaultPosition(0);
+      const visible = pos.x + CARD_WIDTH >= view.left && pos.x <= view.right && pos.y + CARD_HEIGHT >= view.top && pos.y <= view.bottom;
+      if (visible) {
+        const dx = Math.max(view.left - pos.x, 0, pos.x - view.right);
+        const dy = Math.max(view.top - pos.y, 0, pos.y - view.bottom);
+        candidates.push({ file, pos, distance: dx * dx + dy * dy });
+      }
+    }
+
+    candidates.sort((a, b) => a.distance - b.distance);
+    const keep = new Set(candidates.slice(0, MAX_RENDERED_CARDS).map(item => item.file.path));
+
+    for (const [path, card] of state.renderedCards) {
+      if (!keep.has(path)) {
+        card.remove();
+        state.renderedCards.delete(path);
+      }
+    }
+
+    for (const item of candidates.slice(0, MAX_RENDERED_CARDS)) {
+      let card = state.renderedCards.get(item.file.path);
+      if (!card) {
+        card = createFileCard(item.file, item.pos);
+        state.renderedCards.set(item.file.path, card);
+        els.canvas.appendChild(card);
+      } else {
+        positionCard(card, item.pos);
+      }
+      if (item.file.isWorkingContent) ensureWorkingFileContent(item.file);
+    }
+
+    refreshSelection();
+    updateMinimapViewport();
+    updateVirtualizationLabel(candidates.length, keep.size);
+  }
+
+  function updateVirtualizationLabel(nearCount, renderedCount) {
+    if (!els.minimapLabel) return;
+    const loaded = state.contentCache.size;
+    els.minimapLabel.textContent = `${renderedCount}/${state.files.length} cards · ${loaded} loaded`;
+  }
+
+  function createFileCard(file, pos) {
+    const card = document.createElement('article');
+    card.className = 'file-card';
+    card.dataset.path = file.path;
+    positionCard(card, pos);
+    card.style.setProperty('--code-font', `${getFileFont(file.path)}px`);
+    card.innerHTML = `
+      <header class="file-card-header">
+        <div class="file-title">
+          <div class="file-name">${escapeHtml(file.name || file.path)}</div>
+          <div class="file-path">${escapeHtml(file.oldPath ? `${file.oldPath} → ${file.path}` : file.path)}</div>
+        </div>
+        <div class="file-actions">
+          <span class="badge ${escapeHtml(file.status || '')}">${escapeHtml(file.status || 'file')}</span>
+          <button data-action="font-down" title="Smaller file font">A−</button>
+          <button data-action="font-up" title="Larger file font">A+</button>
+        </div>
+      </header>
+      <section class="file-body">${renderCardBody(file)}</section>
+    `;
+    return card;
+  }
+
+  function positionCard(card, pos) {
+    card.style.left = `${pos.x}px`;
+    card.style.top = `${pos.y}px`;
+  }
+
+  function renderCardBody(file) {
+    if (!file.isWorkingContent) return renderDiff(file);
+    const cached = state.contentCache.get(file.path);
+    if (cached) return renderFullContent(cached);
+    if (state.contentLoading.has(file.path)) {
+      return '<div class="source-note"><strong>Loading visible file content…</strong><br>Workdir uses lazy DOM text hydration.</div>';
+    }
+    if (file.contentError) return `<div class="source-note"><strong>${escapeHtml(file.contentError)}</strong></div>`;
+    return '<div class="source-note"><strong>Visible file shell</strong><br>Content loads when this card enters the viewport.</div>';
+  }
+
+  async function ensureWorkingFileContent(file) {
+    if (!file?.isWorkingContent || !file.path) return;
+    if (state.contentCache.has(file.path) || state.contentLoading.has(file.path)) return;
+
+    if (file.isBinary) {
+      const binary = {
+        ...file,
+        content: '',
+        contentError: 'Binary file — full text preview is not available.',
+        lines: file.lines || 0,
+      };
+      state.contentCache.set(file.path, binary);
+      updateCardBody(file.path);
+      return;
+    }
+
+    state.contentLoading.add(file.path);
+    updateCardBody(file.path);
+    try {
+      const data = await postJson('/api/repo/file-content', {
+        path: state.repoPath,
+        commit: WORKING,
+        filePath: file.path,
+      });
+      const content = data?.content ?? '';
+      state.contentCache.set(file.path, {
+        ...file,
+        content,
+        contentError: null,
+        lines: data?.lineCount || countLines(content) || file.lines || 0,
+        truncated: !!data?.truncated,
+      });
+    } catch (err) {
+      state.contentCache.set(file.path, {
+        ...file,
+        content: file.previewContent || '',
+        contentError: err?.message || 'Could not load file content',
+        lines: file.lines || 0,
+      });
+    } finally {
+      state.contentLoading.delete(file.path);
+      updateCardBody(file.path);
+      drawMinimap();
+    }
+  }
+
+  function updateCardBody(path) {
+    const card = getCard(path);
+    if (!card) return;
+    const file = state.fileByPath.get(path);
+    const body = card.querySelector('.file-body');
+    if (file && body) body.innerHTML = renderCardBody(file);
   }
 
   function renderDiff(file) {
@@ -569,13 +751,35 @@
     }
 
     const text = String(file.content ?? '');
-    const body = text.split('\n').map((line) => `<span class="source-line">${escapeHtml(line || ' ')}</span>`).join('');
+    const estimated = estimatePreTextHeight(text, getFileFont(file.path));
     const truncated = file.truncated ? '<div class="source-warning">File preview was truncated by the API size limit.</div>' : '';
-    return `${truncated}<pre class="source-code">${body}</pre>`;
+    const pretextBadge = state.pretextReady ? '<span class="pretext-badge">Pretext metrics</span>' : '';
+    return `${truncated}${pretextBadge}<pre class="source-code pretext-code" style="min-height:${estimated}px">${escapeHtml(text || ' ')}</pre>`;
+  }
+
+  function estimatePreTextHeight(text, fontSize) {
+    const lines = countLines(text);
+    const lineHeight = Math.max(12, Number(fontSize) || state.globalFont) * 1.48;
+
+    // Pretext is an optional measurement fast path. The standalone app still
+    // works without a bundler or the package installed; it falls back to the
+    // exact cheap calculation for monospace preformatted source text.
+    if (state.pretext?.prepare && state.pretext?.layout) {
+      try {
+        const font = `${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+        const prepared = state.pretext.prepare(text, font, { whiteSpace: 'pre' });
+        const measured = state.pretext.layout(prepared, 100000, lineHeight);
+        if (Number.isFinite(measured?.height)) return Math.ceil(measured.height + 20);
+      } catch {
+        // Ignore experimental measurement failures and keep the fallback stable.
+      }
+    }
+
+    return Math.ceil(Math.max(1, lines) * lineHeight + 20);
   }
 
   function getCard(path) {
-    return els.canvas.querySelector(`.file-card[data-path="${CSS.escape(path)}"]`);
+    return state.renderedCards.get(path) || null;
   }
 
   function cardFromTarget(target) {
@@ -604,9 +808,10 @@
   }
 
   function refreshSelection() {
-    for (const card of els.canvas.querySelectorAll('.file-card')) {
-      card.classList.toggle('selected', state.selected.has(card.dataset.path));
+    for (const [path, card] of state.renderedCards) {
+      card.classList.toggle('selected', state.selected.has(path));
     }
+    drawMinimap();
   }
 
   function selectedPathsOr(path) {
@@ -619,15 +824,14 @@
     const targets = paths.length ? paths : state.files.map(file => file.path);
     const cols = Math.max(1, Math.ceil(Math.sqrt(targets.length || 1)));
     targets.forEach((path, index) => {
-      const pos = { x: 40 + (index % cols) * 560, y: 40 + Math.floor(index / cols) * 500 };
+      const pos = { x: 40 + (index % cols) * GRID_GAP_X, y: 40 + Math.floor(index / cols) * GRID_GAP_Y };
       state.positions[path] = pos;
       const card = getCard(path);
-      if (card) {
-        card.style.left = `${pos.x}px`;
-        card.style.top = `${pos.y}px`;
-      }
+      if (card) positionCard(card, pos);
     });
     savePositions();
+    scheduleViewportUpdate(true);
+    drawMinimap();
     toast(`Arranged ${targets.length} file${targets.length === 1 ? '' : 's'} in grid`);
   }
 
@@ -715,6 +919,8 @@
           };
         }
         savePositions();
+        scheduleViewportUpdate(true);
+        drawMinimap();
         try { event.target.releasePointerCapture?.(state.dragging.pointerId); } catch {}
         state.dragging = null;
       }
@@ -869,6 +1075,14 @@
     els.clearSelectionBtn.addEventListener('click', () => { state.selected.clear(); refreshSelection(); });
     els.globalFont.value = String(state.globalFont);
     els.globalFont.addEventListener('change', () => setGlobalFont(els.globalFont.value));
+    els.viewport.addEventListener('scroll', () => {
+      scheduleViewportUpdate();
+      drawMinimap();
+    }, { passive: true });
+    window.addEventListener('resize', () => {
+      scheduleViewportUpdate();
+      drawMinimap();
+    });
 
     els.canvas.addEventListener('click', (event) => {
       const btn = event.target.closest?.('button[data-action]');
@@ -881,15 +1095,146 @@
     });
   }
 
+
+  async function initPretext() {
+    try {
+      // Served by server.ts when @chenglou/pretext is installed. This keeps the
+      // app no-build and gracefully falls back if the package is unavailable.
+      const mod = await import('/vendor/pretext/layout.js');
+      state.pretext = mod;
+      state.pretextReady = Boolean(mod?.prepare && mod?.layout);
+    } catch {
+      state.pretext = null;
+      state.pretextReady = false;
+    }
+  }
+
+  function drawMinimap() {
+    const canvas = els.minimapCanvas;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const cssW = canvas.clientWidth || 220;
+    const cssH = canvas.clientHeight || 160;
+    const dpr = window.devicePixelRatio || 1;
+    const pxW = Math.max(1, Math.floor(cssW * dpr));
+    const pxH = Math.max(1, Math.floor(cssH * dpr));
+    if (canvas.width !== pxW || canvas.height !== pxH) {
+      canvas.width = pxW;
+      canvas.height = pxH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    ctx.fillStyle = 'rgba(7, 10, 16, .92)';
+    ctx.fillRect(0, 0, cssW, cssH);
+    ctx.strokeStyle = 'rgba(148, 163, 184, .25)';
+    ctx.strokeRect(.5, .5, cssW - 1, cssH - 1);
+
+    if (!state.files.length) {
+      state.minimap.bounds = null;
+      return;
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const file of state.files) {
+      const pos = state.positions[file.path] || defaultPosition(0);
+      minX = Math.min(minX, pos.x);
+      minY = Math.min(minY, pos.y);
+      maxX = Math.max(maxX, pos.x + CARD_WIDTH);
+      maxY = Math.max(maxY, pos.y + CARD_HEIGHT);
+    }
+    const pad = 12;
+    const worldW = Math.max(1, maxX - minX);
+    const worldH = Math.max(1, maxY - minY);
+    const scale = Math.min((cssW - pad * 2) / worldW, (cssH - pad * 2) / worldH);
+    const offsetX = pad - minX * scale + ((cssW - pad * 2) - worldW * scale) / 2;
+    const offsetY = pad - minY * scale + ((cssH - pad * 2) - worldH * scale) / 2;
+
+    state.minimap.scale = scale;
+    state.minimap.offsetX = offsetX;
+    state.minimap.offsetY = offsetY;
+    state.minimap.bounds = { minX, minY, maxX, maxY, cssW, cssH };
+
+    for (const file of state.files) {
+      const pos = state.positions[file.path] || defaultPosition(0);
+      const x = pos.x * scale + offsetX;
+      const y = pos.y * scale + offsetY;
+      const w = Math.max(2, CARD_WIDTH * scale);
+      const h = Math.max(2, CARD_HEIGHT * scale);
+      const selected = state.selected.has(file.path);
+      const loaded = state.contentCache.has(file.path) || !file.isWorkingContent;
+      ctx.fillStyle = selected ? 'rgba(196, 181, 253, .9)' : loaded ? 'rgba(56, 189, 248, .55)' : 'rgba(148, 163, 184, .34)';
+      ctx.fillRect(x, y, w, h);
+    }
+
+    updateMinimapViewport(ctx);
+  }
+
+  function updateMinimapViewport(existingCtx = null) {
+    const canvas = els.minimapCanvas;
+    if (!canvas || !state.minimap.bounds) return;
+    const ctx = existingCtx || canvas.getContext('2d');
+    if (!ctx) return;
+    if (!existingCtx) drawMinimap();
+
+    const { scale, offsetX, offsetY } = state.minimap;
+    const x = els.viewport.scrollLeft * scale + offsetX;
+    const y = els.viewport.scrollTop * scale + offsetY;
+    const w = els.viewport.clientWidth * scale;
+    const h = els.viewport.clientHeight * scale;
+    ctx.strokeStyle = 'rgba(255, 255, 255, .95)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, y, Math.max(4, w), Math.max(4, h));
+  }
+
+  function installMinimap() {
+    const canvas = els.minimapCanvas;
+    if (!canvas) return;
+
+    const jump = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const scale = state.minimap.scale || 1;
+      const x = (event.clientX - rect.left - state.minimap.offsetX) / scale;
+      const y = (event.clientY - rect.top - state.minimap.offsetY) / scale;
+      els.viewport.scrollLeft = Math.max(0, x - els.viewport.clientWidth / 2);
+      els.viewport.scrollTop = Math.max(0, y - els.viewport.clientHeight / 2);
+      scheduleViewportUpdate();
+      drawMinimap();
+    };
+
+    canvas.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      state.minimap.dragging = true;
+      canvas.setPointerCapture(event.pointerId);
+      jump(event);
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      if (!state.minimap.dragging) return;
+      event.preventDefault();
+      jump(event);
+    });
+    const finish = (event) => {
+      if (!state.minimap.dragging) return;
+      state.minimap.dragging = false;
+      try { canvas.releasePointerCapture(event.pointerId); } catch {}
+    };
+    canvas.addEventListener('pointerup', finish);
+    canvas.addEventListener('pointercancel', finish);
+  }
+
   window.addEventListener('popstate', () => {
     const repoPath = getRepoFromLocation();
     if (repoPath && repoPath !== state.repoPath) loadRepo(repoPath, { sync: false });
   });
 
   async function init() {
+    await initPretext();
     installToolbar();
     installPointerInteractions();
     installContextMenu();
+    installMinimap();
     setGlobalFont(state.globalFont);
     const routed = getRepoFromLocation();
     await populateRepos(routed);
