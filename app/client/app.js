@@ -2,8 +2,8 @@
   'use strict';
 
   const WORKING = '__working__';
-  const RECENT_KEY = 'gitmaps:v4:recentRepos';
-  const GLOBAL_FONT_KEY = 'gitmaps:v4:font:global';
+  const RECENT_KEY = 'gitmaps:v5:recentRepos';
+  const GLOBAL_FONT_KEY = 'gitmaps:v5:font:global';
   const DEFAULT_FONT = 12;
 
   const state = {
@@ -11,6 +11,8 @@
     commits: [],
     currentCommit: '',
     files: [],
+    allFiles: [],
+    changedFileCount: 0,
     selected: new Set(),
     positions: {},
     dragging: null,
@@ -215,7 +217,7 @@
   }
 
   function positionKey() {
-    return `gitmaps:v4:positions:${state.repoPath}:${state.currentCommit}`;
+    return `gitmaps:v5:positions:${state.repoPath}:${state.currentCommit}`;
   }
 
   function loadPositions() {
@@ -228,7 +230,7 @@
   }
 
   function fileFontKey(path) {
-    return `gitmaps:v4:font:file:${state.repoPath}:${path}`;
+    return `gitmaps:v5:font:file:${state.repoPath}:${path}`;
   }
 
   function getFileFont(path) {
@@ -261,6 +263,8 @@
     state.repoPath = clean;
     state.currentCommit = '';
     state.files = [];
+    state.allFiles = [];
+    state.changedFileCount = 0;
     state.selected.clear();
     els.repoStatus.textContent = `Loading ${clean}…`;
     els.workspaceHint.style.display = 'none';
@@ -320,18 +324,25 @@
     state.selected.clear();
     loadPositions();
     renderCommits();
-    els.canvas.innerHTML = '<div class="empty-state">Loading changed-file diffs…</div>';
+    els.canvas.innerHTML = '<div class="empty-state">Loading repository files and commit diffs…</div>';
 
     try {
-      const data = await postJson('/api/repo/files', { path: state.repoPath, commit: hash });
-      state.files = data?.files || [];
+      const [treeData, diffData] = await Promise.all([
+        postJson('/api/repo/tree', { path: state.repoPath, commit: hash }),
+        postJson('/api/repo/files', { path: state.repoPath, commit: hash }),
+      ]);
+      state.allFiles = Array.isArray(treeData?.files) ? treeData.files : [];
+      const diffFiles = Array.isArray(diffData?.files) ? diffData.files : [];
+      state.changedFileCount = diffFiles.length;
+      state.files = mergeTreeAndDiffs(state.allFiles, diffFiles);
       renderFiles();
       const active = els.commitList.querySelector(`[data-hash="${CSS.escape(hash)}"]`);
       active?.scrollIntoView({ block: 'nearest' });
+      toast(`Rendered ${state.files.length} files · ${state.changedFileCount} changed`);
     } catch (err) {
       console.error(err);
       els.canvas.innerHTML = `<div class="error-state">${escapeHtml(err.message)}</div>`;
-      toast(`Failed to load diff: ${err.message}`, true);
+      toast(`Failed to load files/diff: ${err.message}`, true);
     }
   }
 
@@ -342,13 +353,62 @@
     return { x: 40 + (index % cols) * gapX, y: 40 + Math.floor(index / cols) * gapY };
   }
 
+  function resizeCanvasToFit(count) {
+    const cols = 3;
+    const rows = Math.max(1, Math.ceil((count || 1) / cols));
+    const width = Math.max(5200, 80 + cols * 560);
+    const height = Math.max(3600, 80 + rows * 500);
+    els.canvas.style.width = `${width}px`;
+    els.canvas.style.height = `${height}px`;
+  }
+
+  function mergeTreeAndDiffs(treeFiles, diffFiles) {
+    const diffByPath = new Map();
+    for (const diff of diffFiles || []) {
+      if (diff?.path) diffByPath.set(diff.path, diff);
+    }
+
+    const merged = [];
+    for (const meta of treeFiles || []) {
+      if (!meta?.path) continue;
+      const diff = diffByPath.get(meta.path);
+      if (diff) {
+        merged.push({ ...meta, ...diff, isChanged: true });
+        diffByPath.delete(meta.path);
+      } else {
+        merged.push({
+          ...meta,
+          status: 'unchanged',
+          content: null,
+          hunks: [],
+          contentError: meta.metaError || null,
+          lines: meta.lines || 0,
+          isChanged: false,
+        });
+      }
+    }
+
+    // Deleted or renamed-from files may not exist in the selected tree, but their
+    // deletion diff still needs a card.
+    for (const diff of diffByPath.values()) {
+      merged.push({ ...diff, isChanged: true, diffOnly: true });
+    }
+
+    return merged.sort((a, b) => {
+      const changedDelta = Number(Boolean(b.isChanged)) - Number(Boolean(a.isChanged));
+      if (changedDelta) return changedDelta;
+      return String(a.path || '').localeCompare(String(b.path || ''));
+    });
+  }
+
   function renderFiles() {
     els.canvas.innerHTML = '';
     if (!state.files.length) {
-      els.canvas.innerHTML = '<div class="empty-state">No changed files for this commit/workdir.</div>';
+      els.canvas.innerHTML = '<div class="empty-state">No files found in this repository/commit.</div>';
       return;
     }
 
+    resizeCanvasToFit(state.files.length);
     state.files.forEach((file, index) => {
       const pos = state.positions[file.path] || defaultPosition(index);
       const card = document.createElement('article');
@@ -364,7 +424,7 @@
             <div class="file-path">${escapeHtml(file.oldPath ? `${file.oldPath} → ${file.path}` : file.path)}</div>
           </div>
           <div class="file-actions">
-            <span class="badge ${escapeHtml(file.status || '')}">${escapeHtml(file.status || 'changed')}</span>
+            <span class="badge ${escapeHtml(file.status || '')}">${escapeHtml(file.status || 'file')}</span>
             <button data-action="font-down" title="Smaller file font">A−</button>
             <button data-action="font-up" title="Larger file font">A+</button>
           </div>
@@ -378,6 +438,13 @@
 
   function renderDiff(file) {
     if (file.contentError) return `<div class="error-state">${escapeHtml(file.contentError)}</div>`;
+    if (!file.isChanged && file.status === 'unchanged') {
+      const meta = [];
+      if (file.ext) meta.push(`.${file.ext}`);
+      if (Number.isFinite(file.size) && file.size > 0) meta.push(`${file.size} bytes`);
+      if (file.lines) meta.push(`${file.lines} lines`);
+      return `<div class="unchanged-note"><strong>No diff in this selection.</strong><br>${escapeHtml(meta.join(' · ') || 'File exists in this repo/commit.')}</div>`;
+    }
     const hunks = Array.isArray(file.hunks) ? file.hunks : [];
     if (hunks.length) {
       const rows = [];

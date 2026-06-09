@@ -82,3 +82,6 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
   #workspace { grid-column: 1; grid-row: 3; }
   .repo-controls { grid-template-columns: 1fr; width: 100%; }
 }
+.badge.unchanged { color: #94a3b8; border-color: rgba(148,163,184,.22); background: rgba(148,163,184,.06); }
+.unchanged-note { padding: 18px; color: var(--muted); font-size: var(--code-font); line-height: 1.45; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.unchanged-note strong { color: #cbd5e1; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
