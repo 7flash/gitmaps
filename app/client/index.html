@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GitMaps Fixed</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="appShell">
+    <header id="topbar">
+      <div class="brand">
+        <strong>GitMaps</strong>
+        <span id="repoStatus">No repo selected</span>
+      </div>
+      <div class="repo-controls">
+        <select id="repoSelect" title="Known repositories">
+          <option value="">Select repo…</option>
+        </select>
+        <input id="repoPath" placeholder="C:\Code\game or /Users/me/game" spellcheck="false" />
+        <button id="loadRepoBtn">Load</button>
+      </div>
+      <div class="toolbar">
+        <button id="gridBtn" title="Arrange selected files in grid">Grid</button>
+        <button id="selectAllBtn" title="Select all visible files">Select all</button>
+        <button id="clearSelectionBtn" title="Clear selection">Clear</button>
+        <label class="font-control">Global font <input id="globalFont" type="number" min="8" max="28" step="1" /></label>
+      </div>
+    </header>
+
+    <aside id="historyPanel">
+      <div class="panel-title">
+        <span>History</span>
+        <b id="historyCount">0</b>
+      </div>
+      <div id="commitList" class="commit-list"></div>
+    </aside>
+
+    <main id="workspace">
+      <div id="workspaceHint" class="hint">
+        Enter a repo path in the URL, for example <code>/?repo=C:\Code\game</code>, or select a repo from the dropdown.
+      </div>
+      <div id="canvasViewport">
+        <div id="canvasContent"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="contextMenu" class="context-menu" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>
