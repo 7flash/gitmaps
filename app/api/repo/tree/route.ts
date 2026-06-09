@@ -28,6 +28,7 @@ const MAX_SAMPLE_FILE_SIZE = 1024 * 1024; // 1MB
 const MAX_INLINE_PREVIEW_LINES = 120;
 const MAX_INLINE_PREVIEW_CHARS = 4000;
 const STREAM_BATCH_SIZE = 50;
+const WORKING_TREE_HASH = '__working__';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,6 +94,17 @@ async function listGitFiles(repoPath: string): Promise<string[]> {
   const untracked = untrackedResult.trim().split('\n').filter(Boolean);
   
   return [...new Set([...tracked, ...untracked])].filter((p) => !shouldQuickIgnore(p));
+}
+
+
+async function listCommitFiles(repoPath: string, commit: string): Promise<string[]> {
+  const git = simpleGit(repoPath);
+  const raw = await git.raw(['ls-tree', '-r', '--name-only', '-z', commit]);
+  return raw
+    .split('\0')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !shouldQuickIgnore(p));
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +174,36 @@ function getFileMetadata(repoPath: string, filePath: string): FileMetadata {
   };
 }
 
+
+async function getCommitFileMetadata(repoPath: string, commit: string, filePath: string): Promise<FileMetadata> {
+  const git = simpleGit(repoPath);
+  const name = path.basename(filePath);
+  const ext = path.extname(name).toLowerCase().replace('.', '');
+  const isBinary = BINARY_EXTS.has(ext);
+
+  let size = 0;
+  let metaError: string | undefined;
+
+  try {
+    const sizeRaw = await git.raw(['cat-file', '-s', `${commit}:${filePath}`]);
+    size = parseInt(sizeRaw.trim(), 10) || 0;
+  } catch (err: any) {
+    metaError = err?.message;
+  }
+
+  return {
+    path: filePath,
+    name,
+    ext,
+    type: 'file',
+    content: null,
+    lines: 0,
+    size,
+    isBinary,
+    ...(metaError ? { metaError } : {}),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // POST Handler
 // ---------------------------------------------------------------------------
@@ -171,6 +213,7 @@ export async function POST(req: Request) {
     try {
       const body = await req.json();
       const repoPath = body.path;
+      const commit = typeof body.commit === 'string' ? body.commit : WORKING_TREE_HASH;
       const stream = body.stream === true;
       const includeAll = body.includeAll === true;
 
@@ -181,13 +224,14 @@ export async function POST(req: Request) {
       const git = simpleGit(repoPath);
       const isRepo = await git.checkIsRepo().catch(() => false);
 
-      // FIX: Ensure no variable shadows the 'listGitFiles' function name
-      let finalFilePaths: string[]; 
+      let finalFilePaths: string[];
+      const useCommitTree = isRepo && commit && commit !== WORKING_TREE_HASH;
       
-      if (!isRepo || includeAll) {
+      if (useCommitTree) {
+        finalFilePaths = await measure('tree:listCommitFiles', async () => await listCommitFiles(repoPath, commit));
+      } else if (!isRepo || includeAll) {
         finalFilePaths = await measure('tree:scanDir', async () => scanDir(repoPath));
       } else {
-        // This is the line that was likely failing
         finalFilePaths = await measure('tree:listGitFiles', async () => await listGitFiles(repoPath));
       }
 
@@ -226,8 +270,10 @@ export async function POST(req: Request) {
         });
       }
 
-      const files = finalFilePaths.map((fp) => getFileMetadata(repoPath, fp));
-      return Response.json({ files, total: files.length });
+      const files = useCommitTree
+        ? await Promise.all(finalFilePaths.map((fp) => getCommitFileMetadata(repoPath, commit, fp)))
+        : finalFilePaths.map((fp) => getFileMetadata(repoPath, fp));
+      return Response.json({ files, total: files.length, commit });
 
     } catch (error: any) {
       console.error('api:repo:tree:error', error);
