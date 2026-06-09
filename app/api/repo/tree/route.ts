@@ -3,6 +3,7 @@ import simpleGit from 'simple-git';
 import { readdirSync, statSync, openSync, readSync, closeSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
+import { resolveRepoPath } from '../resolve-repo-path';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -212,12 +213,13 @@ export async function POST(req: Request) {
   return measure('api:repo:tree', async () => {
     try {
       const body = await req.json();
-      const repoPath = body.path;
+      const resolved = resolveRepoPath(body.path);
+      const repoPath = resolved.repoPath;
       const commit = typeof body.commit === 'string' ? body.commit : WORKING_TREE_HASH;
       const stream = body.stream === true;
       const includeAll = body.includeAll === true;
 
-      if (!repoPath) return new Response('Path required', { status: 400 });
+      if (!body.path) return new Response('Path required', { status: 400 });
       const blocked = validateRepoPath(repoPath);
       if (blocked) return blocked;
 
@@ -229,10 +231,11 @@ export async function POST(req: Request) {
       
       if (useCommitTree) {
         finalFilePaths = await measure('tree:listCommitFiles', async () => await listCommitFiles(repoPath, commit));
-      } else if (!isRepo || includeAll) {
-        finalFilePaths = await measure('tree:scanDir', async () => scanDir(repoPath));
       } else {
-        finalFilePaths = await measure('tree:listGitFiles', async () => await listGitFiles(repoPath));
+        // Workdir should show the current folder contents, not only git changed
+        // or tracked files. This is what makes the top Workdir row render every
+        // file even when the repo is clean.
+        finalFilePaths = await measure('tree:scanDir', async () => scanDir(repoPath));
       }
 
       if (stream) {
@@ -273,7 +276,7 @@ export async function POST(req: Request) {
       const files = useCommitTree
         ? await Promise.all(finalFilePaths.map((fp) => getCommitFileMetadata(repoPath, commit, fp)))
         : finalFilePaths.map((fp) => getFileMetadata(repoPath, fp));
-      return Response.json({ files, total: files.length, commit });
+      return Response.json({ files, total: files.length, commit, repoPath, requestedPath: resolved.inputPath, correctedPath: resolved.corrected, pathResolution: resolved.resolution });
 
     } catch (error: any) {
       console.error('api:repo:tree:error', error);

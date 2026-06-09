@@ -2,6 +2,7 @@ import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
 import { readFileSync } from 'fs';
 import { validateRepoPath } from '../validate-path';
+import { resolveRepoPath } from '../resolve-repo-path';
 import { resolveInsideRepo } from '../path-safety';
 
 const WORKING_TREE_HASH = '__working__';
@@ -44,11 +45,14 @@ type NameStatusEntry = {
 export async function POST(req: Request) {
     return measure('api:repo:files', async () => {
         try {
-            const { path: repoPath, commit } = await req.json();
+            const { path: requestedPath, commit } = await req.json();
 
-            if (!repoPath || !commit) {
+            if (!requestedPath || !commit) {
                 return new Response('Repository path and commit are required', { status: 400 });
             }
+
+            const resolved = resolveRepoPath(requestedPath);
+            const repoPath = resolved.repoPath;
 
             const blocked = validateRepoPath(repoPath);
             if (blocked) return blocked;
@@ -57,12 +61,12 @@ export async function POST(req: Request) {
 
             if (commit === WORKING_TREE_HASH) {
                 const files = await getWorkingTreeDiffFiles(git, repoPath);
-                return Response.json({ files, totalChanged: files.length, diffBase: 'HEAD', diffCompare: WORKING_TREE_HASH });
+                return Response.json({ files, totalChanged: files.length, diffBase: 'HEAD', diffCompare: WORKING_TREE_HASH, repoPath, requestedPath: resolved.inputPath, correctedPath: resolved.corrected, pathResolution: resolved.resolution });
             }
 
             const parent = await getPrimaryParentOrEmptyTree(git, commit);
             const files = await getCommitDiffFiles(git, parent, commit);
-            return Response.json({ files, totalChanged: files.length, diffBase: parent, diffCompare: commit });
+            return Response.json({ files, totalChanged: files.length, diffBase: parent, diffCompare: commit, repoPath, requestedPath: resolved.inputPath, correctedPath: resolved.corrected, pathResolution: resolved.resolution });
         } catch (error: any) {
             console.error('api:repo:files:error', error);
             return new Response(`Error: ${error.message}`, { status: 500 });

@@ -277,11 +277,20 @@
 
     try {
       const data = await postJson('/api/repo/load', { path: clean });
+      const canonical = normalizeRepoPath(data?.repoPath || clean);
+      if (canonical && canonical !== state.repoPath) {
+        state.repoPath = canonical;
+        ensureRepoOption(canonical);
+        els.repoSelect.value = canonical;
+        els.repoPath.value = canonical;
+        syncUrl(canonical, true);
+      }
       state.commits = data?.commits || [];
-      addRecentRepo(clean);
-      await populateRepos(clean);
+      addRecentRepo(canonical || clean);
+      await populateRepos(canonical || clean);
       renderCommits();
-      els.repoStatus.textContent = clean;
+      els.repoStatus.textContent = canonical || clean;
+      if (data?.correctedPath) toast(`Using repo root: ${canonical}`);
       const first = state.commits.find(c => c.hash === WORKING) || state.commits[0];
       if (first) await selectCommit(first.hash);
       else {
@@ -328,7 +337,7 @@
 
     try {
       const [treeData, diffData] = await Promise.all([
-        postJson('/api/repo/tree', { path: state.repoPath, commit: hash }),
+        postJson('/api/repo/tree', { path: state.repoPath, commit: hash, includeAll: hash === WORKING }),
         postJson('/api/repo/files', { path: state.repoPath, commit: hash }),
       ]);
       state.allFiles = Array.isArray(treeData?.files) ? treeData.files : [];
@@ -404,7 +413,7 @@
   function renderFiles() {
     els.canvas.innerHTML = '';
     if (!state.files.length) {
-      els.canvas.innerHTML = '<div class="empty-state">No files found in this repository/commit.</div>';
+      els.canvas.innerHTML = '<div class="empty-state">No files found in this repository/commit. Workdir scans the folder tree; commits show files tracked by that commit.</div>';
       return;
     }
 

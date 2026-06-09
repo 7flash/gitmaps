@@ -2,6 +2,7 @@ import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
+import { resolveRepoPath } from '../resolve-repo-path';
 
 const WORKING_TREE_HASH = '__working__';
 
@@ -35,21 +36,24 @@ export function extractCanonicalForgeSlugInfo(remoteUrl?: string | null): { slug
 export async function POST(req: Request) {
     return measure('api:repo:load', async () => {
         try {
-            const { path: repoPath } = await req.json();
+            const { path: requestedPath } = await req.json();
 
-            if (!repoPath) {
+            if (!requestedPath) {
                 return new Response('Repository path is required', { status: 400 });
             }
+
+            const resolved = resolveRepoPath(requestedPath);
+            const repoPath = resolved.repoPath;
 
             const blocked = validateRepoPath(repoPath);
             if (blocked) return blocked;
 
             const git = simpleGit(repoPath);
 
-            // Check if it's a git repository
+            // Check if it's a git repository after canonicalization.
             const isRepo = await git.checkIsRepo();
             if (!isRepo) {
-                return new Response('Not a valid git repository', { status: 400 });
+                return new Response(`Not a valid git repository: ${repoPath}`, { status: 400 });
             }
 
             // Get commit log (last 100 commits) with custom format for tree graph
@@ -127,7 +131,7 @@ export async function POST(req: Request) {
                 canonicalSlugSource = '';
             }
 
-            return Response.json({ commits, canonicalSlug, canonicalSlugSource });
+            return Response.json({ commits, canonicalSlug, canonicalSlugSource, repoPath, requestedPath: resolved.inputPath, correctedPath: resolved.corrected, pathResolution: resolved.resolution });
         } catch (error: any) {
             console.error('api:repo:load:error', error);
             return new Response(`Error: ${error.message}`, { status: 500 });
