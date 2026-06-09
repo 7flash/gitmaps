@@ -16,6 +16,7 @@ import { renderSyncControls } from './sync-controls';
 import { renderVersionBadge } from './version';
 import { renderRoleBadge } from './role';
 import { renderRecentCommitsUI } from './recent-commits';
+import { installMainCanvasUxFixes } from './main-canvas-ux-fixes';
 
 export function ensureSvgOverlay(ctx: CanvasContext) {
   ctx.svgOverlay = document.getElementById('connectionsOverlay') as unknown as SVGSVGElement;
@@ -98,4 +99,5 @@ export async function initializeMountUi(
   renderSync();
   await renderVersion();
   renderRecents();
+  installMainCanvasUxFixes(ctx);
 }

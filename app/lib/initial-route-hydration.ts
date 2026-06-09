@@ -3,7 +3,7 @@ import { loadSavedPositions } from './positions';
 import { restoreViewport, updateCanvasTransform, updateZoomUI } from './canvas';
 import { initLayers, renderLayersUI } from './layers';
 import { handoffRepoLoad, syncRepoSelection } from './repo-handoff';
-import { decodeRepoPathFromRouteSlug, getRepoPathFromUrlSearch, isLikelyLocalRepoPath, encodeRepoPathForRoute } from './repo-route';
+import { decodeRepoPathFromRouteSlug, getRepoPathFromUrlSearch, getRepoPathFromLocation, isLikelyLocalRepoPath, encodeRepoPathForRoute, syncRepoPathToUrl } from './repo-route';
 
 export interface InitialRouteParts {
   rawPath: string;
@@ -19,16 +19,17 @@ export function getInitialRouteParts(
   search = window.location.search,
 ): InitialRouteParts {
   const encodedPathSlug = pathname.replace(/^\//, '').replace(/^galaxy-canvas\/?/, '');
-  const rawPath = decodeURIComponent(encodedPathSlug);
+  const rawPath = (() => { try { return decodeURIComponent(encodedPathSlug); } catch { return encodedPathSlug; } })();
   const pathSlug = decodeRepoPathFromRouteSlug(encodedPathSlug || rawPath);
-  const hashSlug = decodeURIComponent(hash.replace('#', ''));
+  const hashSlug = (() => { try { return decodeURIComponent(hash.replace('#', '')); } catch { return hash.replace('#', ''); } })();
   const queryRepoPath = getRepoPathFromUrlSearch(search) || '';
+  const locationRepo = typeof window !== 'undefined' ? (getRepoPathFromLocation(window.location) || '') : '';
   return {
     rawPath,
     pathSlug,
     hashSlug,
     queryRepoPath,
-    urlSlug: queryRepoPath || pathSlug || hashSlug,
+    urlSlug: queryRepoPath || locationRepo || pathSlug || hashSlug,
   };
 }
 
@@ -160,6 +161,7 @@ export async function bootstrapInitialRouteUi(
   const updateRouteZoomUi = options.updateRouteZoomUi || updateZoomUI;
 
   syncSelection(resolvedPath);
+  syncRepoPathToUrl(resolvedPath, true);
   ctx.actor.send({ type: 'LOAD_REPO', path: resolvedPath });
   ctx.snap().context.repoPath = resolvedPath;
   await loadPositions(ctx);

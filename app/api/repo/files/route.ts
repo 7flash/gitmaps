@@ -22,7 +22,7 @@ type ChangedFile = {
     name: string;
     type: 'file';
     status: string;
-    content: null;
+    content: string | null;
     hunks: DiffHunk[];
     contentError: string | null;
     lines: number;
@@ -217,7 +217,7 @@ async function buildDiffFile(
         name,
         type: 'file',
         status: entry.status,
-        content: null,
+        content: formatHunksForPreview(hunks),
         hunks,
         contentError: error,
         lines: countHunkDisplayLines(hunks),
@@ -246,7 +246,7 @@ async function buildUntrackedFileDiff(repoPath: string, entry: NameStatusEntry):
         name,
         type: 'file',
         status: 'added',
-        content: null,
+        content: formatHunksForPreview(hunks),
         hunks,
         contentError: error,
         lines: countHunkDisplayLines(hunks),
@@ -265,6 +265,19 @@ function synthesizeAddedFileHunks(content: string): DiffHunk[] {
         context: '',
         lines: lines.map((line) => ({ type: 'add', content: line })),
     }];
+}
+
+function formatHunksForPreview(hunks: DiffHunk[]): string | null {
+    if (!hunks.length) return null;
+    const output: string[] = [];
+    for (const hunk of hunks) {
+        output.push(`@@ -${hunk.oldStart},${hunk.oldCount} +${hunk.newStart},${hunk.newCount} @@${hunk.context ? ` ${hunk.context}` : ''}`);
+        for (const line of hunk.lines) {
+            const prefix = line.type === 'add' ? '+' : line.type === 'del' ? '-' : ' ';
+            output.push(prefix + line.content);
+        }
+    }
+    return output.join('\n');
 }
 
 function countHunkDisplayLines(hunks: DiffHunk[]): number {

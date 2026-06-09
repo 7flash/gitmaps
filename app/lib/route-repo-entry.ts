@@ -1,10 +1,12 @@
 import type { CanvasContext } from './context';
 import { handoffRepoLoad } from './repo-handoff';
-import { decodeRepoPathFromRouteSlug, getRepoPathFromUrlSearch } from './repo-route';
+import { decodeRepoPathFromRouteSlug, getRepoPathFromLocation, getRepoPathFromUrlSearch } from './repo-route';
 
 export function getCurrentRouteSlug(pathname = window.location.pathname, search = window.location.search): string {
   const queryRepoPath = getRepoPathFromUrlSearch(search);
   if (queryRepoPath) return queryRepoPath;
+  const fromLocation = typeof window !== 'undefined' ? getRepoPathFromLocation(window.location) : null;
+  if (fromLocation) return fromLocation;
   const encodedSlug = pathname.replace(/^\//, '');
   return decodeRepoPathFromRouteSlug(encodedSlug);
 }
