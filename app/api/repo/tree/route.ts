@@ -1,6 +1,6 @@
 import { measure } from 'measure-fn';
 import simpleGit from 'simple-git';
-import { readdirSync, statSync, openSync, readSync, closeSync } from 'fs';
+import { statSync, openSync, readSync, closeSync } from 'fs';
 import path from 'path';
 import { validateRepoPath } from '../validate-path';
 import { resolveRepoPath } from '../resolve-repo-path';
@@ -56,45 +56,16 @@ function readFileHeadSync(fullPath: string, maxBytes: number): Buffer | null {
   }
 }
 
-function scanDir(root: string): string[] {
-  const results: string[] = [];
-  function walk(dir: string, prefix: string) {
-    let entries: string[] = [];
-    try {
-      entries = readdirSync(dir);
-    } catch (err: any) {
-      return;
-    }
-    for (const entry of entries) {
-      if (COMMON_IGNORES.has(entry)) continue;
-      const fullPath = path.join(dir, entry);
-      const relativePath = prefix ? `${prefix}/${entry}` : entry;
-      try {
-        const stats = statSync(fullPath);
-        if (stats.isDirectory()) {
-          walk(fullPath, relativePath);
-        } else if (stats.isFile()) {
-          results.push(relativePath);
-        }
-      } catch {}
-    }
-  }
-  walk(root, '');
-  return results;
-}
-
 async function listGitFiles(repoPath: string): Promise<string[]> {
   const git = simpleGit(repoPath);
-  // Using Promise.all to fetch tracked and untracked files
-  const [trackedResult, untrackedResult] = await Promise.all([
-    git.raw(['ls-files']),
-    git.raw(['ls-files', '--others', '--exclude-standard']),
-  ]);
-
-  const tracked = trackedResult.trim().split('\n').filter(Boolean);
-  const untracked = untrackedResult.trim().split('\n').filter(Boolean);
-  
-  return [...new Set([...tracked, ...untracked])].filter((p) => !shouldQuickIgnore(p));
+  // Workdir intentionally lists tracked Git files only. Ignored/untracked files
+  // are not canvas cards unless they have been added to Git.
+  const raw = await git.raw(['ls-files', '-z']);
+  return raw
+    .split('\0')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .filter((p) => !shouldQuickIgnore(p));
 }
 
 
@@ -217,8 +188,6 @@ export async function POST(req: Request) {
       const repoPath = resolved.repoPath;
       const commit = typeof body.commit === 'string' ? body.commit : WORKING_TREE_HASH;
       const stream = body.stream === true;
-      const includeAll = body.includeAll === true;
-
       if (!body.path) return new Response('Path required', { status: 400 });
       const blocked = validateRepoPath(repoPath);
       if (blocked) return blocked;
@@ -232,10 +201,9 @@ export async function POST(req: Request) {
       if (useCommitTree) {
         finalFilePaths = await measure('tree:listCommitFiles', async () => await listCommitFiles(repoPath, commit));
       } else {
-        // Workdir should show the current folder contents, not only git changed
-        // or tracked files. This is what makes the top Workdir row render every
-        // file even when the repo is clean.
-        finalFilePaths = await measure('tree:scanDir', async () => scanDir(repoPath));
+        // Workdir should show current tracked Git files, even when the repo is
+        // clean. Full text is loaded by the client through /api/repo/file-content.
+        finalFilePaths = await measure('tree:listGitFiles', async () => await listGitFiles(repoPath));
       }
 
       if (stream) {

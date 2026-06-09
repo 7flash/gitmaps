@@ -14,7 +14,7 @@
         <span id="repoStatus">No repo selected</span>
       </div>
       <div class="repo-controls">
-        <select id="repoSelect" title="Known repositories">
+        <select id="repoSelect" title="Known repositories" hidden aria-hidden="true">
           <option value="">Select repo…</option>
         </select>
         <input id="repoPath" placeholder="C:\Code\game or /Users/me/game" spellcheck="false" />
@@ -38,7 +38,7 @@
 
     <main id="workspace">
       <div id="workspaceHint" class="hint">
-        Enter a repo path in the URL, for example <code>/?repo=C:\Code\game</code>, or select a repo from the dropdown.
+        Enter a repo path in the URL, for example <code>/?repo=C:\Code\game</code>, or type it above and press Load.
       </div>
       <div id="canvasViewport">
         <div id="canvasContent"></div>

@@ -2,8 +2,8 @@
   'use strict';
 
   const WORKING = '__working__';
-  const RECENT_KEY = 'gitmaps:v5:recentRepos';
-  const GLOBAL_FONT_KEY = 'gitmaps:v5:font:global';
+  const RECENT_KEY = 'gitmaps:v7:recentRepos';
+  const GLOBAL_FONT_KEY = 'gitmaps:v7:font:global';
   const DEFAULT_FONT = 12;
 
   const state = {
@@ -124,6 +124,24 @@
     });
   }
 
+  async function mapLimit(items, limit, worker) {
+    const results = new Array(items.length);
+    let cursor = 0;
+    const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length || 1)) }, async () => {
+      while (cursor < items.length) {
+        const index = cursor++;
+        results[index] = await worker(items[index], index);
+      }
+    });
+    await Promise.all(workers);
+    return results;
+  }
+
+  function countLines(value) {
+    if (value === undefined || value === null || value === '') return 0;
+    return String(value).split('\n').length;
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -217,7 +235,7 @@
   }
 
   function positionKey() {
-    return `gitmaps:v5:positions:${state.repoPath}:${state.currentCommit}`;
+    return `gitmaps:v7:positions:${state.repoPath}:${state.currentCommit}`;
   }
 
   function loadPositions() {
@@ -230,7 +248,7 @@
   }
 
   function fileFontKey(path) {
-    return `gitmaps:v5:font:file:${state.repoPath}:${path}`;
+    return `gitmaps:v7:font:file:${state.repoPath}:${path}`;
   }
 
   function getFileFont(path) {
@@ -333,26 +351,93 @@
     state.selected.clear();
     loadPositions();
     renderCommits();
-    els.canvas.innerHTML = '<div class="empty-state">Loading repository files and commit diffs…</div>';
 
+    if (hash === WORKING) {
+      els.canvas.innerHTML = '<div class="empty-state">Loading full tracked workdir files…</div>';
+      try {
+        const treeData = await postJson('/api/repo/tree', { path: state.repoPath, commit: WORKING, trackedOnly: true });
+        const treeFiles = Array.isArray(treeData?.files) ? treeData.files : [];
+        state.allFiles = treeFiles;
+        state.changedFileCount = 0;
+        state.files = await hydrateWorkingFiles(treeFiles);
+        renderFiles();
+        const active = els.commitList.querySelector(`[data-hash="${CSS.escape(hash)}"]`);
+        active?.scrollIntoView({ block: 'nearest' });
+        toast(`Rendered ${state.files.length} tracked workdir files`);
+      } catch (err) {
+        console.error(err);
+        els.canvas.innerHTML = `<div class="error-state">${escapeHtml(err.message)}</div>`;
+        toast(`Failed to load workdir files: ${err.message}`, true);
+      }
+      return;
+    }
+
+    els.canvas.innerHTML = '<div class="empty-state">Loading commit diff…</div>';
     try {
-      const [treeData, diffData] = await Promise.all([
-        postJson('/api/repo/tree', { path: state.repoPath, commit: hash, includeAll: hash === WORKING }),
-        postJson('/api/repo/files', { path: state.repoPath, commit: hash }),
-      ]);
-      state.allFiles = Array.isArray(treeData?.files) ? treeData.files : [];
+      const diffData = await postJson('/api/repo/files', { path: state.repoPath, commit: hash });
       const diffFiles = Array.isArray(diffData?.files) ? diffData.files : [];
+      state.allFiles = [];
       state.changedFileCount = diffFiles.length;
-      state.files = mergeTreeAndDiffs(state.allFiles, diffFiles);
+      state.files = diffFiles.map(file => ({ ...file, isChanged: true, diffOnly: true }));
       renderFiles();
       const active = els.commitList.querySelector(`[data-hash="${CSS.escape(hash)}"]`);
       active?.scrollIntoView({ block: 'nearest' });
-      toast(`Rendered ${state.files.length} files · ${state.changedFileCount} changed`);
+      toast(`Rendered ${state.changedFileCount} changed file${state.changedFileCount === 1 ? '' : 's'} in this commit`);
     } catch (err) {
       console.error(err);
       els.canvas.innerHTML = `<div class="error-state">${escapeHtml(err.message)}</div>`;
-      toast(`Failed to load files/diff: ${err.message}`, true);
+      toast(`Failed to load commit diff: ${err.message}`, true);
     }
+  }
+
+  async function hydrateWorkingFiles(treeFiles) {
+    const sorted = [...(treeFiles || [])]
+      .filter(file => file?.path)
+      .sort((a, b) => String(a.path).localeCompare(String(b.path)));
+
+    return mapLimit(sorted, 8, async (meta) => {
+      if (meta.isBinary) {
+        return {
+          ...meta,
+          status: 'workdir',
+          isWorkingContent: true,
+          isChanged: false,
+          content: null,
+          contentError: 'Binary file — full text preview is not available.',
+          hunks: [],
+        };
+      }
+
+      try {
+        const data = await postJson('/api/repo/file-content', {
+          path: state.repoPath,
+          commit: WORKING,
+          filePath: meta.path,
+        });
+        const content = data?.content ?? '';
+        return {
+          ...meta,
+          status: 'workdir',
+          isWorkingContent: true,
+          isChanged: false,
+          content,
+          hunks: [],
+          contentError: null,
+          lines: data?.lineCount || countLines(content) || meta.lines || 0,
+          truncated: !!data?.truncated,
+        };
+      } catch (err) {
+        return {
+          ...meta,
+          status: 'workdir',
+          isWorkingContent: true,
+          isChanged: false,
+          content: meta.previewContent || null,
+          hunks: [],
+          contentError: err?.message || 'Could not load file content',
+        };
+      }
+    });
   }
 
   function defaultPosition(index) {
@@ -413,7 +498,7 @@
   function renderFiles() {
     els.canvas.innerHTML = '';
     if (!state.files.length) {
-      els.canvas.innerHTML = '<div class="empty-state">No files found in this repository/commit. Workdir scans the folder tree; commits show files tracked by that commit.</div>';
+      els.canvas.innerHTML = '<div class="empty-state">No files found. Workdir shows tracked Git files; commits show files changed by that commit.</div>';
       return;
     }
 
@@ -446,14 +531,10 @@
   }
 
   function renderDiff(file) {
-    if (file.contentError) return `<div class="error-state">${escapeHtml(file.contentError)}</div>`;
-    if (!file.isChanged && file.status === 'unchanged') {
-      const meta = [];
-      if (file.ext) meta.push(`.${file.ext}`);
-      if (Number.isFinite(file.size) && file.size > 0) meta.push(`${file.size} bytes`);
-      if (file.lines) meta.push(`${file.lines} lines`);
-      return `<div class="unchanged-note"><strong>No diff in this selection.</strong><br>${escapeHtml(meta.join(' · ') || 'File exists in this repo/commit.')}</div>`;
+    if (file.isWorkingContent) {
+      return renderFullContent(file);
     }
+    if (file.contentError) return `<div class="error-state">${escapeHtml(file.contentError)}</div>`;
     const hunks = Array.isArray(file.hunks) ? file.hunks : [];
     if (hunks.length) {
       const rows = [];
@@ -474,7 +555,23 @@
       }).join('');
       return `<pre class="diff">${rows}</pre>`;
     }
-    return '<div class="empty-state">No textual diff for this file.</div>';
+    return '<div class="empty-state">No textual diff for this commit.</div>';
+  }
+
+  function renderFullContent(file) {
+    const meta = [];
+    if (file.ext) meta.push(`.${file.ext}`);
+    if (Number.isFinite(file.size) && file.size > 0) meta.push(`${file.size} bytes`);
+    if (file.lines) meta.push(`${file.lines} lines`);
+
+    if (file.contentError && !file.content) {
+      return `<div class="source-note"><strong>${escapeHtml(file.contentError)}</strong><br>${escapeHtml(meta.join(' · ') || file.path)}</div>`;
+    }
+
+    const text = String(file.content ?? '');
+    const body = text.split('\n').map((line) => `<span class="source-line">${escapeHtml(line || ' ')}</span>`).join('');
+    const truncated = file.truncated ? '<div class="source-warning">File preview was truncated by the API size limit.</div>' : '';
+    return `${truncated}<pre class="source-code">${body}</pre>`;
   }
 
   function getCard(path) {
