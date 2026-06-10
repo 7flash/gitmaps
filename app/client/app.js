@@ -389,6 +389,7 @@
           .map(file => ({
             ...file,
             status: 'workdir',
+            viewMode: 'workdir',
             isWorkingContent: true,
             isChanged: false,
             content: null,
@@ -605,7 +606,7 @@
       } else {
         positionCard(card, item.pos);
       }
-      if (item.file.isWorkingContent) ensureWorkingFileContent(item.file);
+      if (isWorkdirFile(item.file)) ensureWorkingFileContent(item.file);
     }
 
     refreshSelection();
@@ -647,8 +648,22 @@
     card.style.top = `${pos.y}px`;
   }
 
+
+  function isWorkdirFile(file) {
+    return state.currentCommit === WORKING || file?.isWorkingContent === true || file?.viewMode === 'workdir' || file?.status === 'workdir';
+  }
+
+  function hasNativeTextSelectionInside(target) {
+    const selection = window.getSelection?.();
+    if (!selection || selection.isCollapsed || !String(selection.toString() || '').trim()) return false;
+    const card = cardFromTarget(target);
+    const anchor = selection.anchorNode;
+    const focus = selection.focusNode;
+    return !!card && !!anchor && !!focus && card.contains(anchor) && card.contains(focus);
+  }
+
   function renderCardBody(file) {
-    if (!file.isWorkingContent) return renderDiff(file);
+    if (!isWorkdirFile(file)) return renderDiff(file);
     const cached = state.contentCache.get(file.path);
     if (cached) return renderFullContent(cached);
     if (state.contentLoading.has(file.path)) {
@@ -659,7 +674,9 @@
   }
 
   async function ensureWorkingFileContent(file) {
-    if (!file?.isWorkingContent || !file.path) return;
+    if (!file?.path || !isWorkdirFile(file)) return;
+    file.isWorkingContent = true;
+    file.viewMode = 'workdir';
     if (state.contentCache.has(file.path) || state.contentLoading.has(file.path)) return;
 
     if (file.isBinary) {
@@ -713,8 +730,8 @@
   }
 
   function renderDiff(file) {
-    if (file.isWorkingContent) {
-      return renderFullContent(file);
+    if (isWorkdirFile(file)) {
+      return renderCardBody(file);
     }
     if (file.contentError) return `<div class="error-state">${escapeHtml(file.contentError)}</div>`;
     const hunks = Array.isArray(file.hunks) ? file.hunks : [];
@@ -1011,6 +1028,13 @@
       const card = cardFromTarget(event.target);
       const path = cardPath(card);
       if (!path) return;
+
+      // Let the browser show its native menu for copying selected source text.
+      // Custom card actions remain available from the card header / non-text area.
+      if (event.target.closest?.('.file-body, pre, code') && hasNativeTextSelectionInside(event.target)) {
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       if (!state.selected.has(path)) selectOnly(path);
@@ -1022,11 +1046,30 @@
     });
   }
 
+
+  async function copyCardText(path) {
+    const selected = window.getSelection?.()?.toString?.() || '';
+    const text = selected.trim()
+      ? selected
+      : (state.contentCache.get(path)?.content ?? state.fileByPath.get(path)?.content ?? getCard(path)?.querySelector('.file-body pre')?.textContent ?? '');
+    if (!text) {
+      toast('No text available to copy', true);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(selected.trim() ? 'Copied selected text' : 'Copied file text');
+    } catch {
+      toast('Clipboard copy failed', true);
+    }
+  }
+
   function showContextMenu(x, y, path) {
     const count = selectedPathsOr(path).length;
     els.contextMenu.innerHTML = `
       <button data-action="grid">Arrange ${count} selected in grid</button>
       <button data-action="select-all">Select all visible files</button>
+      <button data-action="copy-text">Copy selected/file text</button>
       <div class="sep"></div>
       <button data-action="global-up">Increase global font</button>
       <button data-action="global-down">Decrease global font</button>
@@ -1043,6 +1086,7 @@
       const targets = selectedPathsOr(path);
       if (action === 'grid') arrangeGrid(targets);
       if (action === 'select-all') selectAll();
+      if (action === 'copy-text') void copyCardText(path);
       if (action === 'global-up') setGlobalFont(state.globalFont + 1);
       if (action === 'global-down') setGlobalFont(state.globalFont - 1);
       if (action === 'file-up') targets.forEach(p => setFileFont(p, getFileFont(p) + 1));

@@ -55,6 +55,19 @@ function writeGlobalFont(size: number): void {
   try { localStorage.setItem(GLOBAL_FONT_KEY, String(clampFont(size))); } catch {}
 }
 
+
+function isWorkdirFile(file: FileRecord): boolean {
+  return file.viewMode === 'workdir' || file.isWorkingContent === true || file.status === 'workdir';
+}
+
+function hasSelectedTextInside(element: HTMLElement): boolean {
+  const selection = window.getSelection?.();
+  if (!selection || selection.isCollapsed || !String(selection.toString() || '').trim()) return false;
+  const anchor = selection.anchorNode;
+  const focus = selection.focusNode;
+  return !!anchor && !!focus && element.contains(anchor) && element.contains(focus);
+}
+
 export class CardRenderer {
   private queue: string[] = [];
   private workers = 0;
@@ -84,8 +97,8 @@ export class CardRenderer {
       this.state.files.set(file.path, file);
       this.create(file, this.state.files.size - 1);
 
-      const hasDiff = Array.isArray(file.hunks);
-      if (!file.isBinary && !hasDiff && !file.previewContent && !file.contentError && !file.metaError) {
+      const hasDiff = !isWorkdirFile(file) && Array.isArray(file.hunks);
+      if (!file.isBinary && !hasDiff && !file.previewContent && !file.content && !file.contentError && !file.metaError) {
         this.queueContent(file.path);
       }
     }
@@ -101,11 +114,11 @@ export class CardRenderer {
       }
       if (!file) continue;
       file.status = changed.status;
-      file.hunks = changed.hunks;
+      if (!isWorkdirFile(file)) file.hunks = changed.hunks;
       const card = this.state.cards.get(file.path);
       if (card) {
         this.updateStatusClass(card, file);
-        if (Array.isArray(file.hunks)) this.renderDiff(file.path, file.hunks as DiffHunk[], file.contentError || undefined);
+        if (!isWorkdirFile(file) && Array.isArray(file.hunks)) this.renderDiff(file.path, file.hunks as DiffHunk[], file.contentError || undefined);
       }
     }
   }
@@ -181,6 +194,12 @@ export class CardRenderer {
     this.bindCard(card, file.path);
 
     if (file.isBinary) this.renderMessage(file.path, 'Binary file');
+    else if (isWorkdirFile(file)) {
+      if (file.content) this.renderCode(file.path, file.content);
+      else if (file.previewContent) this.renderCode(file.path, file.previewContent);
+      else if (file.metaError || file.contentError) this.renderMessage(file.path, file.metaError || file.contentError || 'Unable to preview file');
+      else this.renderMessage(file.path, 'Loading full file…');
+    }
     else if (Array.isArray(file.hunks)) this.renderDiff(file.path, file.hunks as DiffHunk[], file.contentError || undefined);
     else if (file.previewContent) this.renderCode(file.path, file.previewContent);
     else if (file.content) this.renderCode(file.path, file.content);
@@ -267,6 +286,10 @@ export class CardRenderer {
     }) as EventListener);
 
     const openMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.plain-card__body') && hasSelectedTextInside(card)) {
+        return; // native browser menu, so Copy works on selected source text
+      }
       event.preventDefault();
       event.stopPropagation();
       this.callbacks.menu(event, path);

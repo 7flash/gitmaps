@@ -19,6 +19,7 @@ export class ContextMenu {
     menu.innerHTML = `
       <button data-action="open">Open full file</button>
       <button data-action="history">History${many ? ` (${paths.length} files)` : ''}</button>
+      <button data-action="copy">Copy selected/file text</button>
       <hr />
       <button data-action="row">Arrange${many ? ' selected' : ''} in row</button>
       <button data-action="grid">Arrange${many ? ' selected' : ''} in grid</button>
@@ -42,6 +43,13 @@ export class ContextMenu {
       switch (button.dataset.action) {
         case 'open': this.actions.open(clickedPath); break;
         case 'history': this.actions.history(paths); break;
+        case 'copy': {
+          const selected = window.getSelection?.()?.toString?.() || '';
+          const card = this.state.cards.get(clickedPath);
+          const text = selected.trim() ? selected : (card?.querySelector('.plain-card__body pre')?.textContent || '');
+          if (text) void navigator.clipboard?.writeText(text);
+          break;
+        }
         case 'row': this.viewport.arrange(paths, 'row'); break;
         case 'grid': this.viewport.arrange(paths, 'grid'); break;
         case 'font-up': this.cards.adjustFont(paths, 1); break;

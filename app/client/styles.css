@@ -60,6 +60,7 @@ input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px r
 .badge.modified { color: #93c5fd; border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.08); }
 .badge.renamed { color: #fde68a; border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
 .file-body { flex: 1; min-height: 0; overflow: auto; user-select: text; background: #07101d; }
+.file-body, .file-body * { user-select: text; }
 .diff { min-width: max-content; margin: 0; padding: 10px 0; font: var(--code-font)/1.48 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
 .diff-line { display: block; padding: 0 14px; min-height: 1.48em; }
 .diff-line.hunk { color: #c4b5fd; background: rgba(139,92,246,.12); }

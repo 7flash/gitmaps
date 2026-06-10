@@ -23,6 +23,8 @@ export interface FileRecord {
   size?: number;
   isBinary?: boolean;
   status?: FileStatus;
+  viewMode?: 'workdir' | 'diff';
+  isWorkingContent?: boolean;
   hunks?: unknown[];
 }
 

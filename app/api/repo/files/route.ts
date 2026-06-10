@@ -122,6 +122,8 @@ async function getWorkingTreeSnapshotFiles(git: ReturnType<typeof simpleGit>): P
             name: unquoteGitPath(filePath).split('/').pop() || unquoteGitPath(filePath),
             type: 'file' as const,
             status: 'workdir',
+            viewMode: 'workdir' as any,
+            isWorkingContent: true as any,
             content: null,
             hunks: undefined as any,
             contentError: null,

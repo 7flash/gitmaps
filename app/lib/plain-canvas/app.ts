@@ -105,6 +105,8 @@ export class CanvasApp {
             const fullContentFiles = batch.map(file => ({
               ...file,
               status: 'workdir',
+              viewMode: 'workdir' as const,
+              isWorkingContent: true,
               content: null,
               previewContent: undefined,
               hunks: undefined,
